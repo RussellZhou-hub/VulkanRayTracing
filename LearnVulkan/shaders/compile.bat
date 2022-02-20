@@ -1,0 +1,5 @@
+D:/Data/VulkanSDK/1.2.198.1/Bin/glslangvalidator.exe --target-env vulkan1.2 -V C:/Users/Rocki/source/repos/VulkanBasicRayTracing/LearnVulkan/shaders/raytrace.rgen -o C:/Users/Rocki/source/repos/VulkanBasicRayTracing/LearnVulkan/shaders/raytrace.rgen.spv
+D:/Data/VulkanSDK/1.2.198.1/Bin/glslc.exe --target-env=vulkan1.2 C:/Users/Rocki/source/repos/VulkanBasicRayTracing/LearnVulkan/shaders/raytrace.rchit -o C:/Users/Rocki/source/repos/VulkanBasicRayTracing/LearnVulkan/shaders/raytrace.rchit.spv
+D:/Data/VulkanSDK/1.2.198.1/Bin/glslc.exe --target-env=vulkan1.2 C:/Users/Rocki/source/repos/VulkanBasicRayTracing/LearnVulkan/shaders/raytrace.rmiss -o C:/Users/Rocki/source/repos/VulkanBasicRayTracing/LearnVulkan/shaders/raytrace.rmiss.spv
+D:/Data/VulkanSDK/1.2.198.1/Bin/glslc.exe --target-env=vulkan1.2 C:/Users/Rocki/source/repos/VulkanBasicRayTracing/LearnVulkan/shaders/raytrace_shadow.rmiss -o C:/Users/Rocki/source/repos/VulkanBasicRayTracing/LearnVulkan/shaders/raytrace_shadow.rmiss.spv
+pause
