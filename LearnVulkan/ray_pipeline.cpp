@@ -22,6 +22,8 @@
 //#include "tinyobj_loader_c.c"
 #include "ray_pipeline.h"
 #include "Utils.h"
+#define STB_IMAGE_IMPLEMENTATION    
+#include "stb_image.h"
 
 
 VkRayTracingApplication::VkRayTracingApplication(){
@@ -73,7 +75,7 @@ bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
 void VkRayTracingApplication::run(Scene& scene, Camera& camera)
 {
     std::string str = GetExePath();
-    str += "\\cube_scene.obj";
+    str += "\\data\\cube_scene.obj";
     initializeScene(&scene, str.c_str());
     //initializeScene(&scene, "D:/Data/Vulkan/Resources/cube_box/cube_scene.obj");
     initVulkan(&scene);
@@ -121,6 +123,22 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
     //there are no major differences when creating the synchronization objects or writing the main loop. 
     while (!glfwWindowShouldClose(app->window)) {
         glfwPollEvents();
+
+        //set icon
+        std::string str = GetExePath();
+        std::string baseIconPath = str + "\\data\\icon";
+        str += "\\data\\icon\\my_icon.png";
+
+        GLFWimage images[2];
+        images[0].pixels = stbi_load(str.c_str(), &images[0].width, &images[0].height, 0, 4); //rgba channels
+        str = baseIconPath + "\\my_icon_small.png";
+        images[1].pixels = stbi_load(str.c_str(), &images[0].width, &images[0].height, 0, 4); //rgba channels
+        //images[0] = load_icon("my_icon.png");
+        //images[1] = load_icon("my_icon_small.png");
+
+        glfwSetWindowIcon(window, 2, images);
+        stbi_image_free(images[0].pixels);
+        stbi_image_free(images[1].pixels);
 
         if (glfwGetKey(app->window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
             glfwSetWindowShouldClose(window, true);
@@ -430,7 +448,7 @@ void VkRayTracingApplication::initializeVulkanContext(VkRayTracingApplication* a
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-    app->window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", NULL, NULL);
+    app->window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan RayTracing pipeline", NULL, NULL);
 
     glfwSetInputMode(app->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetKeyCallback(app->window, keyCallback);
@@ -1577,7 +1595,11 @@ void VkRayTracingApplication::createRayTracePipeline(VkRayTracingApplication* ap
       //The only difference is setting the shader stage info to the correct shader stage.
     PFN_vkCreateRayTracingPipelinesKHR pvkCreateRayTracingPipelinesKHR = (PFN_vkCreateRayTracingPipelinesKHR)vkGetDeviceProcAddr(app->logicalDevice, "vkCreateRayTracingPipelinesKHR");
 
-    FILE* rgenFile = fopen("shaders/raytrace.rgen.spv", "rb");
+    std::string str = GetExePath();
+    std::string basePath = str+"\\data\\";
+    str += "\\data\\shaders\\raytrace.rgen.spv";
+    FILE* rgenFile = fopen(str.c_str(), "rb");
+    //FILE* rgenFile = fopen("shaders/raytrace.rgen.spv", "rb");
     fseek(rgenFile, 0, SEEK_END);
     uint32_t rgenFileSize = ftell(rgenFile);
     fseek(rgenFile, 0, SEEK_SET);
@@ -1586,7 +1608,9 @@ void VkRayTracingApplication::createRayTracePipeline(VkRayTracingApplication* ap
     fread(rgenFileBuffer, 1, rgenFileSize, rgenFile);
     fclose(rgenFile);
 
-    FILE* rmissFile = fopen("shaders/raytrace.rmiss.spv", "rb");
+    str = basePath + "shaders\\raytrace.rmiss.spv";
+    FILE* rmissFile = fopen(str.c_str(), "rb");
+    //FILE* rmissFile = fopen("shaders/raytrace.rmiss.spv", "rb");
     fseek(rmissFile, 0, SEEK_END);
     uint32_t rmissFileSize = ftell(rmissFile);
     fseek(rmissFile, 0, SEEK_SET);
@@ -1595,7 +1619,9 @@ void VkRayTracingApplication::createRayTracePipeline(VkRayTracingApplication* ap
     fread(rmissFileBuffer, 1, rmissFileSize, rmissFile);
     fclose(rmissFile);
 
-    FILE* rmissShadowFile = fopen("shaders/raytrace_shadow.rmiss.spv", "rb");
+    str = basePath + "shaders\\raytrace_shadow.rmiss.spv";
+    FILE* rmissShadowFile = fopen(str.c_str(), "rb");
+    //FILE* rmissShadowFile = fopen("shaders/raytrace_shadow.rmiss.spv", "rb");
     fseek(rmissShadowFile, 0, SEEK_END);
     uint32_t rmissShadowFileSize = ftell(rmissShadowFile);
     fseek(rmissShadowFile, 0, SEEK_SET);
@@ -1604,7 +1630,10 @@ void VkRayTracingApplication::createRayTracePipeline(VkRayTracingApplication* ap
     fread(rmissShadowFileBuffer, 1, rmissShadowFileSize, rmissShadowFile);
     fclose(rmissShadowFile);
 
-    FILE* rchitFile = fopen("shaders/raytrace.rchit.spv", "rb");
+
+    str = basePath + "shaders\\raytrace.rchit.spv";
+    FILE* rchitFile = fopen(str.c_str(), "rb");
+    //FILE* rchitFile = fopen("shaders/raytrace.rchit.spv", "rb");
     fseek(rchitFile, 0, SEEK_END);
     uint32_t rchitFileSize = ftell(rchitFile);
     fseek(rchitFile, 0, SEEK_SET);
