@@ -3,8 +3,8 @@
 #define VK_ENABLE_BETA_EXTENSIONS
 #define GLFW_INCLUDE_VULKAN
 #define TINYOBJ_LOADER_C_IMPLEMENTATION
-#include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
+#include <vulkan/vulkan.h>
 
 
 #include <stdio.h>
@@ -24,6 +24,7 @@
 #include "Utils.h"
 #define STB_IMAGE_IMPLEMENTATION    
 #include "stb_image.h"
+#include <iostream>
 
 
 VkRayTracingApplication::VkRayTracingApplication(){
@@ -87,7 +88,6 @@ void VkRayTracingApplication::initializeScene(Scene* scene, const char* fileName
 {
  tinyobj_attrib_init(&scene->attributes);
  tinyobj_parse_obj(&scene->attributes, &scene->shapes, &scene->numShapes, &scene->materials, &scene->numMaterials, fileNameOBJ, &readFile, TINYOBJ_FLAG_TRIANGULATE);
-    //Todo:要提供一个原来的c写法的scene对象，现在是c++写法的
     //loadModel(scene);
 }
 
@@ -535,6 +535,14 @@ bool VkRayTracingApplication::checkDeviceExtensionSupport(VkPhysicalDevice devic
         requiredExtensions.erase(extension.extensionName);
     }
 
+    //debug
+    if (!requiredExtensions.empty()) {
+        auto i = 1;
+        for (const auto& extension : availableExtensions) {
+            std::cout << "suport extension" << i << ": " << extension.extensionName << "\n";
+        }
+    }
+
     return requiredExtensions.empty();
 }
 
@@ -562,6 +570,11 @@ void VkRayTracingApplication::pickPhysicalDevice(VkRayTracingApplication* app)
             app->physicalDevice = device;
             break;
         }
+    }
+
+    if (!app->physicalDevice) {
+        exit(-1);
+        system("pause");
     }
 
     //app->physicalDevice = devices[0];

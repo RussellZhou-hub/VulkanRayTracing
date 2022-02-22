@@ -42,7 +42,9 @@ const std::vector<const char*> validationLayers = {
 };
 
 const std::vector<const char*> deviceExtensions = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+	VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+	VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME
 };
 
 /*
@@ -54,7 +56,7 @@ const std::vector<const char*> deviceExtensions = {
 
 
 #define MAX_FRAMES_IN_FLIGHT      1
-#define ENABLE_VALIDATION         1
+#define ENABLE_VALIDATION         0
 
 static char keyDownIndex[500];
 
