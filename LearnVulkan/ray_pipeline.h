@@ -8,8 +8,10 @@
 #define TINYOBJ_LOADER_C_IMPLEMENTATION
 //#define TINYOBJLOADER_IMPLEMENTATION
 
-const uint32_t WIDTH = 1920;
-const uint32_t HEIGHT = 1080;
+//const uint32_t WIDTH = 1920;
+//const uint32_t HEIGHT = 1080;
+const uint32_t WIDTH = 3840;
+const uint32_t HEIGHT = 2160;
 
 
 
@@ -112,11 +114,11 @@ private:
   void createLogicalConnection(VkRayTracingApplication* app);
   void createSwapchain(VkRayTracingApplication* app);
   void createCommandPool(VkRayTracingApplication* app);
-  void createVertexBuffer(VkRayTracingApplication* app, struct Scene* scene);
-  void createIndexBuffer(VkRayTracingApplication* app, struct Scene* scene);
-  void createMaterialsBuffer(VkRayTracingApplication* app, struct Scene* scene);
+  void createVertexBuffer(VkRayTracingApplication* app, Scene* scene);
+  void createIndexBuffer(VkRayTracingApplication* app, Scene* scene);
+  void createMaterialsBuffer(VkRayTracingApplication* app, Scene* scene);
   void createTextures(VkRayTracingApplication* app);
-  void createBottomLevelAccelerationStructure(VkRayTracingApplication* app, struct Scene* scene);
+  void createBottomLevelAccelerationStructure(VkRayTracingApplication* app, Scene* scene);
   void createTopLevelAccelerationStructure(VkRayTracingApplication* app);
   //Descriptor Setup
   void createUniformBuffer(VkRayTracingApplication* app);
