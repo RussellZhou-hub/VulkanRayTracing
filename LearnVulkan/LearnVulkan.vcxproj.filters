@@ -19,6 +19,9 @@
     <Filter Include="shaders\ray_pipeline">
       <UniqueIdentifier>{212ca5c9-eb70-4910-81a2-1077df1f8d95}</UniqueIdentifier>
     </Filter>
+    <Filter Include="shaders\ray_query">
+      <UniqueIdentifier>{98ae010e-e6d4-43d3-9392-f8d9bd066956}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="glad.c">
@@ -40,6 +43,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Utils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ray_query.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -81,6 +87,12 @@
     </None>
     <None Include="shaders\raytrace_shadow.rmiss">
       <Filter>shaders\ray_pipeline</Filter>
+    </None>
+    <None Include="shaders\basic.frag">
+      <Filter>shaders\ray_query</Filter>
+    </None>
+    <None Include="shaders\basic.vert">
+      <Filter>shaders\ray_query</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
