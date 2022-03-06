@@ -2000,11 +2000,12 @@ void cleanUp(struct VulkanApplication* app, struct Scene* scene) {
   tinyobj_materials_free(scene->materials, scene->numMaterials);
 }
 
-int main(void) {
-  struct VulkanApplication* app = (struct VulkanApplication*)malloc(sizeof(struct VulkanApplication));
-  struct Scene* scene = (struct Scene*)malloc(sizeof(struct Scene));
 
-  struct Camera* camera = &(struct Camera) {
+int main(void) {
+  //struct VulkanApplication* app = (struct VulkanApplication*)malloc(sizeof(struct VulkanApplication));
+  //struct Scene* scene = (struct Scene*)malloc(sizeof(struct Scene));
+
+  //struct Camera* camera = &(struct Camera) {
     .position = {
       0, 0, 0, 1
     },
@@ -2021,26 +2022,26 @@ int main(void) {
     .frameCount = 0,
   };
 
-  initializeScene(scene, "resources/cube_scene.obj");
+  //initializeScene(scene, "resources/cube_scene.obj");
 
-  initializeVulkanContext(app);
-  pickPhysicalDevice(app);
-  createLogicalConnection(app);
-  createSwapchain(app);  
+  //initializeVulkanContext(app);
+  //pickPhysicalDevice(app);
+  //createLogicalConnection(app);
+  //createSwapchain(app);
   createRenderPass(app);
-  createCommandPool(app);
+  //createCommandPool(app);
   createDepthResources(app);
   createFramebuffers(app);
-  createVertexBuffer(app, scene);
-  createIndexBuffer(app, scene);
-  createMaterialBuffers(app, scene);
-  createTextures(app);
+  //createVertexBuffer(app, scene);
+  //createIndexBuffer(app, scene);
+ // createMaterialBuffers(app, scene);
+  //createTextures(app);
 
-  createBottomLevelAccelerationStructure(app, scene);
-  createTopLevelAccelerationStructure(app);
+  //createBottomLevelAccelerationStructure(app, scene);
+  //createTopLevelAccelerationStructure(app);
 
-  createUniformBuffer(app);
-  createDescriptorSets(app);
+  //createUniformBuffer(app);
+  //createDescriptorSets(app);
 
   createGraphicsPipeline(app);
   createCommandBuffers(app, scene);
@@ -2052,6 +2053,8 @@ int main(void) {
 
   free(app);
   free(scene);
-  
+
   return 0;
 }
+
+

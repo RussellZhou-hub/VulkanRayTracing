@@ -22,7 +22,8 @@
 #include <math.h>
 #include <iostream>
 //#include"App.h"
-#include"ray_pipeline.h"
+//#include"ray_pipeline.h"
+#include"ray_query.h"
 
 int main() {
     //rasterization_pipeline
