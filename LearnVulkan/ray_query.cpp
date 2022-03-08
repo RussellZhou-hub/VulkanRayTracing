@@ -97,7 +97,11 @@ void VkRayTracingApplication::initVulkan(Scene* scene)
     pickPhysicalDevice(this);
     createLogicalConnection(this);
     createSwapchain(this);
+    createRenderPass(this);
     createCommandPool(this);
+    createDepthResources(this);
+    createFramebuffers(this);
+
     createVertexBuffer(this, scene);
     createIndexBuffer(this, scene);
     createMaterialsBuffer(this, scene);
@@ -110,8 +114,7 @@ void VkRayTracingApplication::initVulkan(Scene* scene)
     createUniformBuffer(this);
     createDescriptorSets(this);
 
-    createRayTracePipeline(this);
-    createShaderBindingTable(this);
+    createGraphicsPipeline(this);
     createCommandBuffers(this,scene);
 
     createSynchronizationObjects(this);
@@ -251,7 +254,7 @@ void VkRayTracingApplication::cleanup(VkRayTracingApplication* app, Scene* scene
     vkDestroyDescriptorSetLayout(app->logicalDevice, app->rayTraceDescriptorSetLayouts[1], NULL);
     vkDestroyDescriptorSetLayout(app->logicalDevice, app->rayTraceDescriptorSetLayouts[0], NULL);
     free(app->rayTraceDescriptorSetLayouts);
-    vkDestroyDescriptorPool(app->logicalDevice, app->descriptorPool, NULL);
+    vkDestroyDescriptorPool(app->logicalDevice, app->descriptorPool, NULL);//has triggered a breakpoint.
 
     vkDestroyBuffer(app->logicalDevice, app->uniformBuffer, NULL);
     vkFreeMemory(app->logicalDevice, app->uniformBufferMemory, NULL);
@@ -453,14 +456,11 @@ void VkRayTracingApplication::initializeVulkanContext(VkRayTracingApplication* a
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-    app->window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan RayTracing pipeline", NULL, NULL);
+    app->window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan RayTracing", NULL, NULL);
 
     glfwSetInputMode(app->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetKeyCallback(app->window, keyCallback);
 
-    //When initializing Vulkan, 
-    //we must make sure to include the Vulkan instance extension that is required to use the VK_KHR_ray_tracing extension. \
-      //In this case, we include the VK_KHR_get_physical_device_properties2 extension to our array of instance extensions.
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensionNames = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
     uint32_t extensionCount = glfwExtensionCount + 2;
@@ -471,7 +471,7 @@ void VkRayTracingApplication::initializeVulkanContext(VkRayTracingApplication* a
 
     VkApplicationInfo applicationInfo = {};
     applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    applicationInfo.pApplicationName = "vulkan_c(c++)_ray_tracing";
+    applicationInfo.pApplicationName = "vulkan_c_ray_tracing";
     applicationInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     applicationInfo.pEngineName = "No Engine";
     applicationInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -595,7 +595,6 @@ void VkRayTracingApplication::pickPhysicalDevice(VkRayTracingApplication* app)
 
 void VkRayTracingApplication::createLogicalConnection(VkRayTracingApplication* app)
 {
-    //A compute queue must be initialized because we will later use it when building the acceleration structure.
     app->graphicsQueueIndex = -1;
     app->presentQueueIndex = -1;
     app->computeQueueIndex = -1;
@@ -666,10 +665,6 @@ void VkRayTracingApplication::createLogicalConnection(VkRayTracingApplication* a
     deviceQueueCreateInfos[2].queueCount = 1;
     deviceQueueCreateInfos[2].pQueuePriorities = &queuePriority;
 
-    //We must also make sure the ray tracing features and a couple other sets of features are enabled. 
-    //We will be using the VkPhysicalDeviceBufferDeviceAddressFeatures features 
-    //to get the device address of the vertex buffer so we can pass it to the acceleration structure.
-
     VkPhysicalDeviceBufferDeviceAddressFeaturesEXT bufferDeviceAddressFeatures = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT,
       .pNext = NULL,
@@ -678,21 +673,25 @@ void VkRayTracingApplication::createLogicalConnection(VkRayTracingApplication* a
       .bufferDeviceAddressMultiDevice = VK_FALSE
     };
 
-    VkPhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipelineFeatures = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR,
+    VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR,
       .pNext = &bufferDeviceAddressFeatures,
-      .rayTracingPipeline = VK_TRUE
+      .rayQuery = VK_TRUE
     };
 
     VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
-      .pNext = &rayTracingPipelineFeatures,
+      .pNext = &rayQueryFeatures,
       .accelerationStructure = VK_TRUE,
       .accelerationStructureCaptureReplay = VK_TRUE,
       .accelerationStructureIndirectBuild = VK_FALSE,
       .accelerationStructureHostCommands = VK_FALSE,
       .descriptorBindingAccelerationStructureUpdateAfterBind = VK_FALSE
     };
+
+    VkPhysicalDeviceFeatures deviceFeatures = {};
+    deviceFeatures.geometryShader = VK_TRUE;
+    deviceFeatures.fragmentStoresAndAtomics = VK_TRUE;
 
     VkDeviceCreateInfo deviceCreateInfo = {};
     deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -703,7 +702,7 @@ void VkRayTracingApplication::createLogicalConnection(VkRayTracingApplication* a
     deviceCreateInfo.enabledLayerCount = 0;
     deviceCreateInfo.enabledExtensionCount = deviceEnabledExtensionCount;
     deviceCreateInfo.ppEnabledExtensionNames = deviceEnabledExtensionNames;
-    deviceCreateInfo.pEnabledFeatures = NULL;
+    deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
 
     if (vkCreateDevice(app->physicalDevice, &deviceCreateInfo, NULL, &app->logicalDevice) == VK_SUCCESS) {
         printf("created logical connection to device\n");
@@ -807,6 +806,66 @@ void VkRayTracingApplication::createSwapchain(VkRayTracingApplication* app)
     free(surfacePresentModes);
 }
 
+void VkRayTracingApplication::createRenderPass(VkRayTracingApplication* app)
+{
+    VkAttachmentDescription colorAttachment = {};
+    colorAttachment.format = app->swapchainImageFormat;
+    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentDescription depthAttachment = {};
+    depthAttachment.format = VK_FORMAT_D32_SFLOAT;
+    depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference colorAttachmentRef = {};
+    colorAttachmentRef.attachment = 0;
+    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference depthAttachmentRef = {};
+    depthAttachmentRef.attachment = 1;
+    depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpass = {};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &colorAttachmentRef;
+    subpass.pDepthStencilAttachment = &depthAttachmentRef;
+
+    VkSubpassDependency dependency = {};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+    VkAttachmentDescription attachments[2] = { colorAttachment, depthAttachment };
+
+    VkRenderPassCreateInfo renderPassInfo = {};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassInfo.attachmentCount = 2;
+    renderPassInfo.pAttachments = attachments;
+    renderPassInfo.subpassCount = 1;
+    renderPassInfo.pSubpasses = &subpass;
+    renderPassInfo.dependencyCount = 1;
+    renderPassInfo.pDependencies = &dependency;
+
+    if (vkCreateRenderPass(app->logicalDevice, &renderPassInfo, NULL, &app->renderPass) == VK_SUCCESS) {
+        printf("created render pass\n");
+    }
+}
+
 void VkRayTracingApplication::createCommandPool(VkRayTracingApplication* app)
 {
     VkCommandPoolCreateInfo commandPoolCreateInfo = {};
@@ -820,11 +879,6 @@ void VkRayTracingApplication::createCommandPool(VkRayTracingApplication* app)
 
 void VkRayTracingApplication::createVertexBuffer(VkRayTracingApplication* app, Scene* scene)
 {
-    //In order to use the vertex buffer for the acceleration structure, 
-      //we must enable the VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT usage flag when creating the buffer.
-      //This will allow us to pass the device address of the vertex buffer to the acceleration structure we will create later.
-      //The scene stores the vertices of the .obj file in a data member named attributes 
-      //and all we need to do is copy the vertex data into the device buffer memory.
     VkDeviceSize positionBufferSize = sizeof(float) * scene->attributes.num_vertices * 3;
 
     VkBuffer positionStagingBuffer;
@@ -836,7 +890,7 @@ void VkRayTracingApplication::createVertexBuffer(VkRayTracingApplication* app, S
     memcpy(positionData, scene->attributes.vertices, positionBufferSize);
     vkUnmapMemory(app->logicalDevice, positionStagingBufferMemory);
 
-    createBuffer(app, positionBufferSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->vertexPositionBuffer, &app->vertexPositionBufferMemory);
+    createBuffer(app, positionBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->vertexPositionBuffer, &app->vertexPositionBufferMemory);
 
     copyBuffer(app, positionStagingBuffer, app->vertexPositionBuffer, positionBufferSize);
 
@@ -846,10 +900,6 @@ void VkRayTracingApplication::createVertexBuffer(VkRayTracingApplication* app, S
 
 void VkRayTracingApplication::createIndexBuffer(VkRayTracingApplication* app, Scene* scene)
 {
-    //Just like when creating the vertex buffer,
-      //we need to enable the VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT usage flag when creating the buffer. 
-      //The scene also holds the index buffer data so we can just copy the data into the buffer. 
-      //Since we are only using the position index in this example, we just need to extract the position indices from the scene.
     VkDeviceSize bufferSize = sizeof(uint32_t) * scene->attributes.num_faces;
 
     uint32_t* positionIndices = (uint32_t*)malloc(bufferSize);
@@ -866,7 +916,7 @@ void VkRayTracingApplication::createIndexBuffer(VkRayTracingApplication* app, Sc
     memcpy(data, positionIndices, bufferSize);
     vkUnmapMemory(app->logicalDevice, stagingBufferMemory);
 
-    createBuffer(app, bufferSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->indexBuffer, &app->indexBufferMemory);
+    createBuffer(app, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->indexBuffer, &app->indexBufferMemory);
 
     copyBuffer(app, stagingBuffer, app->indexBuffer, bufferSize);
 
@@ -878,9 +928,6 @@ void VkRayTracingApplication::createIndexBuffer(VkRayTracingApplication* app, Sc
 
 void VkRayTracingApplication::createMaterialsBuffer(VkRayTracingApplication* app, Scene* scene)
 {
-    //To determine the color, reflectance, emission, etc... of a surface, 
-      //we will copy the materials from the .mtl file into a material buffer so we can use the surface materials in the shaders.
-      //The tinyobjloader-c automatically parses the .mtl file when parsing a .obj file so no extra steps need to be taken.
     VkDeviceSize indexBufferSize = sizeof(uint32_t) * scene->attributes.num_face_num_verts;
 
     VkBuffer indexStagingBuffer;
@@ -930,12 +977,7 @@ void VkRayTracingApplication::createMaterialsBuffer(VkRayTracingApplication* app
 
 void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
 {
-    //We create a ray traced image that will be used to store the ray's final color value.
-
-      //To present or display the image, we will copy the ray traced image to the swapchain. 
-      //We need to enable the VK_IMAGE_USAGE_TRANSFER_SRC_BIT usage flag so it can be used as a source of a copy function.
-      //The shaders will read and write to the ray traced image so we need to add VK_IMAGE_USAGE_STORAGE_BIT to its usage flag.
-    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->rayTraceImage, &app->rayTraceImageMemory);
+    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->rayTraceImage, &app->rayTraceImageMemory);
 
     VkImageSubresourceRange subresourceRange = {};
     subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -983,12 +1025,12 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
     vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
     vkEndCommandBuffer(commandBuffer);
 
-    VkSubmitInfo submitInfo_createTextures = {};
-    submitInfo_createTextures.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo_createTextures.commandBufferCount = 1;
-    submitInfo_createTextures.pCommandBuffers = &commandBuffer;
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
 
-    vkQueueSubmit(app->computeQueue, 1, &submitInfo_createTextures, VK_NULL_HANDLE);
+    vkQueueSubmit(app->computeQueue, 1, &submitInfo, VK_NULL_HANDLE);
     vkQueueWaitIdle(app->computeQueue);
 
     vkFreeCommandBuffers(app->logicalDevice, app->commandPool, 1, &commandBuffer);
@@ -996,15 +1038,11 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
 
 void VkRayTracingApplication::createBottomLevelAccelerationStructure(VkRayTracingApplication* app, Scene* scene)
 {
-    //Creating the bottom level acceleration structure defines the acceleration structure's configuration.
-      //We must specify the primitive count, index type, vertex count, and vertex format 
-      //when creating the bottom level acceleration structure.
     PFN_vkGetAccelerationStructureBuildSizesKHR pvkGetAccelerationStructureBuildSizesKHR = (PFN_vkGetAccelerationStructureBuildSizesKHR)vkGetDeviceProcAddr(app->logicalDevice, "vkGetAccelerationStructureBuildSizesKHR");
     PFN_vkCreateAccelerationStructureKHR pvkCreateAccelerationStructureKHR = (PFN_vkCreateAccelerationStructureKHR)vkGetDeviceProcAddr(app->logicalDevice, "vkCreateAccelerationStructureKHR");
     PFN_vkGetBufferDeviceAddressKHR pvkGetBufferDeviceAddressKHR = (PFN_vkGetBufferDeviceAddressKHR)vkGetDeviceProcAddr(app->logicalDevice, "vkGetBufferDeviceAddressKHR");
     PFN_vkCmdBuildAccelerationStructuresKHR pvkCmdBuildAccelerationStructuresKHR = (PFN_vkCmdBuildAccelerationStructuresKHR)vkGetDeviceProcAddr(app->logicalDevice, "vkCmdBuildAccelerationStructuresKHR");
 
-    //First, we need to get the device address of the vertexand index buffer.
     VkBufferDeviceAddressInfo vertexBufferDeviceAddressInfo = {};
     vertexBufferDeviceAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
     vertexBufferDeviceAddressInfo.buffer = app->vertexPositionBuffer;
@@ -1022,8 +1060,10 @@ void VkRayTracingApplication::createBottomLevelAccelerationStructure(VkRayTracin
 
     VkDeviceOrHostAddressConstKHR indexDeviceOrHostAddressConst = {};
     indexDeviceOrHostAddressConst.deviceAddress = indexBufferAddress;
+    VkDeviceOrHostAddressConstKHR transformDeviceOrHostAddressConst = {};
+    transformDeviceOrHostAddressConst.deviceAddress = NULL;
 
-    //Now we can set the acceleration structure geometry to use the addresses.
+
     VkAccelerationStructureGeometryTrianglesDataKHR accelerationStructureGeometryTrianglesData = {
       .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
       .pNext = NULL,
@@ -1033,7 +1073,7 @@ void VkRayTracingApplication::createBottomLevelAccelerationStructure(VkRayTracin
       .maxVertex = scene->attributes.num_vertices,
       .indexType = VK_INDEX_TYPE_UINT32,
       .indexData = indexDeviceOrHostAddressConst,
-      .transformData = NULL                                 //(VkDeviceOrHostAddressConstKHR){}
+      .transformData = transformDeviceOrHostAddressConst
     };
 
     VkAccelerationStructureGeometryDataKHR accelerationStructureGeometryData = {
@@ -1076,10 +1116,8 @@ void VkRayTracingApplication::createBottomLevelAccelerationStructure(VkRayTracin
         &accelerationStructureBuildGeometryInfo.geometryCount,
         &accelerationStructureBuildSizesInfo);
 
-    createBuffer(app, accelerationStructureBuildSizesInfo.accelerationStructureSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->bottomLevelAccelerationStructureBuffer, &app->bottomLevelAccelerationStructureBufferMemory);
+    createBuffer(app, accelerationStructureBuildSizesInfo.accelerationStructureSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->accelerationStructureBuffer, &app->accelerationStructureBufferMemory);
 
-    //Building an acceleration structures requires extra memory; 
-    //we need to create a scratch buffer and provide its device address to the geometry information structure.
     VkBuffer scratchBuffer;
     VkDeviceMemory scratchBufferMemory;
     createBuffer(app,
@@ -1105,24 +1143,26 @@ void VkRayTracingApplication::createBottomLevelAccelerationStructure(VkRayTracin
       .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
       .pNext = NULL,
       .createFlags = 0,
-      .buffer = app->bottomLevelAccelerationStructureBuffer,
+      .buffer = app->accelerationStructureBuffer,
       .offset = 0,
       .size = accelerationStructureBuildSizesInfo.accelerationStructureSize,
       .type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
-      .deviceAddress = 0
+      .deviceAddress = NULL
     };
 
-    pvkCreateAccelerationStructureKHR(app->logicalDevice, &accelerationStructureCreateInfo, NULL, &app->bottomLevelAccelerationStructure);
+    pvkCreateAccelerationStructureKHR(app->logicalDevice, &accelerationStructureCreateInfo, NULL, &app->accelerationStructure);
 
-    accelerationStructureBuildGeometryInfo.dstAccelerationStructure = app->bottomLevelAccelerationStructure;
+    accelerationStructureBuildGeometryInfo.dstAccelerationStructure = app->accelerationStructure;
 
-    const VkAccelerationStructureBuildRangeInfoKHR accelerationStructureBuildRangeInfoKHR{
-      .primitiveCount = scene->attributes.num_face_num_verts,
-      .primitiveOffset = 0,
-      .firstVertex = 0,
-      .transformOffset = 0
+    VkAccelerationStructureBuildRangeInfoKHR accelerationStructureBuildRangeInfoKHR = {
+        .primitiveCount = scene->attributes.num_face_num_verts,
+            .primitiveOffset = 0,
+            .firstVertex = 0,
+            .transformOffset = 0
     };
     const VkAccelerationStructureBuildRangeInfoKHR* accelerationStructureBuildRangeInfo = &accelerationStructureBuildRangeInfoKHR;
+    
+
     const VkAccelerationStructureBuildRangeInfoKHR** accelerationStructureBuildRangeInfos = &accelerationStructureBuildRangeInfo;
 
     VkCommandBufferAllocateInfo bufferAllocateInfo = {};
@@ -1138,20 +1178,16 @@ void VkRayTracingApplication::createBottomLevelAccelerationStructure(VkRayTracin
     commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-
-    //After setting up the all the structures, 
-    //we need to actually build the acceleration structure; 
-    //we pass the build acceleration structure command to the command buffer.
     vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
     pvkCmdBuildAccelerationStructuresKHR(commandBuffer, 1, &accelerationStructureBuildGeometryInfo, accelerationStructureBuildRangeInfos);
     vkEndCommandBuffer(commandBuffer);
 
-    VkSubmitInfo submitInfo_createBAS = {};
-    submitInfo_createBAS.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo_createBAS.commandBufferCount = 1;
-    submitInfo_createBAS.pCommandBuffers = &commandBuffer;
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
 
-    vkQueueSubmit(app->computeQueue, 1, &submitInfo_createBAS, VK_NULL_HANDLE);
+    vkQueueSubmit(app->computeQueue, 1, &submitInfo, VK_NULL_HANDLE);
     vkQueueWaitIdle(app->computeQueue);
 
     vkFreeCommandBuffers(app->logicalDevice, app->commandPool, 1, &commandBuffer);
@@ -1162,10 +1198,6 @@ void VkRayTracingApplication::createBottomLevelAccelerationStructure(VkRayTracin
 
 void VkRayTracingApplication::createTopLevelAccelerationStructure(VkRayTracingApplication* app)
 {
-    //Now that we have a working bottom level acceleration structure, 
-      //we need to create a top level acceleration structure to hold instances of the bottom level acceleration structure.
-      //The process is basically the same as creating, binding, 
-      //and building the bottom level acceleration structure with just a few small changes.
     PFN_vkGetAccelerationStructureBuildSizesKHR pvkGetAccelerationStructureBuildSizesKHR = (PFN_vkGetAccelerationStructureBuildSizesKHR)vkGetDeviceProcAddr(app->logicalDevice, "vkGetAccelerationStructureBuildSizesKHR");
     PFN_vkCreateAccelerationStructureKHR pvkCreateAccelerationStructureKHR = (PFN_vkCreateAccelerationStructureKHR)vkGetDeviceProcAddr(app->logicalDevice, "vkCreateAccelerationStructureKHR");
     PFN_vkGetBufferDeviceAddressKHR pvkGetBufferDeviceAddressKHR = (PFN_vkGetBufferDeviceAddressKHR)vkGetDeviceProcAddr(app->logicalDevice, "vkGetBufferDeviceAddressKHR");
@@ -1177,18 +1209,12 @@ void VkRayTracingApplication::createTopLevelAccelerationStructure(VkRayTracingAp
     transformMatrix.matrix[1][1] = 1.0;
     transformMatrix.matrix[2][2] = 1.0;
 
-    //Next, we need to bind the acceleration structure so it can be built.
-    //After binding the acceleration structure, 
-    //we need to build the acceleration structure using the bottom level acceleration structure we previously built.
-    //Instead of getting the device address of the vertexand index buffer, 
-    //we need to get the address of the bottom level acceleration structure.
     VkAccelerationStructureDeviceAddressInfoKHR accelerationStructureDeviceAddressInfo = {};
     accelerationStructureDeviceAddressInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
-    accelerationStructureDeviceAddressInfo.accelerationStructure = app->bottomLevelAccelerationStructure;
+    accelerationStructureDeviceAddressInfo.accelerationStructure = app->accelerationStructure;
 
     VkDeviceAddress accelerationStructureDeviceAddress = pvkGetAccelerationStructureDeviceAddressKHR(app->logicalDevice, &accelerationStructureDeviceAddressInfo);
 
-    //Now we can use that device address to propagate the acceleration structure geometry.
     VkAccelerationStructureInstanceKHR geometryInstance = {};
     geometryInstance.transform = transformMatrix;
     geometryInstance.instanceCustomIndex = 0;
@@ -1199,10 +1225,6 @@ void VkRayTracingApplication::createTopLevelAccelerationStructure(VkRayTracingAp
 
     VkDeviceSize geometryInstanceBufferSize = sizeof(VkAccelerationStructureInstanceKHR);
 
-    //Since the top level acceleration structure can hold many instances of the same bottom level acceleration structure, 
-    //we need to create instance buffer to hold all the instances that will be used for ray intersection. 
-    //Since we only want a single instance of the bottom level acceleration structure, 
-    //our instance buffer will only hold the instance that we just described.
     VkBuffer geometryInstanceStagingBuffer;
     VkDeviceMemory geometryInstanceStagingBufferMemory;
     createBuffer(app, geometryInstanceBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &geometryInstanceStagingBuffer, &geometryInstanceStagingBufferMemory);
@@ -1214,7 +1236,7 @@ void VkRayTracingApplication::createTopLevelAccelerationStructure(VkRayTracingAp
 
     VkBuffer geometryInstanceBuffer;
     VkDeviceMemory geometryInstanceBufferMemory;
-    createBuffer(app, geometryInstanceBufferSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &geometryInstanceBuffer, &geometryInstanceBufferMemory);
+    createBuffer(app, geometryInstanceBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &geometryInstanceBuffer, &geometryInstanceBufferMemory);
 
     copyBuffer(app, geometryInstanceStagingBuffer, geometryInstanceBuffer, geometryInstanceBufferSize);
 
@@ -1242,10 +1264,6 @@ void VkRayTracingApplication::createTopLevelAccelerationStructure(VkRayTracingAp
       .instances = accelerationStructureGeometryInstancesData
     };
 
-    //Just like setting up the bottom level acceleration structure, 
-    //we first need to create the top level acceleration structure. 
-    //The only notable difference is to use the VK_GEOMETRY_TYPE_INSTANCES_KHR flag 
-    //instead of the VK_GEOMETRY_TYPE_TRIANGLES_KHR when describing the acceleration structure's geometry type.
     VkAccelerationStructureGeometryKHR accelerationStructureGeometry = {
       .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
       .pNext = NULL,
@@ -1284,7 +1302,6 @@ void VkRayTracingApplication::createTopLevelAccelerationStructure(VkRayTracingAp
 
     createBuffer(app, accelerationStructureBuildSizesInfo.accelerationStructureSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->topLevelAccelerationStructureBuffer, &app->topLevelAccelerationStructureBufferMemory);
 
-    //We also need to create a scratch buffer that will be used when building the acceleration structure
     VkBuffer scratchBuffer;
     VkDeviceMemory scratchBufferMemory;
     createBuffer(app,
@@ -1314,18 +1331,18 @@ void VkRayTracingApplication::createTopLevelAccelerationStructure(VkRayTracingAp
       .offset = 0,
       .size = accelerationStructureBuildSizesInfo.accelerationStructureSize,
       .type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
-      .deviceAddress = 0
+      .deviceAddress = NULL
     };
 
     pvkCreateAccelerationStructureKHR(app->logicalDevice, &accelerationStructureCreateInfo, NULL, &app->topLevelAccelerationStructure);
 
     accelerationStructureBuildGeometryInfo.dstAccelerationStructure = app->topLevelAccelerationStructure;
 
-    const VkAccelerationStructureBuildRangeInfoKHR accelerationStructureBuildRangeInfoKHR{
-      .primitiveCount = 1,
-      .primitiveOffset = 0,
-      .firstVertex = 0,
-      .transformOffset = 0
+    VkAccelerationStructureBuildRangeInfoKHR accelerationStructureBuildRangeInfoKHR = {
+        .primitiveCount = 1,
+            .primitiveOffset = 0,
+            .firstVertex = 0,
+            .transformOffset = 0
     };
     const VkAccelerationStructureBuildRangeInfoKHR* accelerationStructureBuildRangeInfo = &accelerationStructureBuildRangeInfoKHR;
     const VkAccelerationStructureBuildRangeInfoKHR** accelerationStructureBuildRangeInfos = &accelerationStructureBuildRangeInfo;
@@ -1343,17 +1360,16 @@ void VkRayTracingApplication::createTopLevelAccelerationStructure(VkRayTracingAp
     commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-    //With everything setup, we can finally build the top level acceleration structure
     vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
     pvkCmdBuildAccelerationStructuresKHR(commandBuffer, 1, &accelerationStructureBuildGeometryInfo, accelerationStructureBuildRangeInfos);
     vkEndCommandBuffer(commandBuffer);
 
-    VkSubmitInfo submitInfo_createTAS = {};
-    submitInfo_createTAS.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo_createTAS.commandBufferCount = 1;
-    submitInfo_createTAS.pCommandBuffers = &commandBuffer;
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
 
-    vkQueueSubmit(app->computeQueue, 1, &submitInfo_createTAS, VK_NULL_HANDLE);
+    vkQueueSubmit(app->computeQueue, 1, &submitInfo, VK_NULL_HANDLE);
     vkQueueWaitIdle(app->computeQueue);
 
     vkFreeCommandBuffers(app->logicalDevice, app->commandPool, 1, &commandBuffer);
@@ -1371,30 +1387,20 @@ void VkRayTracingApplication::createUniformBuffer(VkRayTracingApplication* app)
 
 void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
 {
-    //First we need to create the descriptor pools that the descriptor sets will be allocated from. 
-      //In this case, we must set the descriptor pool sizes to match the amount of structures we are going to pass to the shaders.
-      //In our case, we have the following structures :
-      //World Geometry (Acceleration Structure)
-      //Ray Traced Image(Storage Image)
-      //Camera(Uniform Buffer)
-      //Vertex Index Buffer(Storage Buffer)
-      //Vertex Position Buffer(Storage Buffer)
-      //Material Index Buffer(Storage Buffer)
-      //Material Buffer(Storage Buffer)
-    app->rayTraceDescriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * 2);
+    app->rayTraceDescriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * 1);
 
     VkDescriptorPoolSize descriptorPoolSizes[4];
     descriptorPoolSizes[0].type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
     descriptorPoolSizes[0].descriptorCount = 1;
 
-    descriptorPoolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    descriptorPoolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     descriptorPoolSizes[1].descriptorCount = 1;
 
-    descriptorPoolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    descriptorPoolSizes[2].descriptorCount = 1;
+    descriptorPoolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptorPoolSizes[2].descriptorCount = 4;
 
-    descriptorPoolSizes[3].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    descriptorPoolSizes[3].descriptorCount = 4;
+    descriptorPoolSizes[3].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    descriptorPoolSizes[3].descriptorCount = 1;
 
     VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
     descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1407,38 +1413,36 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
     }
 
     {
-        //Let's set up the first descriptor set. 
-        //We first need to set up the descriptor set layout to indicate which structures will be accessed by which binding.
         VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[5];
         descriptorSetLayoutBindings[0].binding = 0;
         descriptorSetLayoutBindings[0].descriptorCount = 1;
         descriptorSetLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
         descriptorSetLayoutBindings[0].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[0].stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+        descriptorSetLayoutBindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
         descriptorSetLayoutBindings[1].binding = 1;
         descriptorSetLayoutBindings[1].descriptorCount = 1;
-        descriptorSetLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        descriptorSetLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         descriptorSetLayoutBindings[1].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[1].stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+        descriptorSetLayoutBindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
         descriptorSetLayoutBindings[2].binding = 2;
         descriptorSetLayoutBindings[2].descriptorCount = 1;
-        descriptorSetLayoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorSetLayoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         descriptorSetLayoutBindings[2].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[2].stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+        descriptorSetLayoutBindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
         descriptorSetLayoutBindings[3].binding = 3;
         descriptorSetLayoutBindings[3].descriptorCount = 1;
         descriptorSetLayoutBindings[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         descriptorSetLayoutBindings[3].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[3].stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+        descriptorSetLayoutBindings[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
         descriptorSetLayoutBindings[4].binding = 4;
         descriptorSetLayoutBindings[4].descriptorCount = 1;
-        descriptorSetLayoutBindings[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorSetLayoutBindings[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         descriptorSetLayoutBindings[4].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[4].stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+        descriptorSetLayoutBindings[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
         VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
         descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -1459,7 +1463,6 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
             printf("\033[22;32m%s\033[0m\n", "allocated descriptor sets");
         }
 
-        //Now that we have the layout to the first descriptor set, we can update the descriptor sets with the addresses of the structures.
         VkWriteDescriptorSet writeDescriptorSets[5];
 
         VkWriteDescriptorSetAccelerationStructureKHR descriptorSetAccelerationStructure = {};
@@ -1479,10 +1482,10 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
         writeDescriptorSets[0].pBufferInfo = NULL;
         writeDescriptorSets[0].pTexelBufferView = NULL;
 
-        VkDescriptorImageInfo imageInfo = {};
-        imageInfo.sampler = (VkSampler)VK_DESCRIPTOR_TYPE_SAMPLER;
-        imageInfo.imageView = app->rayTraceImageView;
-        imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+        VkDescriptorBufferInfo bufferInfo = {};
+        bufferInfo.buffer = app->uniformBuffer;
+        bufferInfo.offset = 0;
+        bufferInfo.range = VK_WHOLE_SIZE;
 
         writeDescriptorSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writeDescriptorSets[1].pNext = NULL;
@@ -1490,15 +1493,15 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
         writeDescriptorSets[1].dstBinding = 1;
         writeDescriptorSets[1].dstArrayElement = 0;
         writeDescriptorSets[1].descriptorCount = 1;
-        writeDescriptorSets[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        writeDescriptorSets[1].pImageInfo = &imageInfo;
-        writeDescriptorSets[1].pBufferInfo = NULL;
+        writeDescriptorSets[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writeDescriptorSets[1].pImageInfo = NULL;
+        writeDescriptorSets[1].pBufferInfo = &bufferInfo;
         writeDescriptorSets[1].pTexelBufferView = NULL;
 
-        VkDescriptorBufferInfo bufferInfo = {};
-        bufferInfo.buffer = app->uniformBuffer;
-        bufferInfo.offset = 0;
-        bufferInfo.range = VK_WHOLE_SIZE;
+        VkDescriptorBufferInfo indexBufferInfo = {};
+        indexBufferInfo.buffer = app->indexBuffer;
+        indexBufferInfo.offset = 0;
+        indexBufferInfo.range = VK_WHOLE_SIZE;
 
         writeDescriptorSets[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writeDescriptorSets[2].pNext = NULL;
@@ -1506,15 +1509,15 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
         writeDescriptorSets[2].dstBinding = 2;
         writeDescriptorSets[2].dstArrayElement = 0;
         writeDescriptorSets[2].descriptorCount = 1;
-        writeDescriptorSets[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writeDescriptorSets[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         writeDescriptorSets[2].pImageInfo = NULL;
-        writeDescriptorSets[2].pBufferInfo = &bufferInfo;
+        writeDescriptorSets[2].pBufferInfo = &indexBufferInfo;
         writeDescriptorSets[2].pTexelBufferView = NULL;
 
-        VkDescriptorBufferInfo indexBufferInfo = {};
-        indexBufferInfo.buffer = app->indexBuffer;
-        indexBufferInfo.offset = 0;
-        indexBufferInfo.range = VK_WHOLE_SIZE;
+        VkDescriptorBufferInfo vertexBufferInfo = {};
+        vertexBufferInfo.buffer = app->vertexPositionBuffer;
+        vertexBufferInfo.offset = 0;
+        vertexBufferInfo.range = VK_WHOLE_SIZE;
 
         writeDescriptorSets[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writeDescriptorSets[3].pNext = NULL;
@@ -1524,13 +1527,13 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
         writeDescriptorSets[3].descriptorCount = 1;
         writeDescriptorSets[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         writeDescriptorSets[3].pImageInfo = NULL;
-        writeDescriptorSets[3].pBufferInfo = &indexBufferInfo;
+        writeDescriptorSets[3].pBufferInfo = &vertexBufferInfo;
         writeDescriptorSets[3].pTexelBufferView = NULL;
 
-        VkDescriptorBufferInfo vertexBufferInfo = {};
-        vertexBufferInfo.buffer = app->vertexPositionBuffer;
-        vertexBufferInfo.offset = 0;
-        vertexBufferInfo.range = VK_WHOLE_SIZE;
+        VkDescriptorImageInfo imageInfo = {};
+        imageInfo.sampler = (VkSampler)VK_DESCRIPTOR_TYPE_SAMPLER;
+        imageInfo.imageView = app->rayTraceImageView;
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
         writeDescriptorSets[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writeDescriptorSets[4].pNext = NULL;
@@ -1538,9 +1541,9 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
         writeDescriptorSets[4].dstBinding = 4;
         writeDescriptorSets[4].dstArrayElement = 0;
         writeDescriptorSets[4].descriptorCount = 1;
-        writeDescriptorSets[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        writeDescriptorSets[4].pImageInfo = NULL;
-        writeDescriptorSets[4].pBufferInfo = &vertexBufferInfo;
+        writeDescriptorSets[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        writeDescriptorSets[4].pImageInfo = &imageInfo;
+        writeDescriptorSets[4].pBufferInfo = NULL;
         writeDescriptorSets[4].pTexelBufferView = NULL;
 
         vkUpdateDescriptorSets(app->logicalDevice, 5, writeDescriptorSets, 0, NULL);
@@ -1552,13 +1555,13 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
         descriptorSetLayoutBindings[0].descriptorCount = 1;
         descriptorSetLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         descriptorSetLayoutBindings[0].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[0].stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+        descriptorSetLayoutBindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
         descriptorSetLayoutBindings[1].binding = 1;
         descriptorSetLayoutBindings[1].descriptorCount = 1;
         descriptorSetLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         descriptorSetLayoutBindings[1].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[1].stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+        descriptorSetLayoutBindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
         VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
         descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -1885,7 +1888,7 @@ void VkRayTracingApplication::createCommandBuffers(VkRayTracingApplication* app,
     commandBufferAllocateInfo.commandBufferCount = app->imageCount;
 
     if (vkAllocateCommandBuffers(app->logicalDevice, &commandBufferAllocateInfo, app->commandBuffers) == VK_SUCCESS) {
-        printf("\033[22;32m%s\033[0m\n", "allocated command buffers");
+        printf("allocated command buffers\n");
     }
 
     for (int x = 0; x < app->imageCount; x++) {
@@ -1974,8 +1977,8 @@ void VkRayTracingApplication::createCommandBuffers(VkRayTracingApplication* app,
             offset.z = 0;
 
             VkExtent3D extent = {};
-            extent.width = 800;
-            extent.height = 600;
+            extent.width = WIDTH;
+            extent.height = HEIGHT;
             extent.depth = 1;
 
             VkImageCopy imageCopy = {};
@@ -2074,7 +2077,7 @@ void VkRayTracingApplication::drawFrame(VkRayTracingApplication* app, Camera* ca
 {
     vkWaitForFences(app->logicalDevice, 1, &app->inFlightFences[app->currentFrame], VK_TRUE, UINT64_MAX);
 
-    uint32_t imageIndex = 0;
+    uint32_t imageIndex=0;
     vkAcquireNextImageKHR(app->logicalDevice, app->swapchain, UINT64_MAX, app->imageAvailableSemaphores[app->currentFrame], VK_NULL_HANDLE, &imageIndex);
 
     if (app->imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
@@ -2084,25 +2087,26 @@ void VkRayTracingApplication::drawFrame(VkRayTracingApplication* app, Camera* ca
 
     updateUniformBuffer(app, camera);
 
-    VkSubmitInfo submitInfo_drawFrame = {};
-    submitInfo_drawFrame.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
     VkSemaphore waitSemaphores[1] = { app->imageAvailableSemaphores[app->currentFrame] };
     VkPipelineStageFlags waitStages[1] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-    submitInfo_drawFrame.waitSemaphoreCount = 1;
-    submitInfo_drawFrame.pWaitSemaphores = waitSemaphores;
-    submitInfo_drawFrame.pWaitDstStageMask = waitStages;
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = waitSemaphores;
+    submitInfo.pWaitDstStageMask = waitStages;
 
-    submitInfo_drawFrame.commandBufferCount = 1;
-    submitInfo_drawFrame.pCommandBuffers = &app->commandBuffers[imageIndex];
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &app->commandBuffers[imageIndex];
 
     VkSemaphore signalSemaphores[1] = { app->renderFinishedSemaphores[app->currentFrame] };
-    submitInfo_drawFrame.signalSemaphoreCount = 1;
-    submitInfo_drawFrame.pSignalSemaphores = signalSemaphores;
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = signalSemaphores;
 
     vkResetFences(app->logicalDevice, 1, &app->inFlightFences[app->currentFrame]);
 
-    if (vkQueueSubmit(app->graphicsQueue, 1, &submitInfo_drawFrame, app->inFlightFences[app->currentFrame]) != VK_SUCCESS) {
+    VkResult errorCode = vkQueueSubmit(app->graphicsQueue, 1, &submitInfo, app->inFlightFences[app->currentFrame]);
+    if (errorCode != VK_SUCCESS) {
         printf("failed to submit draw command buffer\n");
     }
 
@@ -2117,53 +2121,6 @@ void VkRayTracingApplication::drawFrame(VkRayTracingApplication* app, Camera* ca
     presentInfo.pImageIndices = &imageIndex;
 
     vkQueuePresentKHR(app->presentQueue, &presentInfo);
-
-    app->currentFrame = (app->currentFrame + 1) % MAX_FRAMES_IN_FLIGHT; //currentFrame取值为0或1
-    vkWaitForFences(app->logicalDevice, 1, &app->inFlightFences[app->currentFrame], VK_TRUE, UINT64_MAX);
-
-    //uint32_t imageIndex;         //redefinition
-    vkAcquireNextImageKHR(app->logicalDevice, app->swapchain, UINT64_MAX, app->imageAvailableSemaphores[app->currentFrame], VK_NULL_HANDLE, &imageIndex);
-
-    if (app->imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
-        vkWaitForFences(app->logicalDevice, 1, &app->imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
-    }
-    app->imagesInFlight[imageIndex] = app->inFlightFences[app->currentFrame];
-
-    updateUniformBuffer(app, camera);
-
-    VkSubmitInfo submitInfo = {};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-    VkSemaphore waitSemaphores_1[1] = { app->imageAvailableSemaphores[app->currentFrame] };
-    VkPipelineStageFlags waitStages_1[1] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-    submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = waitSemaphores_1;
-    submitInfo.pWaitDstStageMask = waitStages_1;
-
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &app->commandBuffers[imageIndex];
-
-    VkSemaphore signalSemaphores_1[1] = { app->renderFinishedSemaphores[app->currentFrame] };
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = signalSemaphores_1;
-
-    vkResetFences(app->logicalDevice, 1, &app->inFlightFences[app->currentFrame]);
-
-    if (vkQueueSubmit(app->graphicsQueue, 1, &submitInfo, app->inFlightFences[app->currentFrame]) != VK_SUCCESS) {
-        printf("failed to submit draw command buffer\n");
-    }
-
-    VkPresentInfoKHR presentInfo_1 = {};
-    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = signalSemaphores_1;
-
-    VkSwapchainKHR swapchains_1[1] = { app->swapchain };
-    presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = swapchains_1;
-    presentInfo.pImageIndices = &imageIndex;
-
-    vkQueuePresentKHR(app->presentQueue, &presentInfo_1);
 
     app->currentFrame = (app->currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
@@ -2286,7 +2243,8 @@ void VkRayTracingApplication::createGraphicsPipeline(VkRayTracingApplication* ap
     fragmentShaderModuleCreateInfo.pCode = (uint32_t*)fragmentFileBuffer;
 
     VkShaderModule fragmentShaderModule;
-    if (vkCreateShaderModule(app->logicalDevice, &fragmentShaderModuleCreateInfo, NULL, &fragmentShaderModule) == VK_SUCCESS) {
+    VkResult errorCode = vkCreateShaderModule(app->logicalDevice, &fragmentShaderModuleCreateInfo, NULL, &fragmentShaderModule);
+    if (errorCode == VK_SUCCESS) {
         printf("created fragment shader module\n");
     }
 
@@ -2410,7 +2368,8 @@ void VkRayTracingApplication::createGraphicsPipeline(VkRayTracingApplication* ap
     graphicsPipelineCreateInfo.subpass = 0;
     graphicsPipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-    if (vkCreateGraphicsPipelines(app->logicalDevice, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, NULL, &app->graphicsPipeline) == VK_SUCCESS) {
+    errorCode = vkCreateGraphicsPipelines(app->logicalDevice, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, NULL, &app->graphicsPipeline);
+    if ( errorCode == VK_SUCCESS) {
         printf("created graphics pipeline\n");
     }
 

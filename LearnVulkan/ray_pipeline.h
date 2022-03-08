@@ -10,8 +10,8 @@
 
 //const uint32_t WIDTH = 1920;
 //const uint32_t HEIGHT = 1080;
-const uint32_t WIDTH = 3840;
-const uint32_t HEIGHT = 2160;
+const uint32_t WIDTH = 3840/2;
+const uint32_t HEIGHT = 2160/2;
 
 
 
@@ -58,7 +58,7 @@ const std::vector<const char*> deviceExtensions = {
 
 
 #define MAX_FRAMES_IN_FLIGHT      1
-#define ENABLE_VALIDATION         0
+#define ENABLE_VALIDATION         1
 
 static char keyDownIndex[500];
 
@@ -114,7 +114,14 @@ private:
   bool isDeviceSuitable(const VkPhysicalDevice device);
   void pickPhysicalDevice(VkRayTracingApplication* app);
   void createLogicalConnection(VkRayTracingApplication* app);
+  void createLogicalConnection_ray_query(VkRayTracingApplication* app);
   void createSwapchain(VkRayTracingApplication* app);
+  void createSwapchain_ray_query(VkRayTracingApplication* app);
+  void createRenderPass(VkRayTracingApplication* app);
+  void createDepthResources(VkRayTracingApplication*  app);
+  void createFramebuffers(VkRayTracingApplication*  app);
+  void createGraphicsPipeline(VkRayTracingApplication* app);
+
   void createCommandPool(VkRayTracingApplication* app);
   void createVertexBuffer(VkRayTracingApplication* app, Scene* scene);
   void createIndexBuffer(VkRayTracingApplication* app, Scene* scene);
@@ -128,9 +135,11 @@ private:
   void createRayTracePipeline(VkRayTracingApplication* app);
   void createShaderBindingTable(VkRayTracingApplication* app);
   void createCommandBuffers(VkRayTracingApplication* app);
+  void createCommandBuffers_ray_query(VkRayTracingApplication* app,Scene* scene);
   void createSynchronizationObjects(VkRayTracingApplication* app);
-  void updateUniformBuffer(VkRayTracingApplication* app, struct Camera* camera);
-  void drawFrame(VkRayTracingApplication* app, struct Camera* camera);
+  void updateUniformBuffer(VkRayTracingApplication* app, Camera* camera);
+  void drawFrame(VkRayTracingApplication* app, Camera* camera);
+  void drawFrame_ray_query(VkRayTracingApplication* app, Camera* camera);
 
   int isCameraMoved;
 
@@ -154,6 +163,13 @@ private:
   VkSwapchainKHR swapchain;
   VkImage* swapchainImages;
   VkFormat swapchainImageFormat;
+  VkExtent2D swapchainExtent;
+  VkImageView* swapchainImageViews;
+  VkFramebuffer* swapchainFramebuffers;
+
+  VkRenderPass renderPass;
+  VkPipelineLayout pipelineLayout;
+  VkPipeline graphicsPipeline;
 
   VkCommandPool commandPool;
 
@@ -162,6 +178,12 @@ private:
   VkFence* inFlightFences;
   VkFence* imagesInFlight;
   uint32_t currentFrame;
+
+  VkBuffer uniformBuffer;
+  VkDeviceMemory uniformBufferMemory;
+
+  VkVertexInputBindingDescription* vertexBindingDescriptions;
+  VkVertexInputAttributeDescription* vertexAttributeDescriptions;
 
   VkPhysicalDeviceMemoryProperties memoryProperties;
 
@@ -177,6 +199,10 @@ private:
   VkBuffer materialBuffer;
   VkDeviceMemory materialBufferMemory;
 
+  VkImage depthImage;
+  VkDeviceMemory depthImageMemory;
+  VkImageView depthImageView;
+
   VkAccelerationStructureKHR bottomLevelAccelerationStructure;
   VkBuffer bottomLevelAccelerationStructureBuffer;
   VkDeviceMemory bottomLevelAccelerationStructureBufferMemory;
@@ -188,9 +214,6 @@ private:
   VkImageView rayTraceImageView;
   VkImage rayTraceImage;
   VkDeviceMemory rayTraceImageMemory;
-
-  VkBuffer uniformBuffer;
-  VkDeviceMemory uniformBufferMemory;
 
   VkDescriptorPool descriptorPool;
   VkDescriptorSet rayTraceDescriptorSet;

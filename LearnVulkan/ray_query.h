@@ -10,8 +10,8 @@
 
 //const uint32_t WIDTH = 1920;
 //const uint32_t HEIGHT = 1080;
-const uint32_t WIDTH = 3840;
-const uint32_t HEIGHT = 2160;
+const uint32_t WIDTH = 3840/2;
+const uint32_t HEIGHT = 2160/2;
 
 
 
@@ -52,7 +52,7 @@ const std::vector<const char*> deviceExtensions = {
 
 
 #define MAX_FRAMES_IN_FLIGHT      1
-#define ENABLE_VALIDATION         0
+#define ENABLE_VALIDATION         1
 
 static char keyDownIndex[500];
 
@@ -109,6 +109,7 @@ private:
 	void pickPhysicalDevice(VkRayTracingApplication* app);
 	void createLogicalConnection(VkRayTracingApplication* app);
 	void createSwapchain(VkRayTracingApplication* app);
+	void createRenderPass(VkRayTracingApplication* app);
 	void createCommandPool(VkRayTracingApplication* app);
 	void createDepthResources(VkRayTracingApplication* app);
 	void createFramebuffers(VkRayTracingApplication* app);  
@@ -192,6 +193,9 @@ private:
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
 
+	VkAccelerationStructureKHR accelerationStructure;
+	VkBuffer accelerationStructureBuffer;
+	VkDeviceMemory accelerationStructureBufferMemory;
 
 	VkAccelerationStructureKHR bottomLevelAccelerationStructure;
 	VkBuffer bottomLevelAccelerationStructureBuffer;
