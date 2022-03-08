@@ -243,6 +243,9 @@ void VkRayTracingApplication::cleanup(VkRayTracingApplication* app, Scene* scene
     vkDestroyPipeline(app->logicalDevice, app->graphicsPipeline, NULL);
     vkDestroyPipelineLayout(app->logicalDevice, app->pipelineLayout, NULL);
 
+    free(app->vertexBindingDescriptions);
+    free(app->vertexAttributeDescriptions);
+
     vkDestroyDescriptorSetLayout(app->logicalDevice, app->rayTraceDescriptorSetLayouts[1], NULL);
     vkDestroyDescriptorSetLayout(app->logicalDevice, app->rayTraceDescriptorSetLayouts[0], NULL);
     free(app->rayTraceDescriptorSetLayouts);
