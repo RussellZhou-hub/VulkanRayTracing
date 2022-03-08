@@ -248,14 +248,6 @@ void VkRayTracingApplication::cleanup(VkRayTracingApplication* app, Scene* scene
     free(app->rayTraceDescriptorSetLayouts);
     vkDestroyDescriptorPool(app->logicalDevice, app->descriptorPool, NULL);
 
-    free(app->vertexBindingDescriptions);
-    free(app->vertexAttributeDescriptions);
-
-    vkDestroyDescriptorSetLayout(app->logicalDevice, app->rayTraceDescriptorSetLayouts[1], NULL);
-    vkDestroyDescriptorSetLayout(app->logicalDevice, app->rayTraceDescriptorSetLayouts[0], NULL);
-    free(app->rayTraceDescriptorSetLayouts);
-    vkDestroyDescriptorPool(app->logicalDevice, app->descriptorPool, NULL);//has triggered a breakpoint.
-
     vkDestroyBuffer(app->logicalDevice, app->uniformBuffer, NULL);
     vkFreeMemory(app->logicalDevice, app->uniformBufferMemory, NULL);
 
@@ -263,9 +255,9 @@ void VkRayTracingApplication::cleanup(VkRayTracingApplication* app, Scene* scene
     vkDestroyBuffer(app->logicalDevice, app->topLevelAccelerationStructureBuffer, NULL);
     vkFreeMemory(app->logicalDevice, app->topLevelAccelerationStructureBufferMemory, NULL);
 
-    pvkDestroyAccelerationStructureKHR(app->logicalDevice, app->bottomLevelAccelerationStructure, NULL);
-    vkDestroyBuffer(app->logicalDevice, app->bottomLevelAccelerationStructureBuffer, NULL);
-    vkFreeMemory(app->logicalDevice, app->bottomLevelAccelerationStructureBufferMemory, NULL);
+    pvkDestroyAccelerationStructureKHR(app->logicalDevice, app->accelerationStructure, NULL);
+    vkDestroyBuffer(app->logicalDevice, app->accelerationStructureBuffer, NULL);
+    vkFreeMemory(app->logicalDevice, app->accelerationStructureBufferMemory, NULL);
 
     vkDestroyImageView(app->logicalDevice, app->rayTraceImageView, NULL);
     vkFreeMemory(app->logicalDevice, app->rayTraceImageMemory, NULL);
@@ -283,7 +275,23 @@ void VkRayTracingApplication::cleanup(VkRayTracingApplication* app, Scene* scene
     vkDestroyBuffer(app->logicalDevice, app->vertexPositionBuffer, NULL);
     vkFreeMemory(app->logicalDevice, app->vertexPositionBufferMemory, NULL);
 
+    for (int x = 0; x < app->imageCount; x++) {
+        vkDestroyFramebuffer(app->logicalDevice, app->swapchainFramebuffers[x], NULL);
+    }
+    free(app->swapchainFramebuffers);
+
+    vkDestroyImageView(app->logicalDevice, app->depthImageView, NULL);
+    vkFreeMemory(app->logicalDevice, app->depthImageMemory, NULL);
+    vkDestroyImage(app->logicalDevice, app->depthImage, NULL);
+
     vkDestroyCommandPool(app->logicalDevice, app->commandPool, NULL);
+
+    vkDestroyRenderPass(app->logicalDevice, app->renderPass, NULL);
+
+    for (int x = 0; x < app->imageCount; x++) {
+        vkDestroyImageView(app->logicalDevice, app->swapchainImageViews[x], NULL);
+    }
+    free(app->swapchainImageViews);
 
     free(app->swapchainImages);
     vkDestroySwapchainKHR(app->logicalDevice, app->swapchain, NULL);
