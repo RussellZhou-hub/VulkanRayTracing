@@ -119,6 +119,7 @@ void main() {
   bool rayActive = true;
   int maxRayDepth = 16;
   for (int rayDepth = 0; rayDepth < maxRayDepth && rayActive; rayDepth++) {
+  //secondary ray (or more ray)
     rayQueryEXT rayQuery;
     rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, rayOrigin, 0.001f, rayDirection, 1000.0f);
 
@@ -184,6 +185,7 @@ void main() {
       vec3 hemisphere = uniformSampleHemisphere(vec2(random(gl_FragCoord.xy, camera.frameCount + rayDepth), random(gl_FragCoord.xy, camera.frameCount + rayDepth + 1)));
       vec3 alignedHemisphere = alignHemisphereWithCoordinateSystem(hemisphere, extensionNormal);
 
+      //reset rayOrigin...
       rayOrigin = extensionPosition;
       rayDirection = alignedHemisphere;
       previousNormal = extensionNormal;
