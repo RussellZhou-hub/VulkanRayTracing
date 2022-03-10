@@ -28,7 +28,7 @@ void main() {
   float frustumDepth = farDist - nearDist;
   float oneOverDepth = 1.0 / frustumDepth;
   float fov = 1.0472;
-  float aspect = 800.0 / 600.0;
+  float aspect = 3840 / 2160;
 
   mat4 projectionMatrix = {
     vec4(1.0 / tan(0.5f * fov) / aspect, 0, 0, 0),

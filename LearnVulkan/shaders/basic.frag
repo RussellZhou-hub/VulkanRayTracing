@@ -95,16 +95,17 @@ void main() {
     vec3 shadowRayDirection = positionToLightDirection;
     float shadowRayDistance = length(lightPosition - interpolatedPosition) - 0.001f;
 
+    //shadow ray
     rayQueryEXT rayQuery;
     rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, shadowRayOrigin, 0.001f, shadowRayDirection, shadowRayDistance);
   
     while (rayQueryProceedEXT(rayQuery));
 
     if (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
-      directColor = surfaceColor * lightColor * dot(geometricNormal, positionToLightDirection);
+      directColor = surfaceColor * lightColor * dot(geometricNormal, positionToLightDirection);    //not in shadow
     }
     else {
-      directColor = vec3(0.0, 0.0, 0.0);
+      directColor = vec3(0.0, 0.0, 0.0);                     //in shadow
     }
   }
 
