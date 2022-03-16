@@ -17,8 +17,8 @@ esc：退出
 
 ## 只有shadow ray：
 
-![1](.\1.png)
+![1](readme.assets/1.png)
 
 ## secondary ray：
 
-![image-20220316183033760](.\2.png)
+![2](readme.assets/2.png)
