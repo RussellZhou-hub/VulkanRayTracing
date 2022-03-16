@@ -17,8 +17,8 @@ esc：退出
 
 ## 只有shadow ray：
 
-![image-20220316182845829](C:\Users\Rocki\AppData\Roaming\Typora\typora-user-images\image-20220316182845829.png)
+![1](.\1.png)
 
 ## secondary ray：
 
-![image-20220316183033760](C:\Users\Rocki\AppData\Roaming\Typora\typora-user-images\image-20220316183033760.png)
+![image-20220316183033760](.\2.png)
