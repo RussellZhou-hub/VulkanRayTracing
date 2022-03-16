@@ -24,6 +24,7 @@ layout(binding = 1, set = 0) uniform Camera {
   vec4 forward;
 
   uint frameCount;
+  uint mode;
 } camera;
 
 layout(binding = 2, set = 0) buffer IndexBuffer { uint data[]; } indexBuffer;
@@ -118,7 +119,8 @@ void main() {
 
   bool rayActive = true;
   int maxRayDepth = 16;
-  for (int rayDepth = 0; rayDepth < maxRayDepth && rayActive; rayDepth++) {
+  if(camera.mode==1){
+    for (int rayDepth = 0; rayDepth < maxRayDepth && rayActive; rayDepth++) {
   //secondary ray (or more ray)
     rayQueryEXT rayQuery;
     rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, rayOrigin, 0.001f, rayDirection, 1000.0f);
@@ -194,6 +196,8 @@ void main() {
       rayActive = false;
     }
   }
+  }
+  
 
   vec4 color = vec4(directColor + indirectColor, 1.0);
 

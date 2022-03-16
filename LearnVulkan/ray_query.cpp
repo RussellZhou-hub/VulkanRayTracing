@@ -180,10 +180,10 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
             isCameraMoved = 1;
         }
         if (keyDownIndex[GLFW_KEY_1]) {
-            SecondaryRay = 0;
+            camera->mode = 0;
         }
         if (keyDownIndex[GLFW_KEY_2]) {
-            SecondaryRay = 1;
+            camera->mode = 1;
         }
 
         static double previousMousePositionX;
@@ -2236,13 +2236,7 @@ void VkRayTracingApplication::createGraphicsPipeline(VkRayTracingApplication* ap
     fread(vertexFileBuffer, 1, vertexFileSize, vertexFile);
     fclose(vertexFile);
 
-    FILE* fragmentFile;
-    if (SecondaryRay == 0) {   //no secondary ray
-        fragmentFile = fopen("shaders/basic_no_secondary.frag.spv", "rb");
-    }
-    else {
-        fragmentFile = fopen("shaders/basic.frag.spv", "rb");
-    }
+    FILE* fragmentFile = fopen("shaders/basic.frag.spv", "rb");
 
     fseek(fragmentFile, 0, SEEK_END);
     uint32_t fragmentFileSize = ftell(fragmentFile);

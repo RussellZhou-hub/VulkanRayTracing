@@ -69,6 +69,7 @@ public:
 	float forward[4];
 
 	uint32_t frameCount;
+	uint32_t mode;
 };
 
 struct Material {
