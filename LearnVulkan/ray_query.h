@@ -72,6 +72,12 @@ public:
 	uint32_t mode;
 };
 
+class ShadingMode {
+public:
+	ShadingMode();
+	uint32_t enable2thRay;
+};
+
 struct Material {
 	float ambient[3]; int padA;
 	float diffuse[3]; int padB;
@@ -94,12 +100,12 @@ public:
 class VkRayTracingApplication {
 public:
 	VkRayTracingApplication();
-	void run(Scene& scene, Camera& camera);
+	void run(Scene& scene, Camera& camera, ShadingMode& shadingMode);
 private:
 	//void loadModel(Scene* scene);
 	void initializeScene(Scene* scene, const char* fileNameOBJ);
 	void initVulkan(Scene* scene);
-	void mainLoop(VkRayTracingApplication* app, Camera* camera);
+	void mainLoop(VkRayTracingApplication* app, Camera* camera, ShadingMode* shadingMode);
 	void cleanup(VkRayTracingApplication* app, Scene* scene);
 	void createBuffer(VkRayTracingApplication* app, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags propertyFlags, VkBuffer* buffer, VkDeviceMemory* bufferMemory);
 	void copyBuffer(VkRayTracingApplication* app, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
@@ -128,8 +134,8 @@ private:
 	void createShaderBindingTable(VkRayTracingApplication* app);
 	void createCommandBuffers(VkRayTracingApplication* app, Scene* scene);
 	void createSynchronizationObjects(VkRayTracingApplication* app);
-	void updateUniformBuffer(VkRayTracingApplication* app, struct Camera* camera);
-	void drawFrame(VkRayTracingApplication* app, struct Camera* camera);
+	void updateUniformBuffer(VkRayTracingApplication* app, Camera* camera, ShadingMode* shadingMode);
+	void drawFrame(VkRayTracingApplication* app, struct Camera* camera, ShadingMode* shadingMode);
 
 	int isCameraMoved;
 
@@ -172,6 +178,9 @@ private:
 
 	VkBuffer uniformBuffer;
 	VkDeviceMemory uniformBufferMemory;
+
+	VkBuffer uniformBuffer_shadingMode;
+	VkDeviceMemory uniformBufferMemory_shadingMode;
 
 	VkVertexInputBindingDescription* vertexBindingDescriptions;
 	VkVertexInputAttributeDescription* vertexAttributeDescriptions;
@@ -220,8 +229,6 @@ private:
 
 	VkBuffer shaderBindingTableBuffer;
 	VkDeviceMemory shaderBindingTableBufferMemory;
-
-	int SecondaryRay;
 };
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {

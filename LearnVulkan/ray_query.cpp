@@ -29,7 +29,6 @@
 
 VkRayTracingApplication::VkRayTracingApplication() {
     currentFrame = 0;
-    SecondaryRay = 0;
 }
 
 Camera::Camera() {
@@ -74,14 +73,14 @@ bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
     return requiredExtensions.empty();
 }
 
-void VkRayTracingApplication::run(Scene& scene, Camera& camera)
+void VkRayTracingApplication::run(Scene& scene, Camera& camera, ShadingMode& shadingMode)
 {
     std::string str = GetExePath();
     str += "\\data\\cube_scene.obj";
     initializeScene(&scene, str.c_str());
     //initializeScene(&scene, "D:/Data/Vulkan/Resources/cube_box/cube_scene.obj");
     initVulkan(&scene);
-    mainLoop(this, &camera);
+    mainLoop(this, &camera,&shadingMode);
     cleanup(this, &scene);
 }
 
@@ -121,7 +120,7 @@ void VkRayTracingApplication::initVulkan(Scene* scene)
     createSynchronizationObjects(this);
 }
 
-void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* camera)
+void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* camera, ShadingMode* shadingMode)
 {
     //When compared to a "standard non-raytraced" application, 
     //there are no major differences when creating the synchronization objects or writing the main loop. 
@@ -180,10 +179,12 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
             isCameraMoved = 1;
         }
         if (keyDownIndex[GLFW_KEY_1]) {
-            camera->mode = 0;
+            //camera->mode = 0;
+            shadingMode->enable2thRay = 0;
         }
         if (keyDownIndex[GLFW_KEY_2]) {
-            camera->mode = 1;
+            //camera->mode = 1;
+            shadingMode->enable2thRay = 1;
         }
 
         static double previousMousePositionX;
@@ -222,7 +223,7 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
             camera->frameCount += 1;
         }
 
-        drawFrame(app, camera);
+        drawFrame(app, camera, shadingMode);
     }
 
     vkDeviceWaitIdle(app->logicalDevice);
@@ -1401,6 +1402,9 @@ void VkRayTracingApplication::createUniformBuffer(VkRayTracingApplication* app)
     //We create a uniform buffer to hold the camera so we can pass the camera's data into the shaders.
     VkDeviceSize bufferSize = sizeof(Camera);
     createBuffer(app, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &app->uniformBuffer, &app->uniformBufferMemory);
+
+    VkDeviceSize bufferSize_s = sizeof(ShadingMode);
+    createBuffer(app, bufferSize_s, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &app->uniformBuffer_shadingMode, &app->uniformBufferMemory_shadingMode);
 }
 
 void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
@@ -1412,7 +1416,7 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
     descriptorPoolSizes[0].descriptorCount = 1;
 
     descriptorPoolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    descriptorPoolSizes[1].descriptorCount = 1;
+    descriptorPoolSizes[1].descriptorCount = 2;
 
     descriptorPoolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     descriptorPoolSizes[2].descriptorCount = 4;
@@ -1431,7 +1435,7 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
     }
 
     {
-        VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[5];
+        VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[6];
         descriptorSetLayoutBindings[0].binding = 0;
         descriptorSetLayoutBindings[0].descriptorCount = 1;
         descriptorSetLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
@@ -1462,9 +1466,15 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
         descriptorSetLayoutBindings[4].pImmutableSamplers = NULL;
         descriptorSetLayoutBindings[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
+        descriptorSetLayoutBindings[5].binding = 5;
+        descriptorSetLayoutBindings[5].descriptorCount = 1;
+        descriptorSetLayoutBindings[5].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorSetLayoutBindings[5].pImmutableSamplers = NULL;
+        descriptorSetLayoutBindings[5].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
         VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
         descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        descriptorSetLayoutCreateInfo.bindingCount = 5;
+        descriptorSetLayoutCreateInfo.bindingCount = 6;
         descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings;
 
         if (vkCreateDescriptorSetLayout(app->logicalDevice, &descriptorSetLayoutCreateInfo, NULL, &app->rayTraceDescriptorSetLayouts[0]) == VK_SUCCESS) {
@@ -1481,7 +1491,7 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
             printf("\033[22;32m%s\033[0m\n", "allocated descriptor sets");
         }
 
-        VkWriteDescriptorSet writeDescriptorSets[5];
+        VkWriteDescriptorSet writeDescriptorSets[6];
 
         VkWriteDescriptorSetAccelerationStructureKHR descriptorSetAccelerationStructure = {};
         descriptorSetAccelerationStructure.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
@@ -1564,7 +1574,23 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
         writeDescriptorSets[4].pBufferInfo = NULL;
         writeDescriptorSets[4].pTexelBufferView = NULL;
 
-        vkUpdateDescriptorSets(app->logicalDevice, 5, writeDescriptorSets, 0, NULL);
+        VkDescriptorBufferInfo bufferInfo_shadingMode = {};
+        bufferInfo_shadingMode.buffer = app->uniformBuffer_shadingMode;
+        bufferInfo_shadingMode.offset = 0;
+        bufferInfo_shadingMode.range = VK_WHOLE_SIZE;
+
+        writeDescriptorSets[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSets[5].pNext = NULL;
+        writeDescriptorSets[5].dstSet = app->rayTraceDescriptorSet;
+        writeDescriptorSets[5].dstBinding = 5;
+        writeDescriptorSets[5].dstArrayElement = 0;
+        writeDescriptorSets[5].descriptorCount = 1;
+        writeDescriptorSets[5].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        writeDescriptorSets[5].pImageInfo = NULL;
+        writeDescriptorSets[5].pBufferInfo = &bufferInfo_shadingMode;
+        writeDescriptorSets[5].pTexelBufferView = NULL;
+
+        vkUpdateDescriptorSets(app->logicalDevice, 6, writeDescriptorSets, 0, NULL);
     }
 
     {
@@ -2083,15 +2109,20 @@ void VkRayTracingApplication::createSynchronizationObjects(VkRayTracingApplicati
     }
 }
 
-void VkRayTracingApplication::updateUniformBuffer(VkRayTracingApplication* app, Camera* camera)
+void VkRayTracingApplication::updateUniformBuffer(VkRayTracingApplication* app, Camera* camera,ShadingMode* shadingMode)
 {
     void* data;
-    vkMapMemory(app->logicalDevice, app->uniformBufferMemory, 0, sizeof(struct Camera), 0, &data);
+    vkMapMemory(app->logicalDevice, app->uniformBufferMemory, 0, sizeof(Camera), 0, &data);
     memcpy(data, camera, sizeof(struct Camera));
     vkUnmapMemory(app->logicalDevice, app->uniformBufferMemory);
+
+    void* data_s;
+    vkMapMemory(app->logicalDevice, app->uniformBufferMemory_shadingMode, 0, sizeof(ShadingMode), 0, &data_s);
+    memcpy(data_s, shadingMode, sizeof(ShadingMode));
+    vkUnmapMemory(app->logicalDevice, app->uniformBufferMemory_shadingMode);
 }
 
-void VkRayTracingApplication::drawFrame(VkRayTracingApplication* app, Camera* camera)
+void VkRayTracingApplication::drawFrame(VkRayTracingApplication* app, Camera* camera, ShadingMode* shadingMode)
 {
     vkWaitForFences(app->logicalDevice, 1, &app->inFlightFences[app->currentFrame], VK_TRUE, UINT64_MAX);
 
@@ -2103,7 +2134,7 @@ void VkRayTracingApplication::drawFrame(VkRayTracingApplication* app, Camera* ca
     }
     app->imagesInFlight[imageIndex] = app->inFlightFences[app->currentFrame];
 
-    updateUniformBuffer(app, camera);
+    updateUniformBuffer(app, camera,shadingMode);
 
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -2397,4 +2428,9 @@ void VkRayTracingApplication::createGraphicsPipeline(VkRayTracingApplication* ap
 
     free(vertexFileBuffer);
     free(fragmentFileBuffer);
+}
+
+ShadingMode::ShadingMode()
+{
+    enable2thRay = 1;
 }

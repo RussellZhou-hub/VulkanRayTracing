@@ -45,11 +45,14 @@ int main() {
 
     Camera* camera = new Camera();
 
+    ShadingMode* shadingMode = new ShadingMode();
+
     VkRayTracingApplication *app = new VkRayTracingApplication();
-    app->run(*scene,*camera);
+    app->run(*scene,*camera,*shadingMode);
 
     delete scene;
     delete camera;
+    delete shadingMode;
     delete app;
 
     return 0;

@@ -31,6 +31,10 @@ layout(binding = 2, set = 0) buffer IndexBuffer { uint data[]; } indexBuffer;
 layout(binding = 3, set = 0) buffer VertexBuffer { float data[]; } vertexBuffer;
 layout(binding = 4, set = 0, rgba32f) uniform image2D image;
 
+layout(binding = 5, set = 0) uniform ShadingMode {
+  uint enable2Ray;
+} shadingMode;
+
 layout(binding = 0, set = 1) buffer MaterialIndexBuffer { uint data[]; } materialIndexBuffer;
 layout(binding = 1, set = 1) buffer MaterialBuffer { Material data[]; } materialBuffer;
 
@@ -119,7 +123,7 @@ void main() {
 
   bool rayActive = true;
   int maxRayDepth = 16;
-  if(camera.mode==1){
+  if(shadingMode.enable2Ray==1){
     for (int rayDepth = 0; rayDepth < maxRayDepth && rayActive; rayDepth++) {
   //secondary ray (or more ray)
     rayQueryEXT rayQuery;
