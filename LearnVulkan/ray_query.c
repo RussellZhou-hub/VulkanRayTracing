@@ -1185,7 +1185,7 @@ void createUniformBuffer(struct VulkanApplication* app) {
 }
 
 void createDescriptorSets(struct VulkanApplication* app) {
-  app->rayTraceDescriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * 1);
+  app->rayTraceDescriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * 2);
 
   VkDescriptorPoolSize descriptorPoolSizes[4];
   descriptorPoolSizes[0].type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
