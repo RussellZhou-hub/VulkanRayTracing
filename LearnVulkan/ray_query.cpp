@@ -1409,7 +1409,7 @@ void VkRayTracingApplication::createUniformBuffer(VkRayTracingApplication* app)
 
 void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
 {
-    app->rayTraceDescriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * 1);
+    app->rayTraceDescriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * 2);
 
     VkDescriptorPoolSize descriptorPoolSizes[4];
     descriptorPoolSizes[0].type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
@@ -2283,7 +2283,14 @@ void VkRayTracingApplication::createGraphicsPipeline(VkRayTracingApplication* ap
     vertexShaderModuleCreateInfo.pCode = (uint32_t*)vertexFileBuffer;
 
     VkShaderModule vertexShaderModule;
-    if (vkCreateShaderModule(app->logicalDevice, &vertexShaderModuleCreateInfo, NULL, &vertexShaderModule) == VK_SUCCESS) {
+    VkResult result;
+    try {
+        result = vkCreateShaderModule(app->logicalDevice, &vertexShaderModuleCreateInfo, NULL, &vertexShaderModule);
+    }
+    catch (...) {
+        cout << "unknown exception\n";
+    }
+    if (result == VK_SUCCESS) {
         printf("created vertex shader module\n");
     }
 
@@ -2418,7 +2425,13 @@ void VkRayTracingApplication::createGraphicsPipeline(VkRayTracingApplication* ap
     graphicsPipelineCreateInfo.subpass = 0;
     graphicsPipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-    errorCode = vkCreateGraphicsPipelines(app->logicalDevice, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, NULL, &app->graphicsPipeline);
+    try {
+        errorCode = vkCreateGraphicsPipelines(app->logicalDevice, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, NULL, &app->graphicsPipeline);
+    }
+    catch (...) {
+        cout << "unknow e";
+    }
+    
     if ( errorCode == VK_SUCCESS) {
         printf("created graphics pipeline\n");
     }
