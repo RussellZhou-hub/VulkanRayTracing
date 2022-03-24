@@ -2182,7 +2182,7 @@ void VkRayTracingApplication::drawFrame(VkRayTracingApplication* app, Camera* ca
     glm::vec4(camera->right[1], camera->up[1], camera->forward[1], 0),
     glm::vec4(camera->right[2], camera->up[2], camera->forward[2], 0),
 
-    glm::vec4(dot(camera->right, positionVector), -dot(camera->up, positionVector), -dot(camera->forward, positionVector), 1)
+    glm::vec4(-dot(camera->right, positionVector), -dot(camera->up, positionVector), -dot(camera->forward, positionVector), 1)
     };
     //shadingMode->invViewMatrix = glm::inverse(viewMatrix);
 
@@ -2201,6 +2201,7 @@ void VkRayTracingApplication::drawFrame(VkRayTracingApplication* app, Camera* ca
     };
     //shadingMode->invProjMatrix = glm::inverse(projectionMatrix);
 
+    
     updateUniformBuffer(app, camera,shadingMode);
 
     shadingMode->PrevViewMatrix = viewMatrix;

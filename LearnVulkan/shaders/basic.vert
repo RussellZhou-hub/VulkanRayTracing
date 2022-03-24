@@ -1,5 +1,6 @@
 #version 460
 #extension GL_ARB_separate_shader_objects : enable
+#extension GL_EXT_debug_printf : enable
 
 layout(location = 0) in vec3 inPosition;
 
@@ -50,9 +51,16 @@ void main() {
     vec4(0, 0, (-farDist * nearDist) * oneOverDepth, 0)
   };
 
-  //PVMatrix=shadingMode.PrevProjectionMatrix*shadingMode.PrevViewMatrix;
-  PVMatrix=projectionMatrix*viewMatrix;  //current frame
+  PVMatrix=shadingMode.PrevProjectionMatrix*shadingMode.PrevViewMatrix;
+  //PVMatrix=projectionMatrix*viewMatrix;
+
+  debugPrintfEXT("\n PrevViewMatrix[0][i] is               ViewMatrix[0][i] is\n  %f %f %f %f             %f %f %f %f ",
+                 shadingMode.PrevViewMatrix[3][0],shadingMode.PrevViewMatrix[3][1],shadingMode.PrevViewMatrix[3][2],shadingMode.PrevViewMatrix[3][3], 
+                 viewMatrix[3][0],viewMatrix[3][1],viewMatrix[3][2],viewMatrix[3][3] );
+
+ // PVMatrix=projectionMatrix*viewMatrix;  //current frame
   gl_Position = projectionMatrix * viewMatrix * vec4(inPosition, 1.0);
+ // gl_Position = PVMatrix* vec4(inPosition, 1.0);
   clipPos=PVMatrix* vec4(inPosition, 1.0);
   
   interpolatedPosition = inPosition;
