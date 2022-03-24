@@ -91,6 +91,7 @@ public:
 	glm::mat4 PrevProjectionMatrix;
 	uint32_t enable2thRay;
 	uint32_t enableShadowMotion;
+	uint32_t enable2SR;
 };
 
 struct Material {

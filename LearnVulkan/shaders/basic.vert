@@ -26,6 +26,7 @@ layout(binding = 5, set = 0) uniform ShadingMode {
   mat4 PrevProjectionMatrix;
   uint enable2Ray;
   uint enableShadowMotion;
+  uint enable2SR;
 } shadingMode;
 
 void main() {
@@ -54,9 +55,9 @@ void main() {
   PVMatrix=shadingMode.PrevProjectionMatrix*shadingMode.PrevViewMatrix;
   //PVMatrix=projectionMatrix*viewMatrix;
 
-  debugPrintfEXT("\n PrevViewMatrix[0][i] is               ViewMatrix[0][i] is\n  %f %f %f %f             %f %f %f %f ",
-                 shadingMode.PrevViewMatrix[3][0],shadingMode.PrevViewMatrix[3][1],shadingMode.PrevViewMatrix[3][2],shadingMode.PrevViewMatrix[3][3], 
-                 viewMatrix[3][0],viewMatrix[3][1],viewMatrix[3][2],viewMatrix[3][3] );
+  //debugPrintfEXT("\n PrevViewMatrix[0][i] is               ViewMatrix[0][i] is\n  %f %f %f %f             %f %f %f %f ",
+  //               shadingMode.PrevViewMatrix[3][0],shadingMode.PrevViewMatrix[3][1],shadingMode.PrevViewMatrix[3][2],shadingMode.PrevViewMatrix[3][3], 
+  //               viewMatrix[3][0],viewMatrix[3][1],viewMatrix[3][2],viewMatrix[3][3] );
 
  // PVMatrix=projectionMatrix*viewMatrix;  //current frame
   gl_Position = projectionMatrix * viewMatrix * vec4(inPosition, 1.0);

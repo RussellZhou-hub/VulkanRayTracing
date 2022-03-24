@@ -183,14 +183,22 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
         if (keyDownIndex[GLFW_KEY_1]) {
             shadingMode->enable2thRay = 0;
             shadingMode->enableShadowMotion = 0;
+            shadingMode->enable2SR = 0;
         }
         if (keyDownIndex[GLFW_KEY_2]) {
             shadingMode->enable2thRay = 1;
             shadingMode->enableShadowMotion = 0;
+            shadingMode->enable2SR = 0;
         }
         if (keyDownIndex[GLFW_KEY_3]) {
             shadingMode->enable2thRay = 0;
             shadingMode->enableShadowMotion = 1;
+            shadingMode->enable2SR = 0;
+        }
+        if (keyDownIndex[GLFW_KEY_4]) {
+            shadingMode->enable2thRay = 0;
+            shadingMode->enableShadowMotion = 1;
+            shadingMode->enable2SR = 1;
         }
         
 
@@ -2519,4 +2527,6 @@ void VkRayTracingApplication::createGraphicsPipeline(VkRayTracingApplication* ap
 ShadingMode::ShadingMode()
 {
     enable2thRay = 1;
+    enable2SR = 0;
+    enableShadowMotion = 0;
 }

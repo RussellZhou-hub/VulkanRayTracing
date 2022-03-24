@@ -44,14 +44,41 @@ layout(binding = 5, set = 0) uniform ShadingMode {
   mat4 PrevProjectionMatrix;
   uint enable2Ray;
   uint enableShadowMotion;
+  uint enable2SR;
 } shadingMode;
 
 layout(binding = 0, set = 1) buffer MaterialIndexBuffer { uint data[]; } materialIndexBuffer;
 layout(binding = 1, set = 1) buffer MaterialBuffer { Material data[]; } materialBuffer;
 
+
+
 float random(vec2 uv, float seed) {
-  return fract(sin(mod(dot(uv, vec2(12.9898, 78.233)) + 1113.1 * seed, M_PI)) * 43758.5453);;
+  return fract(sin(mod(dot(uv, vec2(12.9898, 78.233)) + 1113.1 * seed, M_PI)) * 43758.5453);
 }
+
+vec3 getRadomLightPosition(int randomIndex){
+    ivec3 lightIndices = ivec3(indexBuffer.data[3 * randomIndex + 0], indexBuffer.data[3 * randomIndex + 1], indexBuffer.data[3 * randomIndex + 2]);
+
+    vec3 lightVertexA = vec3(vertexBuffer.data[3 * lightIndices.x + 0], vertexBuffer.data[3 * lightIndices.x + 1], vertexBuffer.data[3 * lightIndices.x + 2]);
+    vec3 lightVertexB = vec3(vertexBuffer.data[3 * lightIndices.y + 0], vertexBuffer.data[3 * lightIndices.y + 1], vertexBuffer.data[3 * lightIndices.y + 2]);
+    vec3 lightVertexC = vec3(vertexBuffer.data[3 * lightIndices.z + 0], vertexBuffer.data[3 * lightIndices.z + 1], vertexBuffer.data[3 * lightIndices.z + 2]);
+
+    vec2 uv = vec2(random(gl_FragCoord.xy, camera.frameCount), random(gl_FragCoord.xy, camera.frameCount + 1));
+    if (uv.x + uv.y > 1.0f) {
+      uv.x = 1.0f - uv.x;
+      uv.y = 1.0f - uv.y;
+    }
+
+    //if( shadingMode.enable2SR==1){
+    //    uv.x=0.3;
+    //    uv.y=0.3;
+    //}
+
+    vec3 lightBarycentric = vec3(1.0 - uv.x - uv.y, uv.x, uv.y);
+    vec3 lightPosition = lightVertexA * lightBarycentric.x + lightVertexB * lightBarycentric.y + lightVertexC * lightBarycentric.z;
+    return lightPosition;
+}
+
 
 vec3 uniformSampleHemisphere(vec2 uv) {
   float z = uv.x;
@@ -89,21 +116,8 @@ void main() {
   else {
     int randomIndex = int(random(gl_FragCoord.xy, camera.frameCount) * 2 + 40);//40 is the light area
     vec3 lightColor = vec3(0.6, 0.6, 0.6);
-
-    ivec3 lightIndices = ivec3(indexBuffer.data[3 * randomIndex + 0], indexBuffer.data[3 * randomIndex + 1], indexBuffer.data[3 * randomIndex + 2]);
-
-    vec3 lightVertexA = vec3(vertexBuffer.data[3 * lightIndices.x + 0], vertexBuffer.data[3 * lightIndices.x + 1], vertexBuffer.data[3 * lightIndices.x + 2]);
-    vec3 lightVertexB = vec3(vertexBuffer.data[3 * lightIndices.y + 0], vertexBuffer.data[3 * lightIndices.y + 1], vertexBuffer.data[3 * lightIndices.y + 2]);
-    vec3 lightVertexC = vec3(vertexBuffer.data[3 * lightIndices.z + 0], vertexBuffer.data[3 * lightIndices.z + 1], vertexBuffer.data[3 * lightIndices.z + 2]);
-
-    vec2 uv = vec2(random(gl_FragCoord.xy, camera.frameCount), random(gl_FragCoord.xy, camera.frameCount + 1));
-    if (uv.x + uv.y > 1.0f) {
-      uv.x = 1.0f - uv.x;
-      uv.y = 1.0f - uv.y;
-    }
-
-    vec3 lightBarycentric = vec3(1.0 - uv.x - uv.y, uv.x, uv.y);
-    vec3 lightPosition = lightVertexA * lightBarycentric.x + lightVertexB * lightBarycentric.y + lightVertexC * lightBarycentric.z;
+    //vec3 lightPosition = lightVertexA * lightBarycentric.x + lightVertexB * lightBarycentric.y + lightVertexC * lightBarycentric.z;
+    vec3 lightPosition=getRadomLightPosition(randomIndex);
 
     vec3 positionToLightDirection = normalize(lightPosition - interpolatedPosition);
 
@@ -126,6 +140,40 @@ void main() {
       directColor = vec3(0.0, 0.0, 0.0);                     //in shadow
       isShadow=true;
     }
+
+    vec3 directColor_2=vec3(0.0,0.0,0.0);//2th shadow ray
+    if(shadingMode.enable2SR==2 && isShadow==true){
+        int randomIndex = int(random(gl_FragCoord.xy, camera.frameCount) * 2 + 40);//40 is the light area
+        vec3 lightColor = vec3(0.6, 0.6, 0.6);
+        //vec3 lightPosition = lightVertexA * lightBarycentric.x + lightVertexB * lightBarycentric.y + lightVertexC * lightBarycentric.z;
+        vec3 lightPosition_2=getRadomLightPosition(40);
+
+        vec3 positionToLightDirection_2 = normalize(lightPosition_2 - interpolatedPosition);
+
+        vec3 shadowRayDirection = positionToLightDirection_2;
+        
+        
+        rayQueryEXT rayQuery_2;
+        rayQueryInitializeEXT(rayQuery_2, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, shadowRayOrigin, 0.001f, shadowRayDirection, shadowRayDistance);
+  
+        while (rayQueryProceedEXT(rayQuery_2));
+
+        if (rayQueryGetIntersectionTypeEXT(rayQuery_2, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
+        directColor_2 = surfaceColor * lightColor * dot(geometricNormal, positionToLightDirection);    //not in shadow
+        }
+        else {
+        directColor_2 = vec3(0.5, 0.5, 0.5);                     //in shadow
+        }
+        if(isShadow){
+            directColor+=vec3(0.5, 0.5, 0.5);
+            directColor-=directColor_2;
+        }
+        else if(!isShadow){
+            directColor+=directColor_2;
+            directColor/=2;
+        }
+    }
+
     if(shadingMode.enableShadowMotion==1 && isShadow==true){
       //Implement shadow motion vector algorithm
       //vec4 prevFramePos=shadingMode.PrevProjectionMatrix*shadingMode.PrevViewMatrix*vec4(interpolatedPosition, 1.0);
@@ -144,14 +192,42 @@ void main() {
 
       vec4 previousColor = imageLoad(image, ivec2(fragPos.xy));
 
-      if( fragPos.y>1079){
-        debugPrintfEXT("gl_FragCoord.x is %f  gl_FragCoord.y is %f \n fragPos.x is %f   fragPos.y is %f  clipPos.x is %f interpolatedPos.x is %f   clipPos.w is %f   \n\n",
-        gl_FragCoord.x,gl_FragCoord.y, fragPos.x,fragPos.y,clipPos.x,interpolatedPosition.x,clipPos.w);
+      //if( fragPos.y>1079){
+      //  debugPrintfEXT("gl_FragCoord.x is %f  gl_FragCoord.y is %f \n fragPos.x is %f   fragPos.y is %f  clipPos.x is %f interpolatedPos.x is %f   clipPos.w is %f   \n\n",
+      //  gl_FragCoord.x,gl_FragCoord.y, fragPos.x,fragPos.y,clipPos.x,interpolatedPosition.x,clipPos.w);
+      //}
+
+      float alpha=0.9;
+      
+      int d=10;
+      if(shadingMode.enableShadowMotion==1 && shadingMode.enable2SR==1){  //spatial filter
+        fragPos.x+=d;
+        vec4 previousColorR = imageLoad(image, ivec2(fragPos.xy));
+        fragPos.y+=d;
+        vec4 previousColorRD = imageLoad(image, ivec2(fragPos.xy));
+        fragPos.x-=d;
+        vec4 previousColorD = imageLoad(image, ivec2(fragPos.xy));
+        float beta=0.25;
+        vec4 avg;
+        float avgInt;
+        avg=beta*previousColor+(1-beta)/3*previousColorR+(1-beta)/3*previousColorRD+(1-beta)/3*previousColorD;
+
+        if(avg.x>0.6){
+            debugPrintfEXT("previousColorR.x is %f\n avg.x is %f",previousColorR.x,avg.x);
+            debugPrintfEXT("gl_FragCoord.x is %f  gl_FragCoord.y is %f \n fragPos.x is %f   fragPos.y is %f  clipPos.x is %f interpolatedPos.x is %f   clipPos.w is %f   \n\n",
+            gl_FragCoord.x,gl_FragCoord.y, fragPos.x,fragPos.y,clipPos.x,interpolatedPosition.x,clipPos.w);
+        }
+        
+        //if((variance.x+variance.y+variance.z)/3>0){  //¹À¼Æ noisy
+        avgInt=avg.x+avg.y+avg.z;
+        avgInt/=3;
+        if(avgInt>0.35){
+            if(isShadow){
+                directColor+=vec3(0.25,0.25,0.25);
+            }
+        }
       }
 
-
-
-      float alpha=0.8;
       directColor=alpha*previousColor.xyz+(1-alpha)*directColor.xyz;
     }
   }
