@@ -1,6 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define SEEK_END 2
 #define VK_ENABLE_BETA_EXTENSIONS
+#define VKB_VALIDATION_LAYERS
 #define GLFW_INCLUDE_VULKAN
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
@@ -17,7 +18,8 @@ const uint32_t HEIGHT = 2160/2;
 
 #define M_PI 3.141592658f
 
-
+#include <glm/vec4.hpp>
+#include <glm/mat4x4.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -50,15 +52,22 @@ const std::vector<const char*> deviceExtensions = {
 	VK_KHR_RAY_QUERY_EXTENSION_NAME
 };
 
-
-#define MAX_FRAMES_IN_FLIGHT      1
-#define ENABLE_VALIDATION         1
-
 static char keyDownIndex[500];
 
-static float cameraPosition[3];
-static float cameraYaw;
-static float cameraPitch;
+static float cameraPosition[3] = {1.46f,3.20f,9.26f};
+static float cameraYaw=0.0f;
+static float cameraPitch=-0.0f;
+
+/*
+Vulkan expects the data in your structure to be aligned in memory in a specific way, for example:
+
+Scalars have to be aligned by N (= 4 bytes given 32 bit floats).
+A vec2 must be aligned by 2N (= 8 bytes)
+A vec3 or vec4 must be aligned by 4N (= 16 bytes)
+A nested structure must be aligned by the base alignment of its members rounded up to a multiple of 16.
+A mat4 matrix must have the same alignment as a vec4.
+You can find the full list of alignment requirements in https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/chap15.html#interfaces-resources-layout
+*/
 
 class Camera {
 public:
@@ -69,13 +78,19 @@ public:
 	float forward[4];
 
 	uint32_t frameCount;
-	uint32_t mode;
+	uint32_t ViewPortWidth;
+	uint32_t ViewPortHeight;
 };
 
 class ShadingMode {
 public:
 	ShadingMode();
+	//glm::mat4 invViewMatrix;
+	//glm::mat4 invProjMatrix;
+	glm::mat4 PrevViewMatrix;
+	glm::mat4 PrevProjectionMatrix;
 	uint32_t enable2thRay;
+	uint32_t enableShadowMotion;
 };
 
 struct Material {
@@ -232,7 +247,8 @@ private:
 };
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-	if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT || messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+	if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT || messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ||
+		messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT|| messageSeverity == VK_DEBUG_REPORT_INFORMATION_BIT_EXT) {
 		printf("\033[22;36mvalidation layer\033[0m: \033[22;33m%s\033[0m\n", pCallbackData->pMessage);
 	}
 

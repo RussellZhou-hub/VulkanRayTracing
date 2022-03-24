@@ -2,6 +2,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_EXT_ray_tracing : enable
 #extension GL_EXT_ray_query : enable
+#extension GL_EXT_debug_printf : enable
 
 #define M_PI 3.1415926535897932384626433832795
 
@@ -13,8 +14,12 @@ struct Material {
 };
 
 layout(location = 0) in vec3 interpolatedPosition;
+layout(location = 1) in vec4 clipPos;
+layout(location = 2) in mat4 PVMatrix;
 
 layout(location = 0) out vec4 outColor;
+
+vec3 fragPos;
 
 layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 layout(binding = 1, set = 0) uniform Camera {
@@ -24,7 +29,8 @@ layout(binding = 1, set = 0) uniform Camera {
   vec4 forward;
 
   uint frameCount;
-  uint mode;
+  uint ViewPortWidth;
+  uint ViewPortHeight;
 } camera;
 
 layout(binding = 2, set = 0) buffer IndexBuffer { uint data[]; } indexBuffer;
@@ -32,7 +38,12 @@ layout(binding = 3, set = 0) buffer VertexBuffer { float data[]; } vertexBuffer;
 layout(binding = 4, set = 0, rgba32f) uniform image2D image;
 
 layout(binding = 5, set = 0) uniform ShadingMode {
+  //mat4 invViewMatrix;
+  //mat4 invProjMatrix;
+  mat4 PrevViewMatrix;
+  mat4 PrevProjectionMatrix;
   uint enable2Ray;
+  uint enableShadowMotion;
 } shadingMode;
 
 layout(binding = 0, set = 1) buffer MaterialIndexBuffer { uint data[]; } materialIndexBuffer;
@@ -76,7 +87,7 @@ void main() {
     directColor = materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission;
   }
   else {
-    int randomIndex = int(random(gl_FragCoord.xy, camera.frameCount) * 2 + 40);
+    int randomIndex = int(random(gl_FragCoord.xy, camera.frameCount) * 2 + 40);//40 is the light area
     vec3 lightColor = vec3(0.6, 0.6, 0.6);
 
     ivec3 lightIndices = ivec3(indexBuffer.data[3 * randomIndex + 0], indexBuffer.data[3 * randomIndex + 1], indexBuffer.data[3 * randomIndex + 2]);
@@ -100,6 +111,8 @@ void main() {
     vec3 shadowRayDirection = positionToLightDirection;
     float shadowRayDistance = length(lightPosition - interpolatedPosition) - 0.001f;
 
+    bool isShadow=false;
+    
     //shadow ray
     rayQueryEXT rayQuery;
     rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, shadowRayOrigin, 0.001f, shadowRayDirection, shadowRayDistance);
@@ -111,6 +124,34 @@ void main() {
     }
     else {
       directColor = vec3(0.0, 0.0, 0.0);                     //in shadow
+      isShadow=true;
+    }
+    if(shadingMode.enableShadowMotion==1 && isShadow==true){
+      //Implement shadow motion vector algorithm
+      //vec4 prevFramePos=shadingMode.PrevProjectionMatrix*shadingMode.PrevViewMatrix*vec4(interpolatedPosition, 1.0);
+
+      fragPos=clipPos.xyz;
+      
+      //fragPos.xy=clipPos.xy;
+      fragPos.xy/=clipPos.w;
+      fragPos.y=-fragPos.y;
+      fragPos.xy+=1;
+      fragPos.xy/=2;
+      fragPos.x*=camera.ViewPortWidth;
+      fragPos.y*=camera.ViewPortHeight;
+      //fragPos.x-=500;
+      fragPos.xy=floor(fragPos.xy)+0.5;
+
+      vec4 previousColor = imageLoad(image, ivec2(fragPos.xy));
+
+      if( fragPos.y>1079){
+        debugPrintfEXT("gl_FragCoord.x is %f  gl_FragCoord.y is %f \n fragPos.x is %f   fragPos.y is %f  clipPos.x is %f interpolatedPos.x is %f   clipPos.w is %f   \n\n", gl_FragCoord.x,gl_FragCoord.y, fragPos.x,fragPos.y,clipPos.x,interpolatedPosition.x,clipPos.w);
+      }
+
+
+
+      float alpha=0.8;
+      directColor=alpha*previousColor.xyz+(1-alpha)*directColor.xyz;
     }
   }
 
@@ -180,6 +221,7 @@ void main() {
       
         while (rayQueryProceedEXT(rayQuery));
 
+        //secondary shadow ray
         if (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
           indirectColor += (1.0 / (rayDepth + 1)) * extensionSurfaceColor * lightColor  * dot(previousNormal, rayDirection) * dot(extensionNormal, positionToLightDirection);
         }
@@ -205,13 +247,16 @@ void main() {
 
   vec4 color = vec4(directColor + indirectColor, 1.0);
 
-  if (camera.frameCount > 0) {
+  /*
+  if (camera.frameCount > 0) {              //静止画面下使用前一帧像素降噪
     vec4 previousColor = imageLoad(image, ivec2(gl_FragCoord.xy));
     previousColor *= camera.frameCount;
 
     color += previousColor;
     color /= (camera.frameCount + 1);
   }
+  */
+  
 
   outColor = color;
 }

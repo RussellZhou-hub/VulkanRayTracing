@@ -1,9 +1,14 @@
 #pragma once
+#ifndef UTILS
+#define UTILS
 
+#include <glm/vec4.hpp>
+#include <glm/mat4x4.hpp>
 #include <stdlib.h>
 #include <stdio.h>
 #include <Windows.h>
 #include <string>
+#include<iostream>
 
 using namespace std;
 
@@ -19,4 +24,12 @@ int main()
 }
 */
 
+glm::vec4& operator-(glm::vec4 a, float* pB);
 
+glm::vec4& operator-(float* pB, glm::vec4 a);
+
+float dot(float* pB, glm::vec4 a);
+
+
+
+#endif

@@ -37,6 +37,8 @@ Camera::Camera() {
     up[0] = 0.0f; up[1] = 1.0f; up[2] = 0.0f; up[3] = 1.0f;
     forward[0] = 0.0f; forward[1] = 0.0f; forward[2] = 1.0f; forward[3] = 1.0f;
     frameCount = 0;
+    ViewPortWidth = WIDTH;
+    ViewPortHeight = HEIGHT;
 }
 
 void ProcessMouseScroll(float yoffset)
@@ -179,13 +181,18 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
             isCameraMoved = 1;
         }
         if (keyDownIndex[GLFW_KEY_1]) {
-            //camera->mode = 0;
             shadingMode->enable2thRay = 0;
+            shadingMode->enableShadowMotion = 0;
         }
         if (keyDownIndex[GLFW_KEY_2]) {
-            //camera->mode = 1;
             shadingMode->enable2thRay = 1;
+            shadingMode->enableShadowMotion = 0;
         }
+        if (keyDownIndex[GLFW_KEY_3]) {
+            shadingMode->enable2thRay = 0;
+            shadingMode->enableShadowMotion = 1;
+        }
+        
 
         static double previousMousePositionX;
         static double previousMousePositionY;
@@ -222,6 +229,9 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
         else {
             camera->frameCount += 1;
         }
+
+        //cout << "cameraPos: " << camera->position[0] << " " << camera->position[1] << " " << camera->position[2] << "\n";
+        //cout << "cameraPitch: " << cameraPitch << " cameraYaw: " << cameraYaw << "\n";
 
         drawFrame(app, camera, shadingMode);
     }
@@ -503,6 +513,22 @@ void VkRayTracingApplication::initializeVulkanContext(VkRayTracingApplication* a
     instanceCreateInfo.enabledExtensionCount = extensionCount;
     instanceCreateInfo.ppEnabledExtensionNames = extensionNames;
 
+    const std::vector<VkValidationFeatureEnableEXT> enabledValidationLayers = {
+        VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT
+    };
+
+    // debugPrintf
+    VkValidationFeaturesEXT validationFeatures{};
+    validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+    validationFeatures.pNext = nullptr;
+    validationFeatures.pEnabledValidationFeatures = enabledValidationLayers.data();
+    validationFeatures.enabledValidationFeatureCount = enabledValidationLayers.size();
+    validationFeatures.pDisabledValidationFeatures = nullptr;
+    validationFeatures.disabledValidationFeatureCount = 0;
+
+    
+    instanceCreateInfo.pNext = &validationFeatures;;
+
     if (ENABLE_VALIDATION) {
         uint32_t layerCount = 1;
         const char** layerNames = (const char**)malloc(sizeof(const char*) * layerCount);
@@ -510,13 +536,15 @@ void VkRayTracingApplication::initializeVulkanContext(VkRayTracingApplication* a
 
         VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo = {};
         messengerCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        messengerCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+        messengerCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                                              VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT| VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT| VK_DEBUG_REPORT_INFORMATION_BIT_EXT;
         messengerCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
         messengerCreateInfo.pfnUserCallback = debugCallback;
 
         instanceCreateInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&messengerCreateInfo;
         instanceCreateInfo.enabledLayerCount = layerCount;
         instanceCreateInfo.ppEnabledLayerNames = layerNames;
+
 
         if (vkCreateInstance(&instanceCreateInfo, NULL, &app->instance) == VK_SUCCESS) {
             printf("created Vulkan instance\n");
@@ -644,7 +672,7 @@ void VkRayTracingApplication::createLogicalConnection(VkRayTracingApplication* a
         }
     }
 
-    uint32_t deviceEnabledExtensionCount = 12;
+    uint32_t deviceEnabledExtensionCount = 13;
     const char** deviceEnabledExtensionNames = (const char**)malloc(sizeof(const char*) * deviceEnabledExtensionCount);
     deviceEnabledExtensionNames[0] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
     deviceEnabledExtensionNames[1] = "VK_KHR_ray_query";
@@ -658,6 +686,7 @@ void VkRayTracingApplication::createLogicalConnection(VkRayTracingApplication* a
     deviceEnabledExtensionNames[9] = "VK_KHR_pipeline_library";
     deviceEnabledExtensionNames[10] = "VK_KHR_maintenance3";
     deviceEnabledExtensionNames[11] = "VK_KHR_maintenance1";
+    deviceEnabledExtensionNames[12] = "VK_KHR_shader_non_semantic_info";
 
     float queuePriority = 1.0f;
     uint32_t deviceQueueCreateInfoCount = 3;
@@ -953,6 +982,8 @@ void VkRayTracingApplication::createMaterialsBuffer(VkRayTracingApplication* app
     VkDeviceMemory indexStagingBufferMemory;
     createBuffer(app, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &indexStagingBuffer, &indexStagingBufferMemory);
 
+    //int index = scene->attributes.material_ids[40];
+
     void* indexData;
     vkMapMemory(app->logicalDevice, indexStagingBufferMemory, 0, indexBufferSize, 0, &indexData);
     memcpy(indexData, scene->attributes.material_ids, indexBufferSize);
@@ -967,6 +998,7 @@ void VkRayTracingApplication::createMaterialsBuffer(VkRayTracingApplication* app
 
     VkDeviceSize materialBufferSize = sizeof(struct Material) * scene->numMaterials;
 
+    
     struct Material* materials = (struct Material*)malloc(materialBufferSize);
     for (int x = 0; x < scene->numMaterials; x++) {
         memcpy(materials[x].ambient, scene->materials[x].ambient, sizeof(float) * 3);
@@ -975,9 +1007,17 @@ void VkRayTracingApplication::createMaterialsBuffer(VkRayTracingApplication* app
         memcpy(materials[x].emission, scene->materials[x].emission, sizeof(float) * 3);
     }
 
+    
+
     VkBuffer materialStagingBuffer;
     VkDeviceMemory materialStagingBufferMemory;
     createBuffer(app, materialBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &materialStagingBuffer, &materialStagingBufferMemory);
+
+    //修改灯光颜色
+    materials[6].emission[0] = 1.0f;
+    materials[6].emission[1] = 0.8f;
+    materials[6].emission[2] = 0.7f;
+    Material mat = materials[6];
 
     void* materialData;
     vkMapMemory(app->logicalDevice, materialStagingBufferMemory, 0, materialBufferSize, 0, &materialData);
@@ -2032,6 +2072,7 @@ void VkRayTracingApplication::createCommandBuffers(VkRayTracingApplication* app,
             imageCopy.dstOffset = offset;
             imageCopy.extent = extent;
 
+            //copy 当前帧 渲染结果 到 rayTraceImage
             vkCmdCopyImage(app->commandBuffers[x], app->swapchainImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->rayTraceImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
         }
 
@@ -2134,7 +2175,36 @@ void VkRayTracingApplication::drawFrame(VkRayTracingApplication* app, Camera* ca
     }
     app->imagesInFlight[imageIndex] = app->inFlightFences[app->currentFrame];
 
+    //计算 Previous frame's matrix
+    glm::vec4 positionVector = camera->position - glm::vec4(0.0, 0.0, 0.0, 1.0);
+    glm::mat4 viewMatrix = {
+    glm::vec4(camera->right[0], camera->up[0], camera->forward[0], 0),
+    glm::vec4(camera->right[1], camera->up[1], camera->forward[1], 0),
+    glm::vec4(camera->right[2], camera->up[2], camera->forward[2], 0),
+
+    glm::vec4(dot(camera->right, positionVector), -dot(camera->up, positionVector), -dot(camera->forward, positionVector), 1)
+    };
+    //shadingMode->invViewMatrix = glm::inverse(viewMatrix);
+
+    float farDist = 1000.0;
+    float nearDist = 0.0001;
+    float frustumDepth = farDist - nearDist;
+    float oneOverDepth = 1.0 / frustumDepth;
+    float fov = 1.0472;
+    float aspect = 3840 / 2160;
+
+    glm::mat4 projectionMatrix = {
+      glm::vec4(1.0 / tan(0.5f * fov) / aspect, 0, 0, 0),
+      glm::vec4(0, 1.0 / tan(0.5f * fov), 0, 0),
+      glm::vec4(0, 0, farDist * oneOverDepth, 1),
+      glm::vec4(0, 0, (-farDist * nearDist) * oneOverDepth, 0)
+    };
+    //shadingMode->invProjMatrix = glm::inverse(projectionMatrix);
+
     updateUniformBuffer(app, camera,shadingMode);
+
+    shadingMode->PrevViewMatrix = viewMatrix;
+    shadingMode->PrevProjectionMatrix = projectionMatrix;
 
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -2172,6 +2242,8 @@ void VkRayTracingApplication::drawFrame(VkRayTracingApplication* app, Camera* ca
     vkQueuePresentKHR(app->presentQueue, &presentInfo);
 
     app->currentFrame = (app->currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+
+    
 }
 
 
