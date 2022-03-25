@@ -193,10 +193,10 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
             shadingMode->enable2thRMotion = 0;
         }
         if (keyDownIndex[GLFW_KEY_3]) {   //shadow method:motion vector along
-            shadingMode->enable2thRay = 0;
+            shadingMode->enable2thRay = 1;
             shadingMode->enableShadowMotion = 1;
             shadingMode->enableMeanDiff = 0;
-            shadingMode->enable2thRMotion = 0;
+            shadingMode->enable2thRMotion = 1;
         }
         if (keyDownIndex[GLFW_KEY_4]) {   //my shadow method
             shadingMode->enable2thRay = 0;

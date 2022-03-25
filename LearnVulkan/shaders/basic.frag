@@ -21,6 +21,7 @@ layout(location = 0) out vec4 outColor;
 
 vec3 fragPos;
 bool isShadow=false;
+vec2 RayHitPointFragCoord;
 
 layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 layout(binding = 1, set = 0) uniform Camera {
@@ -383,26 +384,21 @@ void main() {
       rayOrigin = extensionPosition;
       rayDirection = alignedHemisphere;
       previousNormal = extensionNormal;
+
+      RayHitPointFragCoord=getFragCoord(interpolatedPosition.xyz);
     }
     else {
       rayActive = false;
     }
   }
   }
-  
-  
-  float ReflctInShadow;
-  if(isShadow){
-    ReflctInShadow=1;
-    //indirectColor-=vec3(0.25,0.25,0.25);
-  }
-  else{
-    ReflctInShadow=1;
-  }
-  
 
   vec4 color = vec4(directColor + indirectColor, 1.0);
 
+  if(!isShadow && shadingMode.enable2thRMotion==1){
+    vec4 previousColor = imageLoad(image, ivec2(RayHitPointFragCoord.xy));
+    color.xyz=0.2*previousColor.xyz+0.8*color.xyz;
+  }
 
   /*
   if (camera.frameCount > 0) {              //静止画面下使用前一帧像素降噪
@@ -420,6 +416,9 @@ void main() {
     color.xyz=vec3(0.15,0.15,0.15)+0.1*indirectColor;
   }
   else if(indirectColor.z>0.0 && color.z<0.5){
+    color.xyz=vec3(0.15,0.15,0.15)+0.1*indirectColor;
+  }
+  else if(avgBrightness(indirectColor.xyz)>0.0 && avgBrightness(color.xyz)<0.5){
     color.xyz=vec3(0.15,0.15,0.15)+0.1*indirectColor;
   }
 
