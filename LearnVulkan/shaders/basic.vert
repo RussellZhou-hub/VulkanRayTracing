@@ -26,7 +26,8 @@ layout(binding = 5, set = 0) uniform ShadingMode {
   mat4 PrevProjectionMatrix;
   uint enable2Ray;
   uint enableShadowMotion;
-  uint enable2SR;
+  uint enableMeanDiff;
+  uint enable2thRMotion;
 } shadingMode;
 
 void main() {

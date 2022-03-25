@@ -20,6 +20,7 @@ layout(location = 2) in mat4 PVMatrix;
 layout(location = 0) out vec4 outColor;
 
 vec3 fragPos;
+bool isShadow=false;
 
 layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
 layout(binding = 1, set = 0) uniform Camera {
@@ -44,7 +45,8 @@ layout(binding = 5, set = 0) uniform ShadingMode {
   mat4 PrevProjectionMatrix;
   uint enable2Ray;
   uint enableShadowMotion;
-  uint enable2SR;
+  uint enableMeanDiff;
+  uint enable2thRMotion;
 } shadingMode;
 
 layout(binding = 0, set = 1) buffer MaterialIndexBuffer { uint data[]; } materialIndexBuffer;
@@ -52,8 +54,40 @@ layout(binding = 1, set = 1) buffer MaterialBuffer { Material data[]; } material
 
 
 
-float random(vec2 uv, float seed) {
+float random(vec2 uv, float seed) {     // 0到1的随机数
   return fract(sin(mod(dot(uv, vec2(12.9898, 78.233)) + 1113.1 * seed, M_PI)) * 43758.5453);
+}
+
+float random(vec2 p) 
+{ 
+    vec2 K1 = vec2(
+     23.14069263277926, // e^pi (Gelfond's constant) 
+     2.665144142690225 // 2^sqrt(2) (Gelfondâ€“Schneider constant) 
+    ); 
+    return fract(cos(dot(p,K1)) * 12345.6789); 
+} 
+
+
+
+float random_1(vec2 uv, float seed) {     // -1到1的随机数
+  return pow(-1,mod(seed,1))*fract(sin(mod(dot(uv, vec2(12.9898, 78.233)) + 1113.1 * seed, M_PI)) * 43758.5453);
+}
+
+float avgBrightness(vec3 color){
+    float avg=color.x+color.y+color.z;
+    return avg/3;
+}
+
+vec2 getFragCoord(vec3 pos){          //从世界坐标获取对应的上一帧里的屏幕坐标
+    vec4 clipPos=PVMatrix*vec4(pos,1.0);
+      
+    clipPos.xy/=clipPos.w;
+    clipPos.y=-clipPos.y;
+    clipPos.xy+=1;
+    clipPos.xy/=2;
+    clipPos.x*=camera.ViewPortWidth;
+    clipPos.y*=camera.ViewPortHeight;
+    return floor(clipPos.xy)+0.5;
 }
 
 vec3 getRadomLightPosition(int randomIndex){
@@ -63,7 +97,7 @@ vec3 getRadomLightPosition(int randomIndex){
     vec3 lightVertexB = vec3(vertexBuffer.data[3 * lightIndices.y + 0], vertexBuffer.data[3 * lightIndices.y + 1], vertexBuffer.data[3 * lightIndices.y + 2]);
     vec3 lightVertexC = vec3(vertexBuffer.data[3 * lightIndices.z + 0], vertexBuffer.data[3 * lightIndices.z + 1], vertexBuffer.data[3 * lightIndices.z + 2]);
 
-    vec2 uv = vec2(random(gl_FragCoord.xy, camera.frameCount), random(gl_FragCoord.xy, camera.frameCount + 1));
+    vec2 uv = vec2(random(gl_FragCoord.xy, camera.frameCount), random(vec2(gl_FragCoord.y,gl_FragCoord.x), camera.frameCount + 1));
     if (uv.x + uv.y > 1.0f) {
       uv.x = 1.0f - uv.x;
       uv.y = 1.0f - uv.y;
@@ -79,6 +113,21 @@ vec3 getRadomLightPosition(int randomIndex){
     return lightPosition;
 }
 
+vec3 getReflectedDierction(vec3 inRay,vec3 normal ){     //反射角度
+    inRay=normalize(inRay);
+    normal=normalize(normal);
+    vec3 outRay = inRay - 2*dot(inRay,normal)*normal;
+    return normalize(outRay);
+}
+
+vec3 getSampledReflectedDirection(vec3 inRay,vec3 normal,vec2 uv,float seed){
+    vec3 Ray=getReflectedDierction(inRay,normal);
+    float theta=M_PI*random(uv);
+    float phi=2*M_PI*random(vec2(uv.y,uv.x));
+    vec3 RandomRay=vec3(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta));
+    float weight=0.2;  //reflection rate
+    return normalize(weight*Ray+(1-weight)*normalize(RandomRay));
+}
 
 vec3 uniformSampleHemisphere(vec2 uv) {
   float z = uv.x;
@@ -114,7 +163,7 @@ void main() {
     directColor = materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission;
   }
   else {
-    int randomIndex = int(random(gl_FragCoord.xy, camera.frameCount) * 2 + 40);//40 is the light area
+    int randomIndex = int(random(gl_FragCoord.xy) * 2 + 40);//40 is the light area
     vec3 lightColor = vec3(0.6, 0.6, 0.6);
     //vec3 lightPosition = lightVertexA * lightBarycentric.x + lightVertexB * lightBarycentric.y + lightVertexC * lightBarycentric.z;
     vec3 lightPosition=getRadomLightPosition(randomIndex);
@@ -125,7 +174,7 @@ void main() {
     vec3 shadowRayDirection = positionToLightDirection;
     float shadowRayDistance = length(lightPosition - interpolatedPosition) - 0.001f;
 
-    bool isShadow=false;
+    
     
     //shadow ray
     rayQueryEXT rayQuery;
@@ -142,7 +191,7 @@ void main() {
     }
 
     vec3 directColor_2=vec3(0.0,0.0,0.0);//2th shadow ray
-    if(shadingMode.enable2SR==2 && isShadow==true){
+    if(shadingMode.enableMeanDiff==2 && isShadow==true){
         int randomIndex = int(random(gl_FragCoord.xy, camera.frameCount) * 2 + 40);//40 is the light area
         vec3 lightColor = vec3(0.6, 0.6, 0.6);
         //vec3 lightPosition = lightVertexA * lightBarycentric.x + lightVertexB * lightBarycentric.y + lightVertexC * lightBarycentric.z;
@@ -200,7 +249,7 @@ void main() {
       float alpha=0.9;
       
       int d=10;
-      if(shadingMode.enableShadowMotion==1 && shadingMode.enable2SR==1){  //spatial filter
+      if(shadingMode.enableShadowMotion==1 && shadingMode.enableMeanDiff==1){  //spatial filter
         fragPos.x+=d;
         vec4 previousColorR = imageLoad(image, ivec2(fragPos.xy));
         fragPos.y+=d;
@@ -218,7 +267,7 @@ void main() {
             gl_FragCoord.x,gl_FragCoord.y, fragPos.x,fragPos.y,clipPos.x,interpolatedPosition.x,clipPos.w);
         }
         
-        //if((variance.x+variance.y+variance.z)/3>0){  //���� noisy
+        //if((variance.x+variance.y+variance.z)/3>0){  //估计 noisy
         avgInt=avg.x+avg.y+avg.z;
         avgInt/=3;
         if(avgInt>0.35){
@@ -236,11 +285,13 @@ void main() {
   vec3 alignedHemisphere = alignHemisphereWithCoordinateSystem(hemisphere, geometricNormal);
 
   vec3 rayOrigin = interpolatedPosition;
-  vec3 rayDirection = alignedHemisphere;
+  //vec3 rayDirection = alignedHemisphere;
+  //vec3 rayDirection = getReflectedDierction(interpolatedPosition.xyz-camera.position.xyz,geometricNormal);
+  vec3 rayDirection = getSampledReflectedDirection(interpolatedPosition.xyz-camera.position.xyz,geometricNormal,gl_FragCoord.xy,camera.frameCount);
   vec3 previousNormal = geometricNormal;
 
   bool rayActive = true;
-  int maxRayDepth = 16;
+  int maxRayDepth = 1;
   if(shadingMode.enable2Ray==1){
     for (int rayDepth = 0; rayDepth < maxRayDepth && rayActive; rayDepth++) {
   //secondary ray (or more ray)
@@ -305,6 +356,24 @@ void main() {
         else {
           rayActive = false;
         }
+
+        //if(abs(indirectColor.x-directColor.x)>0.3){
+        //    vec3 avgColor=(indirectColor+directColor)/2;
+        //    directColor=avgColor;
+         //   indirectColor=avgColor;
+        //}
+
+        float subFactor;
+        if(directColor.x<0.1){
+            subFactor=0.3;
+        }
+        else if(directColor.x>0.1 && directColor.x<0.3){
+            subFactor=0.25;
+        }
+        else if(directColor.x>0.3 && directColor.x<0.6){
+            subFactor=0.1;
+        }
+        indirectColor-=vec3(subFactor,subFactor,subFactor);
       }
 
       vec3 hemisphere = uniformSampleHemisphere(vec2(random(gl_FragCoord.xy, camera.frameCount + rayDepth), random(gl_FragCoord.xy, camera.frameCount + rayDepth + 1)));
@@ -321,11 +390,22 @@ void main() {
   }
   }
   
+  
+  float ReflctInShadow;
+  if(isShadow){
+    ReflctInShadow=1;
+    //indirectColor-=vec3(0.25,0.25,0.25);
+  }
+  else{
+    ReflctInShadow=1;
+  }
+  
 
   vec4 color = vec4(directColor + indirectColor, 1.0);
 
+
   /*
-  if (camera.frameCount > 0) {              //��ֹ������ʹ��ǰһ֡���ؽ���
+  if (camera.frameCount > 0) {              //静止画面下使用前一帧像素降噪
     vec4 previousColor = imageLoad(image, ivec2(gl_FragCoord.xy));
     previousColor *= camera.frameCount;
 
@@ -333,7 +413,15 @@ void main() {
     color /= (camera.frameCount + 1);
   }
   */
-  
+  if(indirectColor.x>0.0 && color.x<0.5){     //clamp 阴影中的反射颜色
+    color.xyz=vec3(0.15,0.15,0.15)+0.1*indirectColor;
+  }
+  else if(indirectColor.y>0.0 && color.y<0.5){
+    color.xyz=vec3(0.15,0.15,0.15)+0.1*indirectColor;
+  }
+  else if(indirectColor.z>0.0 && color.z<0.5){
+    color.xyz=vec3(0.15,0.15,0.15)+0.1*indirectColor;
+  }
 
   outColor = color;
 }
