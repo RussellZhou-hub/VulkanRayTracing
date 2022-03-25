@@ -902,11 +902,15 @@ void VkRayTracingApplication::createRenderPass(VkRayTracingApplication* app)
     depthAttachmentRef.attachment = 1;
     depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+    VkSubpassDescription* pSubpass = (VkSubpassDescription*)malloc(2*sizeof(VkSubpassDescription));
+
     VkSubpassDescription subpass = {};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorAttachmentRef;
     subpass.pDepthStencilAttachment = &depthAttachmentRef;
+
+    pSubpass[0] = subpass;
 
     VkSubpassDependency dependency = {};
     dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -923,7 +927,7 @@ void VkRayTracingApplication::createRenderPass(VkRayTracingApplication* app)
     renderPassInfo.attachmentCount = 2;
     renderPassInfo.pAttachments = attachments;
     renderPassInfo.subpassCount = 1;
-    renderPassInfo.pSubpasses = &subpass;
+    renderPassInfo.pSubpasses = pSubpass;
     renderPassInfo.dependencyCount = 1;
     renderPassInfo.pDependencies = &dependency;
 

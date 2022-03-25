@@ -262,11 +262,11 @@ void main() {
         float avgInt;
         avg=beta*previousColor+(1-beta)/3*previousColorR+(1-beta)/3*previousColorRD+(1-beta)/3*previousColorD;
 
-        if(avg.x>0.6){
-            debugPrintfEXT("previousColorR.x is %f\n avg.x is %f",previousColorR.x,avg.x);
-            debugPrintfEXT("gl_FragCoord.x is %f  gl_FragCoord.y is %f \n fragPos.x is %f   fragPos.y is %f  clipPos.x is %f interpolatedPos.x is %f   clipPos.w is %f   \n\n",
-            gl_FragCoord.x,gl_FragCoord.y, fragPos.x,fragPos.y,clipPos.x,interpolatedPosition.x,clipPos.w);
-        }
+        //if(avg.x>0.6){
+        //    debugPrintfEXT("previousColorR.x is %f\n avg.x is %f",previousColorR.x,avg.x);
+        //    debugPrintfEXT("gl_FragCoord.x is %f  gl_FragCoord.y is %f \n fragPos.x is %f   fragPos.y is %f  clipPos.x is %f interpolatedPos.x is %f   clipPos.w is %f   \n\n",
+        //    gl_FragCoord.x,gl_FragCoord.y, fragPos.x,fragPos.y,clipPos.x,interpolatedPosition.x,clipPos.w);
+        //}
         
         //if((variance.x+variance.y+variance.z)/3>0){  //估计 noisy
         avgInt=avg.x+avg.y+avg.z;
@@ -287,7 +287,8 @@ void main() {
 
   vec3 rayOrigin = interpolatedPosition;
   //vec3 rayDirection = alignedHemisphere;
-  //vec3 rayDirection = getReflectedDierction(interpolatedPosition.xyz-camera.position.xyz,geometricNormal);
+  
+  //direction map
   vec3 rayDirection = getSampledReflectedDirection(interpolatedPosition.xyz-camera.position.xyz,geometricNormal,gl_FragCoord.xy,camera.frameCount);
   vec3 previousNormal = geometricNormal;
 
@@ -363,8 +364,8 @@ void main() {
         //    directColor=avgColor;
          //   indirectColor=avgColor;
         //}
-
-        float subFactor;
+        if(shadingMode.enableShadowMotion==1){
+             float subFactor;
         if(directColor.x<0.1){
             subFactor=0.3;
         }
@@ -375,6 +376,8 @@ void main() {
             subFactor=0.1;
         }
         indirectColor-=vec3(subFactor,subFactor,subFactor);
+        }
+
       }
 
       vec3 hemisphere = uniformSampleHemisphere(vec2(random(gl_FragCoord.xy, camera.frameCount + rayDepth), random(gl_FragCoord.xy, camera.frameCount + rayDepth + 1)));
@@ -409,17 +412,20 @@ void main() {
     color /= (camera.frameCount + 1);
   }
   */
-  if(indirectColor.x>0.0 && color.x<0.5){     //clamp 阴影中的反射颜色
-    color.xyz=vec3(0.15,0.15,0.15)+0.1*indirectColor;
-  }
-  else if(indirectColor.y>0.0 && color.y<0.5){
-    color.xyz=vec3(0.15,0.15,0.15)+0.1*indirectColor;
-  }
-  else if(indirectColor.z>0.0 && color.z<0.5){
-    color.xyz=vec3(0.15,0.15,0.15)+0.1*indirectColor;
-  }
-  else if(avgBrightness(indirectColor.xyz)>0.0 && avgBrightness(color.xyz)<0.5){
-    color.xyz=vec3(0.15,0.15,0.15)+0.1*indirectColor;
+  if(shadingMode.enableShadowMotion==1){
+    float addBrightness=0.2;
+    if(indirectColor.x>0.0 && color.x<0.5){     //clamp 阴影中的反射颜色
+        color.xyz=vec3(addBrightness)+0.1*indirectColor;
+     }
+    else if(indirectColor.y>0.0 && color.y<0.5){
+        color.xyz=vec3(addBrightness)+0.1*indirectColor;
+    }
+    else if(indirectColor.z>0.0 && color.z<0.5){
+        color.xyz=vec3(addBrightness)+0.1*indirectColor;
+    }
+    else if(avgBrightness(indirectColor.xyz)>0.0 && avgBrightness(color.xyz)<0.5){
+        color.xyz=vec3(addBrightness)+0.1*indirectColor;
+    }
   }
 
   outColor = color;
