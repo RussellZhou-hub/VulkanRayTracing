@@ -93,6 +93,7 @@ public:
 	uint32_t enableShadowMotion;
 	uint32_t enableMeanDiff;
 	uint32_t enable2thRMotion;
+	uint32_t enable2thRayDierctionSpatialFilter;
 };
 
 struct Material {

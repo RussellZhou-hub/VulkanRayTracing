@@ -7,6 +7,8 @@ layout(location = 0) in vec3 inPosition;
 layout(location = 0) out vec3 interpolatedPosition;
 layout(location = 1) out vec4 clipPos;
 layout(location = 2) out mat4 PVMatrix;
+layout(location = 6) out mat4 invProjMatrix;
+layout(location = 10) out mat4 invViewMatrix;
 
 layout(binding = 1, set = 0) uniform Camera {
   vec4 position;
@@ -28,6 +30,7 @@ layout(binding = 5, set = 0) uniform ShadingMode {
   uint enableShadowMotion;
   uint enableMeanDiff;
   uint enable2thRMotion;
+  uint enable2thRayDierctionSpatialFilter;
 } shadingMode;
 
 void main() {
@@ -61,6 +64,8 @@ void main() {
   //               viewMatrix[3][0],viewMatrix[3][1],viewMatrix[3][2],viewMatrix[3][3] );
 
  // PVMatrix=projectionMatrix*viewMatrix;  //current frame
+  invViewMatrix=inverse(viewMatrix);
+  invProjMatrix=inverse(projectionMatrix);
   gl_Position = projectionMatrix * viewMatrix * vec4(inPosition, 1.0);
  // gl_Position = PVMatrix* vec4(inPosition, 1.0);
   clipPos=PVMatrix* vec4(inPosition, 1.0);

@@ -185,32 +185,43 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
             shadingMode->enableShadowMotion = 0;
             shadingMode->enableMeanDiff = 0;
             shadingMode->enable2thRMotion = 0;
+            shadingMode->enable2thRayDierctionSpatialFilter = 0;
         }
         if (keyDownIndex[GLFW_KEY_2]) {    //2th Ray without denoising
             shadingMode->enable2thRay = 1;
             shadingMode->enableShadowMotion = 0;
             shadingMode->enableMeanDiff = 0;
             shadingMode->enable2thRMotion = 0;
+            shadingMode->enable2thRayDierctionSpatialFilter = 0;
         }
         if (keyDownIndex[GLFW_KEY_3]) {   //shadow method:motion vector along
             shadingMode->enable2thRay = 1;
             shadingMode->enableShadowMotion = 1;
             shadingMode->enableMeanDiff = 0;
-            shadingMode->enable2thRMotion = 1;
+            shadingMode->enable2thRMotion = 0;
+            shadingMode->enable2thRayDierctionSpatialFilter = 0;
         }
         if (keyDownIndex[GLFW_KEY_4]) {   //my shadow method
-            shadingMode->enable2thRay = 0;
+            shadingMode->enable2thRay = 1;
             shadingMode->enableShadowMotion = 1;
             shadingMode->enableMeanDiff = 1;
             shadingMode->enable2thRMotion = 0;
+            shadingMode->enable2thRayDierctionSpatialFilter = 0;
         }
         if (keyDownIndex[GLFW_KEY_5]) {     //my shadow method + 2th Ray
             shadingMode->enable2thRay = 1;
             shadingMode->enableShadowMotion = 1;
             shadingMode->enableMeanDiff = 1;
             shadingMode->enable2thRMotion = 1;
+            shadingMode->enable2thRayDierctionSpatialFilter = 0;
         }
-        
+        if (keyDownIndex[GLFW_KEY_6]) {     //my shadow method + 2th Ray+2thRayDierctionSpatialFilter
+            shadingMode->enable2thRay = 1;
+            shadingMode->enableShadowMotion = 1;
+            shadingMode->enableMeanDiff = 1;
+            shadingMode->enable2thRMotion = 1;
+            shadingMode->enable2thRayDierctionSpatialFilter = 1;
+        }
 
         static double previousMousePositionX;
         static double previousMousePositionY;
