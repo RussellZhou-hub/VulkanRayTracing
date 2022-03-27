@@ -32,6 +32,11 @@ layout(binding = 1, set = 0) uniform Camera {
   vec4 up;
   vec4 forward;
 
+  vec4 lightA;
+  vec4 lightB;
+  vec4 lightC;
+  vec4 lightPad;  //for padding
+
   uint frameCount;
   uint ViewPortWidth;
   uint ViewPortHeight;
@@ -107,9 +112,13 @@ vec4 getWorldPos(vec3 fragPos){
 vec3 getRadomLightPosition(int randomIndex){
     ivec3 lightIndices = ivec3(indexBuffer.data[3 * randomIndex + 0], indexBuffer.data[3 * randomIndex + 1], indexBuffer.data[3 * randomIndex + 2]);
 
-    vec3 lightVertexA = vec3(vertexBuffer.data[3 * lightIndices.x + 0], vertexBuffer.data[3 * lightIndices.x + 1], vertexBuffer.data[3 * lightIndices.x + 2]);
-    vec3 lightVertexB = vec3(vertexBuffer.data[3 * lightIndices.y + 0], vertexBuffer.data[3 * lightIndices.y + 1], vertexBuffer.data[3 * lightIndices.y + 2]);
-    vec3 lightVertexC = vec3(vertexBuffer.data[3 * lightIndices.z + 0], vertexBuffer.data[3 * lightIndices.z + 1], vertexBuffer.data[3 * lightIndices.z + 2]);
+    //vec3 lightVertexA = vec3(vertexBuffer.data[3 * lightIndices.x + 0], vertexBuffer.data[3 * lightIndices.x + 1], vertexBuffer.data[3 * lightIndices.x + 2]);
+    //vec3 lightVertexB = vec3(vertexBuffer.data[3 * lightIndices.y + 0], vertexBuffer.data[3 * lightIndices.y + 1], vertexBuffer.data[3 * lightIndices.y + 2]);
+    //vec3 lightVertexC = vec3(vertexBuffer.data[3 * lightIndices.z + 0], vertexBuffer.data[3 * lightIndices.z + 1], vertexBuffer.data[3 * lightIndices.z + 2]);
+
+    vec3 lightVertexA = camera.lightA.xyz;
+    vec3 lightVertexB = camera.lightB.xyz;
+    vec3 lightVertexC = camera.lightC.xyz;
 
     vec2 uv = vec2(random(gl_FragCoord.xy, camera.frameCount), random(vec2(gl_FragCoord.y,gl_FragCoord.x), camera.frameCount + 1));
     if (uv.x + uv.y > 1.0f) {
@@ -184,8 +193,9 @@ vec3 getSpatial_SampledReflectedDirection(vec3 inPos,vec3 normal,vec2 uv,float s
     bRay=normalize(weight*bRay+(1-weight)*normalize(RandomRay_b));
 
 
-    vec3 Ray=rRay+lRay+bRay+fRay;
-    Ray/=4;
+    vec3 Ray=getSampledReflectedDirection(inPos,normal,uv,seed);
+    Ray+=rRay+lRay+bRay+fRay;
+    Ray/=5;
     
     return normalize(Ray);
 }
@@ -208,6 +218,7 @@ vec3 alignHemisphereWithCoordinateSystem(vec3 hemisphere, vec3 up) {
 void main() {
   vec3 directColor = vec3(0.0, 0.0, 0.0);
   vec3 indirectColor = vec3(0.0, 0.0, 0.0);
+  vec3 indirectColor_2 = vec3(0.0, 0.0, 0.0);
 
   ivec3 indices = ivec3(indexBuffer.data[3 * gl_PrimitiveID + 0], indexBuffer.data[3 * gl_PrimitiveID + 1], indexBuffer.data[3 * gl_PrimitiveID + 2]);
 
@@ -222,6 +233,7 @@ void main() {
   // 40 & 41 == light
   if (gl_PrimitiveID == 40 || gl_PrimitiveID == 41) {
     directColor = materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission;
+     debugPrintfEXT("lightVertexA.x is %f  lightVertexA.y is %f lightVertexA.z is %f \n lightVertexB.x is %f  lightVertexB.y is %f lightVertexB.z is %f \n lightVertexC.x is %f  lightVertexC.y is %f lightVertexC.z is %f \n",vertexA.x,vertexA.y,vertexA.z,vertexB.x,vertexB.y,vertexB.z,vertexC.x,vertexC.y,vertexC.z);
   }
   else {
     int randomIndex = int(random(gl_FragCoord.xy) * 2 + 40);//40 is the light area
@@ -284,7 +296,7 @@ void main() {
         }
     }
 
-    if(shadingMode.enableShadowMotion==1 && isShadow==true){
+    if(shadingMode.enableShadowMotion==1 && isShadow==true && camera.frameCount > 0){
       //Implement shadow motion vector algorithm
       //vec4 prevFramePos=shadingMode.PrevProjectionMatrix*shadingMode.PrevViewMatrix*vec4(interpolatedPosition, 1.0);
 
@@ -303,15 +315,15 @@ void main() {
       vec4 previousColor = imageLoad(image, ivec2(fragPos.xy));
 
       vec4 worldPos=getWorldPos(gl_FragCoord.xyz);
-      if( fragPos.y>1079){
-        debugPrintfEXT("gl_FragCoord.x is %f  gl_FragCoord.y is %f \n worldPos.x is %f   worldPos.y is %f  clipPos.x is %f interpolatedPos.x is %f interpolatedPos.y is %f   clipPos.w is %f   \n\n",
-        gl_FragCoord.x,gl_FragCoord.y, worldPos.x,worldPos.y,clipPos.x,interpolatedPosition.x,interpolatedPosition.y,clipPos.w);
-      }
+      ///if( fragPos.y>1079){
+      //  debugPrintfEXT("gl_FragCoord.x is %f  gl_FragCoord.y is %f \n worldPos.x is %f   worldPos.y is %f  clipPos.x is %f interpolatedPos.x is %f interpolatedPos.y is %f   clipPos.w is %f   \n\n",
+      //  gl_FragCoord.x,gl_FragCoord.y, worldPos.x,worldPos.y,clipPos.x,interpolatedPosition.x,interpolatedPosition.y,clipPos.w);
+      //}
 
       float alpha=0.9;
       
       int d=10;
-      if(shadingMode.enableShadowMotion==1 && shadingMode.enableMeanDiff==1){  //spatial filter
+      if(shadingMode.enableShadowMotion==1 && shadingMode.enableMeanDiff==1 && camera.frameCount > 0){  //spatial filter
         fragPos.x+=d;
         vec4 previousColorR = imageLoad(image, ivec2(fragPos.xy));
         fragPos.y+=d;
@@ -361,7 +373,7 @@ void main() {
 
   bool rayActive = true;
   int maxRayDepth = 1;
-  if(shadingMode.enable2Ray==1){
+  if(shadingMode.enable2Ray==1 && camera.frameCount > 0){
     for (int rayDepth = 0; rayDepth < maxRayDepth && rayActive; rayDepth++) {
   //secondary ray (or more ray)
     rayQueryEXT rayQuery;
@@ -389,14 +401,21 @@ void main() {
         indirectColor += (1.0 / (rayDepth + 1)) * materialBuffer.data[materialIndexBuffer.data[extensionPrimitiveIndex]].emission * dot(previousNormal, rayDirection);
       }
       else {
+        RayHitPointFragCoord=getFragCoord(extensionPosition.xyz);
+
+
         int randomIndex = int(random(gl_FragCoord.xy, camera.frameCount + rayDepth) * 2 + 40);
         vec3 lightColor = vec3(0.6, 0.6, 0.6);
 
         ivec3 lightIndices = ivec3(indexBuffer.data[3 * randomIndex + 0], indexBuffer.data[3 * randomIndex + 1], indexBuffer.data[3 * randomIndex + 2]);
 
-        vec3 lightVertexA = vec3(vertexBuffer.data[3 * lightIndices.x + 0], vertexBuffer.data[3 * lightIndices.x + 1], vertexBuffer.data[3 * lightIndices.x + 2]);
-        vec3 lightVertexB = vec3(vertexBuffer.data[3 * lightIndices.y + 0], vertexBuffer.data[3 * lightIndices.y + 1], vertexBuffer.data[3 * lightIndices.y + 2]);
-        vec3 lightVertexC = vec3(vertexBuffer.data[3 * lightIndices.z + 0], vertexBuffer.data[3 * lightIndices.z + 1], vertexBuffer.data[3 * lightIndices.z + 2]);
+        //vec3 lightVertexA = vec3(vertexBuffer.data[3 * lightIndices.x + 0], vertexBuffer.data[3 * lightIndices.x + 1], vertexBuffer.data[3 * lightIndices.x + 2]);
+        //vec3 lightVertexB = vec3(vertexBuffer.data[3 * lightIndices.y + 0], vertexBuffer.data[3 * lightIndices.y + 1], vertexBuffer.data[3 * lightIndices.y + 2]);
+        //vec3 lightVertexC = vec3(vertexBuffer.data[3 * lightIndices.z + 0], vertexBuffer.data[3 * lightIndices.z + 1], vertexBuffer.data[3 * lightIndices.z + 2]);
+
+        vec3 lightVertexA = camera.lightA.xyz;
+        vec3 lightVertexB = camera.lightB.xyz;
+        vec3 lightVertexC = camera.lightC.xyz;
 
         vec2 uv = vec2(random(gl_FragCoord.xy, camera.frameCount + rayDepth), random(gl_FragCoord.xy, camera.frameCount + rayDepth + 1));
         if (uv.x + uv.y > 1.0f) {
@@ -455,7 +474,8 @@ void main() {
       rayDirection = alignedHemisphere;
       previousNormal = extensionNormal;
 
-      RayHitPointFragCoord=getFragCoord(interpolatedPosition.xyz);
+      //RayHitPointFragCoord=getFragCoord(interpolatedPosition.xyz);
+      RayHitPointFragCoord=getFragCoord(extensionPosition.xyz);
     }
     else {
       rayActive = false;
@@ -463,9 +483,125 @@ void main() {
   }
   }
 
+  rayDirection = getSampledReflectedDirection(interpolatedPosition.xyz,geometricNormal,gl_FragCoord.xy,camera.frameCount);
+  rayActive = true;
+  maxRayDepth = 1;
+  if(shadingMode.enable2thRayDierctionSpatialFilter==2){
+    for (int rayDepth = 0; rayDepth < maxRayDepth && rayActive; rayDepth++) {
+  //secondary ray (or more ray)
+    rayQueryEXT rayQuery;
+    rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, rayOrigin, 0.001f, rayDirection, 1000.0f);
+
+    while (rayQueryProceedEXT(rayQuery));
+
+    if (rayQueryGetIntersectionTypeEXT(rayQuery, true) != gl_RayQueryCommittedIntersectionNoneEXT) {
+      int extensionPrimitiveIndex = rayQueryGetIntersectionPrimitiveIndexEXT(rayQuery, true);
+      vec2 extensionIntersectionBarycentric = rayQueryGetIntersectionBarycentricsEXT(rayQuery, true);
+
+      ivec3 extensionIndices = ivec3(indexBuffer.data[3 * extensionPrimitiveIndex + 0], indexBuffer.data[3 * extensionPrimitiveIndex + 1], indexBuffer.data[3 * extensionPrimitiveIndex + 2]);
+      vec3 extensionBarycentric = vec3(1.0 - extensionIntersectionBarycentric.x - extensionIntersectionBarycentric.y, extensionIntersectionBarycentric.x, extensionIntersectionBarycentric.y);
+      
+      vec3 extensionVertexA = vec3(vertexBuffer.data[3 * extensionIndices.x + 0], vertexBuffer.data[3 * extensionIndices.x + 1], vertexBuffer.data[3 * extensionIndices.x + 2]);
+      vec3 extensionVertexB = vec3(vertexBuffer.data[3 * extensionIndices.y + 0], vertexBuffer.data[3 * extensionIndices.y + 1], vertexBuffer.data[3 * extensionIndices.y + 2]);
+      vec3 extensionVertexC = vec3(vertexBuffer.data[3 * extensionIndices.z + 0], vertexBuffer.data[3 * extensionIndices.z + 1], vertexBuffer.data[3 * extensionIndices.z + 2]);
+    
+      vec3 extensionPosition = extensionVertexA * extensionBarycentric.x + extensionVertexB * extensionBarycentric.y + extensionVertexC * extensionBarycentric.z;
+      vec3 extensionNormal = normalize(cross(extensionVertexB - extensionVertexA, extensionVertexC - extensionVertexA));
+
+      vec3 extensionSurfaceColor = materialBuffer.data[materialIndexBuffer.data[extensionPrimitiveIndex]].diffuse;
+
+      if (extensionPrimitiveIndex == 40 || extensionPrimitiveIndex == 41) {
+        indirectColor_2 += (1.0 / (rayDepth + 1)) * materialBuffer.data[materialIndexBuffer.data[extensionPrimitiveIndex]].emission * dot(previousNormal, rayDirection);
+      }
+      else {
+        RayHitPointFragCoord=getFragCoord(extensionPosition.xyz);
+
+
+        int randomIndex = int(random(gl_FragCoord.xy, camera.frameCount + rayDepth) * 2 + 40);
+        vec3 lightColor = vec3(0.6, 0.6, 0.6);
+
+        ivec3 lightIndices = ivec3(indexBuffer.data[3 * randomIndex + 0], indexBuffer.data[3 * randomIndex + 1], indexBuffer.data[3 * randomIndex + 2]);
+
+        //vec3 lightVertexA = vec3(vertexBuffer.data[3 * lightIndices.x + 0], vertexBuffer.data[3 * lightIndices.x + 1], vertexBuffer.data[3 * lightIndices.x + 2]);
+        //vec3 lightVertexB = vec3(vertexBuffer.data[3 * lightIndices.y + 0], vertexBuffer.data[3 * lightIndices.y + 1], vertexBuffer.data[3 * lightIndices.y + 2]);
+        //vec3 lightVertexC = vec3(vertexBuffer.data[3 * lightIndices.z + 0], vertexBuffer.data[3 * lightIndices.z + 1], vertexBuffer.data[3 * lightIndices.z + 2]);
+
+        vec3 lightVertexA = camera.lightA.xyz;
+        vec3 lightVertexB = camera.lightB.xyz;
+        vec3 lightVertexC = camera.lightC.xyz;
+
+        vec2 uv = vec2(random(gl_FragCoord.xy, camera.frameCount + rayDepth), random(gl_FragCoord.xy, camera.frameCount + rayDepth + 1));
+        if (uv.x + uv.y > 1.0f) {
+          uv.x = 1.0f - uv.x;
+          uv.y = 1.0f - uv.y;
+        }
+
+        vec3 lightBarycentric = vec3(1.0 - uv.x - uv.y, uv.x, uv.y);
+        vec3 lightPosition = lightVertexA * lightBarycentric.x + lightVertexB * lightBarycentric.y + lightVertexC * lightBarycentric.z;
+
+        vec3 positionToLightDirection = normalize(lightPosition - extensionPosition);
+
+        vec3 shadowRayOrigin = extensionPosition;
+        vec3 shadowRayDirection = positionToLightDirection;
+        float shadowRayDistance = length(lightPosition - extensionPosition) - 0.001f;
+
+        rayQueryEXT rayQuery;
+        rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, shadowRayOrigin, 0.001f, shadowRayDirection, shadowRayDistance);
+      
+        while (rayQueryProceedEXT(rayQuery));
+
+        //secondary shadow ray
+        if (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
+          indirectColor_2 += (1.0 / (rayDepth + 1)) * extensionSurfaceColor * lightColor  * dot(previousNormal, rayDirection) * dot(extensionNormal, positionToLightDirection);
+        }
+        else {
+          rayActive = false;
+        }
+
+        //if(abs(indirectColor.x-directColor.x)>0.3){
+        //    vec3 avgColor=(indirectColor+directColor)/2;
+        //    directColor=avgColor;
+         //   indirectColor=avgColor;
+        //}
+        if(shadingMode.enableShadowMotion==1 && gl_PrimitiveID != 40 && gl_PrimitiveID != 41 && camera.frameCount > 0){
+             float subFactor;
+        if(directColor.x<0.1){
+            subFactor=0.3;
+        }
+        else if(directColor.x>0.1 && directColor.x<0.3){
+            subFactor=0.25;
+        }
+        else if(directColor.x>0.3 && directColor.x<0.6){
+            subFactor=0.1;
+        }
+        indirectColor_2-=vec3(subFactor,subFactor,subFactor);
+        }
+
+      }
+
+      vec3 hemisphere = uniformSampleHemisphere(vec2(random(gl_FragCoord.xy, camera.frameCount + rayDepth), random(gl_FragCoord.xy, camera.frameCount + rayDepth + 1)));
+      vec3 alignedHemisphere = alignHemisphereWithCoordinateSystem(hemisphere, extensionNormal);
+
+      //reset rayOrigin...
+      rayOrigin = extensionPosition;
+      rayDirection = alignedHemisphere;
+      previousNormal = extensionNormal;
+
+      //RayHitPointFragCoord=getFragCoord(interpolatedPosition.xyz);
+      RayHitPointFragCoord=getFragCoord(extensionPosition.xyz);
+    }
+    else {
+      rayActive = false;
+    }
+  }
+  }
+
+  indirectColor+=indirectColor_2;
+  indirectColor/=2;
+
   vec4 color = vec4(directColor + indirectColor, 1.0);
 
-  if(!isShadow && shadingMode.enable2thRMotion==1){
+  if(!isShadow && shadingMode.enable2thRMotion==1 && gl_PrimitiveID != 40 && gl_PrimitiveID != 41 && camera.frameCount > 0){
     vec4 previousColor = imageLoad(image, ivec2(RayHitPointFragCoord.xy));
     color.xyz=0.3*previousColor.xyz+0.7*color.xyz;
   }
@@ -479,7 +615,7 @@ void main() {
     color /= (camera.frameCount + 1);
   }
   */
-  if(shadingMode.enableShadowMotion==1 && gl_PrimitiveID != 40 && gl_PrimitiveID != 41){
+  if(shadingMode.enableShadowMotion==1 && gl_PrimitiveID != 40 && gl_PrimitiveID != 41 && camera.frameCount > 0){
     float addBrightness=0.2;
     float addIndirect=0.2;
     if(indirectColor.x>0.0 && color.x<0.5){     //clamp 阴影中的反射颜色

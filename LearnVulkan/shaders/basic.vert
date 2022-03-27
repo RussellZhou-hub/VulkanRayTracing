@@ -16,6 +16,11 @@ layout(binding = 1, set = 0) uniform Camera {
   vec4 up;
   vec4 forward;
 
+  vec4 lightA;
+  vec4 lightB;
+  vec4 lightC;
+  vec4 lightPad;  //for padding
+
   uint frameCount;
   uint ViewPortWidth;
   uint ViewPortHeight;

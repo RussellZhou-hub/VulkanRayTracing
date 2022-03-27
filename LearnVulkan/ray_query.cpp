@@ -36,6 +36,12 @@ Camera::Camera() {
     right[0] = 1.0f; right[1] = 0.0f; right[2] = 0.0f; right[3] = 1.0f;
     up[0] = 0.0f; up[1] = 1.0f; up[2] = 0.0f; up[3] = 1.0f;
     forward[0] = 0.0f; forward[1] = 0.0f; forward[2] = 1.0f; forward[3] = 1.0f;
+
+    lightA = glm::vec4(2.81,8.28,-1.6,1.0);
+    lightB = glm::vec4(0.81, 8.28, 0.39, 1.0);
+    lightC = glm::vec4(0.81, 8.28, -1.6, 1.0);
+    lightPad = glm::vec4(0.0,0.0,0.0,1.0);
+
     frameCount = 0;
     ViewPortWidth = WIDTH;
     ViewPortHeight = HEIGHT;
@@ -172,6 +178,50 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
             cameraPosition[2] += sin(-cameraYaw) * 0.1f;
             isCameraMoved = 1;
         }
+
+        if (keyDownIndex[GLFW_KEY_UP]) {
+            camera->lightA.y += 0.1f;
+            camera->lightB.y += 0.1f;
+            camera->lightC.y += 0.1f;
+        }
+        if (keyDownIndex[GLFW_KEY_DOWN]) {
+            camera->lightA.y -= 0.1f;
+            camera->lightB.y -= 0.1f;
+            camera->lightC.y -= 0.1f;
+        }
+        if (keyDownIndex[GLFW_KEY_LEFT]) {
+            camera->lightA.x -= cos(-cameraYaw) * 0.1f;
+            camera->lightB.x -= cos(-cameraYaw) * 0.1f;
+            camera->lightC.x -= cos(-cameraYaw) * 0.1f;
+            camera->lightA.z -= sin(-cameraYaw) * 0.1f;
+            camera->lightB.z -= sin(-cameraYaw) * 0.1f;
+            camera->lightC.z -= sin(-cameraYaw) * 0.1f;
+        }
+        if (keyDownIndex[GLFW_KEY_RIGHT]) {
+            camera->lightA.x += cos(-cameraYaw) * 0.1f;
+            camera->lightB.x += cos(-cameraYaw) * 0.1f;
+            camera->lightC.x += cos(-cameraYaw) * 0.1f;
+            camera->lightA.z += sin(-cameraYaw) * 0.1f;
+            camera->lightB.z += sin(-cameraYaw) * 0.1f;
+            camera->lightC.z += sin(-cameraYaw) * 0.1f;
+        }
+        if (keyDownIndex[GLFW_KEY_INSERT]) {
+            camera->lightA.x += cos(-cameraYaw - (M_PI / 2)) * 0.1f;
+            camera->lightB.x += cos(-cameraYaw - (M_PI / 2)) * 0.1f;
+            camera->lightC.x += cos(-cameraYaw - (M_PI / 2)) * 0.1f;
+            camera->lightA.z += sin(-cameraYaw - (M_PI / 2)) * 0.1f;
+            camera->lightB.z += sin(-cameraYaw - (M_PI / 2)) * 0.1f;
+            camera->lightC.z += sin(-cameraYaw - (M_PI / 2)) * 0.1f;
+        }
+        if (keyDownIndex[GLFW_KEY_DELETE]) {
+            camera->lightA.x -= cos(-cameraYaw - (M_PI / 2)) * 0.1f;
+            camera->lightB.x -= cos(-cameraYaw - (M_PI / 2)) * 0.1f;
+            camera->lightC.x -= cos(-cameraYaw - (M_PI / 2)) * 0.1f;
+            camera->lightA.z -= sin(-cameraYaw - (M_PI / 2)) * 0.1f;
+            camera->lightB.z -= sin(-cameraYaw - (M_PI / 2)) * 0.1f;
+            camera->lightC.z -= sin(-cameraYaw - (M_PI / 2)) * 0.1f;
+        }
+
         if (keyDownIndex[GLFW_KEY_SPACE]) {
             cameraPosition[1] += 0.1f;
             isCameraMoved = 1;
@@ -198,7 +248,7 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
             shadingMode->enable2thRay = 1;
             shadingMode->enableShadowMotion = 1;
             shadingMode->enableMeanDiff = 0;
-            shadingMode->enable2thRMotion = 0;
+            shadingMode->enable2thRMotion = 1;
             shadingMode->enable2thRayDierctionSpatialFilter = 0;
         }
         if (keyDownIndex[GLFW_KEY_4]) {   //my shadow method
@@ -221,6 +271,13 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
             shadingMode->enableMeanDiff = 1;
             shadingMode->enable2thRMotion = 1;
             shadingMode->enable2thRayDierctionSpatialFilter = 1;
+        }
+        if (keyDownIndex[GLFW_KEY_7]) {     //my shadow method + 2th Ray+2*2thRay
+            shadingMode->enable2thRay = 1;
+            shadingMode->enableShadowMotion = 1;
+            shadingMode->enableMeanDiff = 1;
+            shadingMode->enable2thRMotion = 0;
+            shadingMode->enable2thRayDierctionSpatialFilter = 0;
         }
 
         static double previousMousePositionX;

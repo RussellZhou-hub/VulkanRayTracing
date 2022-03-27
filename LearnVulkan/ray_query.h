@@ -77,6 +77,11 @@ public:
 	float up[4];
 	float forward[4];
 
+	glm::vec4 lightA;
+	glm::vec4 lightB;
+	glm::vec4 lightC;
+	glm::vec4 lightPad;  //for padding
+
 	uint32_t frameCount;
 	uint32_t ViewPortWidth;
 	uint32_t ViewPortHeight;
