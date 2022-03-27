@@ -25,6 +25,7 @@
 #define STB_IMAGE_IMPLEMENTATION    
 #include "stb_image.h"
 #include <iostream>
+#include "Shader.h"
 
 
 VkRayTracingApplication::VkRayTracingApplication() {
@@ -220,6 +221,16 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
             camera->lightA.z -= sin(-cameraYaw - (M_PI / 2)) * 0.1f;
             camera->lightB.z -= sin(-cameraYaw - (M_PI / 2)) * 0.1f;
             camera->lightC.z -= sin(-cameraYaw - (M_PI / 2)) * 0.1f;
+        }
+        if (keyDownIndex[GLFW_KEY_HOME]) {
+            camera->lightA *= 1.1f;
+            camera->lightB *= 1.1f;
+            camera->lightC*= 1.1f;
+        }
+        if (keyDownIndex[GLFW_KEY_END]) {
+            camera->lightA /= 1.1f;
+            camera->lightB /= 1.1f;
+            camera->lightC /= 1.1f;
         }
 
         if (keyDownIndex[GLFW_KEY_SPACE]) {
@@ -2421,66 +2432,14 @@ void VkRayTracingApplication::createFramebuffers(VkRayTracingApplication* app)
 
 void VkRayTracingApplication::createGraphicsPipeline(VkRayTracingApplication* app)
 {
-    FILE* vertexFile = fopen("shaders/basic.vert.spv", "rb");
-    fseek(vertexFile, 0, SEEK_END);
-    uint32_t vertexFileSize = ftell(vertexFile);
-    fseek(vertexFile, 0, SEEK_SET);
 
-    char* vertexFileBuffer = (char*)malloc(sizeof(char*) * vertexFileSize);
-    fread(vertexFileBuffer, 1, vertexFileSize, vertexFile);
-    fclose(vertexFile);
+    Shader* vertex_shader=new Shader();
+    vertex_shader->load(app,"shaders/basic.vert.spv");
 
-    FILE* fragmentFile = fopen("shaders/basic.frag.spv", "rb");
+    Shader* frag_shader = new Shader();
+    frag_shader->load(app, "shaders/basic.frag.spv");
 
-    fseek(fragmentFile, 0, SEEK_END);
-    uint32_t fragmentFileSize = ftell(fragmentFile);
-    fseek(fragmentFile, 0, SEEK_SET);
-
-    char* fragmentFileBuffer = (char*)malloc(sizeof(char*) * fragmentFileSize);
-    fread(fragmentFileBuffer, 1, fragmentFileSize, fragmentFile);
-    fclose(fragmentFile);
-
-    VkShaderModuleCreateInfo vertexShaderModuleCreateInfo = {};
-    vertexShaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    vertexShaderModuleCreateInfo.codeSize = vertexFileSize;
-    vertexShaderModuleCreateInfo.pCode = (uint32_t*)vertexFileBuffer;
-
-    VkShaderModule vertexShaderModule;
-    VkResult result;
-    try {
-        result = vkCreateShaderModule(app->logicalDevice, &vertexShaderModuleCreateInfo, NULL, &vertexShaderModule);
-    }
-    catch (...) {
-        cout << "unknown exception\n";
-    }
-    if (result == VK_SUCCESS) {
-        printf("created vertex shader module\n");
-    }
-
-    VkShaderModuleCreateInfo fragmentShaderModuleCreateInfo = {};
-    fragmentShaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    fragmentShaderModuleCreateInfo.codeSize = fragmentFileSize;
-    fragmentShaderModuleCreateInfo.pCode = (uint32_t*)fragmentFileBuffer;
-
-    VkShaderModule fragmentShaderModule;
-    VkResult errorCode = vkCreateShaderModule(app->logicalDevice, &fragmentShaderModuleCreateInfo, NULL, &fragmentShaderModule);
-    if (errorCode == VK_SUCCESS) {
-        printf("created fragment shader module\n");
-    }
-
-    VkPipelineShaderStageCreateInfo vertexShaderStageInfo = {};
-    vertexShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vertexShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vertexShaderStageInfo.module = vertexShaderModule;
-    vertexShaderStageInfo.pName = "main";
-
-    VkPipelineShaderStageCreateInfo fragmentShaderStageInfo = {};
-    fragmentShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    fragmentShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fragmentShaderStageInfo.module = fragmentShaderModule;
-    fragmentShaderStageInfo.pName = "main";
-
-    VkPipelineShaderStageCreateInfo shaderStages[2] = { vertexShaderStageInfo, fragmentShaderStageInfo };
+    VkPipelineShaderStageCreateInfo shaderStages[2] = { vertex_shader->ShaderStageInfo, frag_shader->ShaderStageInfo };
 
     app->vertexBindingDescriptions = (VkVertexInputBindingDescription*)malloc(sizeof(VkVertexInputBindingDescription) * 1);
     app->vertexBindingDescriptions[0].binding = 0;
@@ -2588,6 +2547,7 @@ void VkRayTracingApplication::createGraphicsPipeline(VkRayTracingApplication* ap
     graphicsPipelineCreateInfo.subpass = 0;
     graphicsPipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
 
+    VkResult errorCode;
     try {
         errorCode = vkCreateGraphicsPipelines(app->logicalDevice, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, NULL, &app->graphicsPipeline);
     }
@@ -2599,11 +2559,9 @@ void VkRayTracingApplication::createGraphicsPipeline(VkRayTracingApplication* ap
         printf("created graphics pipeline\n");
     }
 
-    vkDestroyShaderModule(app->logicalDevice, vertexShaderModule, NULL);
-    vkDestroyShaderModule(app->logicalDevice, fragmentShaderModule, NULL);
 
-    free(vertexFileBuffer);
-    free(fragmentFileBuffer);
+    delete vertex_shader;
+    delete frag_shader;
 }
 
 ShadingMode::ShadingMode()

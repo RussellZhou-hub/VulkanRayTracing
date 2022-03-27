@@ -1,3 +1,4 @@
+#pragma once
 #define _CRT_SECURE_NO_WARNINGS
 #define SEEK_END 2
 #define VK_ENABLE_BETA_EXTENSIONS
@@ -122,6 +123,7 @@ public:
 
 class VkRayTracingApplication {
 public:
+	friend class Shader;
 	VkRayTracingApplication();
 	void run(Scene& scene, Camera& camera, ShadingMode& shadingMode);
 private:

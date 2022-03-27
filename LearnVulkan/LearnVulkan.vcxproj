@@ -172,6 +172,7 @@
   <ItemGroup>
     <ClCompile Include="App.cpp" />
     <ClCompile Include="ray_query.cpp" />
+    <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Utils.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="main.cpp" />
@@ -181,6 +182,7 @@
     <ClInclude Include="App.h" />
     <ClInclude Include="ray_query.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="Shader.h" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="tinyobj_loader_c.h" />
     <ClInclude Include="tiny_obj_loader.h" />
