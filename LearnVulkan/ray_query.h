@@ -73,6 +73,8 @@ You can find the full list of alignment requirements in https://www.khronos.org/
 class Camera {
 public:
 	Camera();
+	glm::mat4 viewMatrix;
+	glm::mat4 projMatrix;
 	float position[4];
 	float right[4];
 	float up[4];
@@ -155,9 +157,11 @@ private:
 	void createUniformBuffer(VkRayTracingApplication* app);
 	void createDescriptorSets(VkRayTracingApplication* app);
 	void createGraphicsPipeline(VkRayTracingApplication* app);//Rasterization pipeline
+	void createGraphicsPipeline_indirectLgt(VkRayTracingApplication* app);//Rasterization pipeline_indirectLgt
 	void createRayTracePipeline(VkRayTracingApplication* app);
 	void createShaderBindingTable(VkRayTracingApplication* app);
 	void createCommandBuffers(VkRayTracingApplication* app, Scene* scene);
+	void createCommandBuffers_2pass(VkRayTracingApplication* app, Scene* scene);
 	void createSynchronizationObjects(VkRayTracingApplication* app);
 	void updateUniformBuffer(VkRayTracingApplication* app, Camera* camera, ShadingMode* shadingMode);
 	void drawFrame(VkRayTracingApplication* app, struct Camera* camera, ShadingMode* shadingMode);
@@ -188,9 +192,15 @@ private:
 	VkImageView* swapchainImageViews;
 	VkFramebuffer* swapchainFramebuffers;
 
+	VkFramebuffer* swapchainFramebuffers_indirectLgt;
+
 	VkRenderPass renderPass;
 	VkPipelineLayout pipelineLayout;
 	VkPipeline graphicsPipeline;
+
+	VkRenderPass renderPass_indierctLgt;
+	VkPipelineLayout pipelineLayout_indierctLgt;
+	VkPipeline graphicsPipeline_indierctLgt;
 
 	VkCommandPool commandPool;
 	VkCommandBuffer* commandBuffers;
@@ -243,6 +253,10 @@ private:
 	VkImageView rayTraceImageView;
 	VkImage rayTraceImage;
 	VkDeviceMemory rayTraceImageMemory;
+
+	VkImageView ImageView_indirectLgt;
+	VkImage Image_indirectLgt;
+	VkDeviceMemory ImageMemory_indirectLgt;
 
 	VkDescriptorPool descriptorPool;
 	VkDescriptorSet rayTraceDescriptorSet;

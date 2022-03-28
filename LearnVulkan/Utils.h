@@ -26,10 +26,14 @@ int main()
 
 glm::vec4& operator-(glm::vec4 a, float* pB);
 
+glm::vec4& operator+(glm::vec4 a, float* pB);
+
 glm::vec4& operator-(float* pB, glm::vec4 a);
 
 float dot(float* pB, glm::vec4 a);
 
+glm::mat4 lookAt(glm::vec4 pos, glm::vec4 posAddForward, glm::vec4 up);
 
+glm::mat4 lookAt(glm::vec4 pos, glm::vec4 posAddForward, float* up);
 
 #endif

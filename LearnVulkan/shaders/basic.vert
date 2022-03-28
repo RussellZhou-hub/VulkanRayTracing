@@ -11,6 +11,8 @@ layout(location = 6) out mat4 invProjMatrix;
 layout(location = 10) out mat4 invViewMatrix;
 
 layout(binding = 1, set = 0) uniform Camera {
+  mat4 viewMatrix;
+  mat4 projMatrix;
   vec4 position;
   vec4 right;
   vec4 up;
@@ -71,7 +73,7 @@ void main() {
  // PVMatrix=projectionMatrix*viewMatrix;  //current frame
   invViewMatrix=inverse(viewMatrix);
   invProjMatrix=inverse(projectionMatrix);
-  gl_Position = projectionMatrix * viewMatrix * vec4(inPosition, 1.0);
+  gl_Position = camera.projMatrix * camera.viewMatrix * vec4(inPosition, 1.0);
  // gl_Position = PVMatrix* vec4(inPosition, 1.0);
   clipPos=PVMatrix* vec4(inPosition, 1.0);
   
