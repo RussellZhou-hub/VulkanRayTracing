@@ -288,10 +288,10 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
         }
         if (keyDownIndex[GLFW_KEY_7]) {     //my shadow method + 2th Ray+2*2thRay
             shadingMode->enable2thRay = 1;
-            shadingMode->enableShadowMotion = 1;
-            shadingMode->enableMeanDiff = 1;
+            shadingMode->enableShadowMotion = 0;
+            shadingMode->enableMeanDiff = 0;
             shadingMode->enable2thRMotion = 0;
-            shadingMode->enable2thRayDierctionSpatialFilter = 0;
+            shadingMode->enable2thRayDierctionSpatialFilter = 1;
         }
 
         static double previousMousePositionX;
