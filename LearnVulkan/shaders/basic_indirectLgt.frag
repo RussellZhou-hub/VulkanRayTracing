@@ -48,6 +48,7 @@ layout(binding = 2, set = 0) buffer IndexBuffer { uint data[]; } indexBuffer;
 layout(binding = 3, set = 0) buffer VertexBuffer { float data[]; } vertexBuffer;
 layout(binding = 4, set = 0, rgba32f) uniform image2D image;
 layout(binding = 6, set = 0, rgba32f) uniform image2D image_indirectLgt;
+layout(binding = 7, set = 0, rgba32f) uniform image2D image_indirectLgt_2;
 
 layout(binding = 5, set = 0) uniform ShadingMode {
   //mat4 invViewMatrix;
@@ -164,11 +165,12 @@ void main() {
 
         outColor=vec4(beta_indirect*preIndirectDirection.xyz+(1-beta_indirect)*rayDirection,1.0); //direction of the 2thRay
       */
-      float beta_indirect=0.9;
+      float beta_indirect=0;
 
         
 
         { //5*5 guassian
+        /*
             vec4 preIndirectDirection_00 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-2,gl_FragCoord.y-2));
             vec4 preIndirectDirection_01 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-1,gl_FragCoord.y-2));
             vec4 preIndirectDirection_02 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y-2));
@@ -202,9 +204,10 @@ void main() {
             vec4 preIndirectDirection_42 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y+2));
             vec4 preIndirectDirection_43 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+1,gl_FragCoord.y+2));
             vec4 preIndirectDirection_44 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+2,gl_FragCoord.y+2));
-            vec4 r4=1*preIndirectDirection_40+4*preIndirectDirection_41+7*preIndirectDirection_42+4*preIndirectDirection_43+1*preIndirectDirection_44;
+            vec4 r4=1*preIndirectDirection_40+4*preIndirectDirection_41+7*preIndirectDirection_42+4*preIndirectDirection_43+1*preIndirectDirection_44;  */
 
-            vec4 total=(r0+r1+r2+r3+r4)/273;
+            //vec4 total=(r0+r1+r2+r3+r4)/273;
+            vec4 total=vec4(0.0,0.0,0.0,1.0);
             outColor=vec4(beta_indirect*total.xyz+(1-beta_indirect)*rayDirection,1.0); //direction of the 2thRay
         }
 

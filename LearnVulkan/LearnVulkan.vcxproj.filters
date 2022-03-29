@@ -115,6 +115,9 @@
     <None Include="shaders\basic_indirectLgt.frag">
       <Filter>shaders\ray_query</Filter>
     </None>
+    <None Include="shaders\basic_filterIndirect.frag">
+      <Filter>shaders\ray_query</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="BasicVulkan.rc">

@@ -158,10 +158,12 @@ private:
 	void createDescriptorSets(VkRayTracingApplication* app);
 	void createGraphicsPipeline(VkRayTracingApplication* app);//Rasterization pipeline
 	void createGraphicsPipeline_indirectLgt(VkRayTracingApplication* app);//Rasterization pipeline_indirectLgt
+	void createGraphicsPipeline_indirectLgt_2(VkRayTracingApplication* app);//Rasterization pipeline_indirectLgt_2
 	void createRayTracePipeline(VkRayTracingApplication* app);
 	void createShaderBindingTable(VkRayTracingApplication* app);
 	void createCommandBuffers(VkRayTracingApplication* app, Scene* scene);
 	void createCommandBuffers_2pass(VkRayTracingApplication* app, Scene* scene);
+	void createCommandBuffers_3pass(VkRayTracingApplication* app, Scene* scene);
 	void createSynchronizationObjects(VkRayTracingApplication* app);
 	void updateUniformBuffer(VkRayTracingApplication* app, Camera* camera, ShadingMode* shadingMode);
 	void drawFrame(VkRayTracingApplication* app, struct Camera* camera, ShadingMode* shadingMode);
@@ -201,6 +203,12 @@ private:
 	VkRenderPass renderPass_indierctLgt;
 	VkPipelineLayout pipelineLayout_indierctLgt;
 	VkPipeline graphicsPipeline_indierctLgt;
+
+	VkRenderPass renderPass_indierctLgt_2;
+	VkPipelineLayout pipelineLayout_indierctLgt_2;
+	VkPipeline graphicsPipeline_indierctLgt_2;
+
+	
 
 	VkCommandPool commandPool;
 	VkCommandBuffer* commandBuffers;
@@ -257,6 +265,11 @@ private:
 	VkImageView ImageView_indirectLgt;
 	VkImage Image_indirectLgt;
 	VkDeviceMemory ImageMemory_indirectLgt;
+
+	VkImageView ImageView_indirectLgt_2;
+	VkImage Image_indirectLgt_2;
+	VkDeviceMemory ImageMemory_indirectLgt_2;
+	
 
 	VkDescriptorPool descriptorPool;
 	VkDescriptorSet rayTraceDescriptorSet;

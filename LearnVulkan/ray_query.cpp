@@ -126,8 +126,10 @@ void VkRayTracingApplication::initVulkan(Scene* scene)
 
     createGraphicsPipeline(this);
     createGraphicsPipeline_indirectLgt(this);
+    createGraphicsPipeline_indirectLgt_2(this);
     //createCommandBuffers(this,scene);
-    createCommandBuffers_2pass(this, scene);
+    //createCommandBuffers_2pass(this, scene);
+    createCommandBuffers_3pass(this, scene);
 
     createSynchronizationObjects(this);
 }
@@ -1019,7 +1021,10 @@ void VkRayTracingApplication::createRenderPass(VkRayTracingApplication* app)
         printf("created render pass\n");
     }
     if (vkCreateRenderPass(app->logicalDevice, &renderPassInfo, NULL, &app->renderPass_indierctLgt) == VK_SUCCESS) {
-        printf("created render pass\n");
+        printf("created renderPass_indierctLgt pass\n");
+    }
+    if (vkCreateRenderPass(app->logicalDevice, &renderPassInfo, NULL, &app->renderPass_indierctLgt_2) == VK_SUCCESS) {
+        printf("created renderPass_indierctLgt_2 pass\n");
     }
 }
 
@@ -1147,6 +1152,7 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
 {
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->rayTraceImage, &app->rayTraceImageMemory);
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->Image_indirectLgt, &app->ImageMemory_indirectLgt);
+    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->Image_indirectLgt_2, &app->ImageMemory_indirectLgt_2);
 
     VkImageSubresourceRange subresourceRange = {};
     subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -1166,11 +1172,17 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
     VkImageViewCreateInfo imageViewCreateInfo_2 = imageViewCreateInfo;
     imageViewCreateInfo_2.image = app->Image_indirectLgt;
 
+    VkImageViewCreateInfo imageViewCreateInfo_3 = imageViewCreateInfo;
+    imageViewCreateInfo_3.image = app->Image_indirectLgt_2;
+
     if (vkCreateImageView(app->logicalDevice, &imageViewCreateInfo, NULL, &app->rayTraceImageView) == VK_SUCCESS) {
         printf("created image view\n");
     }
-    if (vkCreateImageView(app->logicalDevice, &imageViewCreateInfo, NULL, &app->ImageView_indirectLgt) == VK_SUCCESS) {
+    if (vkCreateImageView(app->logicalDevice, &imageViewCreateInfo_2, NULL, &app->ImageView_indirectLgt) == VK_SUCCESS) {
         printf("created image_indirectLgt view\n");
+    }
+    if (vkCreateImageView(app->logicalDevice, &imageViewCreateInfo_3, NULL, &app->ImageView_indirectLgt_2) == VK_SUCCESS) {
+        printf("created image_indirectLgt_2 view\n");
     }
 
     VkImageMemoryBarrier imageMemoryBarrier = {};
@@ -1578,7 +1590,7 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
     descriptorPoolSizes[2].descriptorCount = 4;
 
     descriptorPoolSizes[3].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    descriptorPoolSizes[3].descriptorCount = 2;
+    descriptorPoolSizes[3].descriptorCount = 3;
 
     VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
     descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1591,7 +1603,7 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
     }
 
     {
-        VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[7];
+        VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[8];
         descriptorSetLayoutBindings[0].binding = 0;
         descriptorSetLayoutBindings[0].descriptorCount = 1;
         descriptorSetLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
@@ -1634,9 +1646,15 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
         descriptorSetLayoutBindings[6].pImmutableSamplers = NULL;
         descriptorSetLayoutBindings[6].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
+        descriptorSetLayoutBindings[7].binding = 7;           //前一帧indierctLgt_2
+        descriptorSetLayoutBindings[7].descriptorCount = 1;
+        descriptorSetLayoutBindings[7].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        descriptorSetLayoutBindings[7].pImmutableSamplers = NULL;
+        descriptorSetLayoutBindings[7].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
         VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
         descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        descriptorSetLayoutCreateInfo.bindingCount = 7;
+        descriptorSetLayoutCreateInfo.bindingCount = 8;
         descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings;
 
         if (vkCreateDescriptorSetLayout(app->logicalDevice, &descriptorSetLayoutCreateInfo, NULL, &app->rayTraceDescriptorSetLayouts[0]) == VK_SUCCESS) {
@@ -1653,7 +1671,7 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
             printf("\033[22;32m%s\033[0m\n", "allocated descriptor sets");
         }
 
-        VkWriteDescriptorSet writeDescriptorSets[7];
+        VkWriteDescriptorSet writeDescriptorSets[8];
 
         VkWriteDescriptorSetAccelerationStructureKHR descriptorSetAccelerationStructure = {};
         descriptorSetAccelerationStructure.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
@@ -1764,11 +1782,27 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
         writeDescriptorSets[6].dstArrayElement = 0;
         writeDescriptorSets[6].descriptorCount = 1;
         writeDescriptorSets[6].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        writeDescriptorSets[6].pImageInfo = &imageInfo;
+        writeDescriptorSets[6].pImageInfo = &imageInfo_indirectLgt;
         writeDescriptorSets[6].pBufferInfo = NULL;
         writeDescriptorSets[6].pTexelBufferView = NULL;
 
-        vkUpdateDescriptorSets(app->logicalDevice, 7, writeDescriptorSets, 0, NULL);
+        VkDescriptorImageInfo imageInfo_indirectLgt_2 = {};
+        imageInfo_indirectLgt_2.sampler = (VkSampler)VK_DESCRIPTOR_TYPE_SAMPLER;
+        imageInfo_indirectLgt_2.imageView = app->ImageView_indirectLgt_2;
+        imageInfo_indirectLgt_2.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+        writeDescriptorSets[7].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSets[7].pNext = NULL;
+        writeDescriptorSets[7].dstSet = app->rayTraceDescriptorSet;
+        writeDescriptorSets[7].dstBinding = 7;
+        writeDescriptorSets[7].dstArrayElement = 0;
+        writeDescriptorSets[7].descriptorCount = 1;
+        writeDescriptorSets[7].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        writeDescriptorSets[7].pImageInfo = &imageInfo_indirectLgt_2;
+        writeDescriptorSets[7].pBufferInfo = NULL;
+        writeDescriptorSets[7].pTexelBufferView = NULL;
+
+        vkUpdateDescriptorSets(app->logicalDevice, 8, writeDescriptorSets, 0, NULL);
     }
 
     {
@@ -2288,13 +2322,8 @@ void VkRayTracingApplication::createCommandBuffers_2pass(VkRayTracingApplication
         renderPassBeginInfo.renderArea.offset = renderAreaOffset;
         renderPassBeginInfo.renderArea.extent = app->swapchainExtent;
 
-        VkRenderPassBeginInfo renderPassBeginInfo_indirectLgt = {};
-        renderPassBeginInfo_indirectLgt.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        VkRenderPassBeginInfo renderPassBeginInfo_indirectLgt = renderPassBeginInfo;
         renderPassBeginInfo_indirectLgt.renderPass = app->renderPass_indierctLgt;
-        renderPassBeginInfo_indirectLgt.framebuffer = app->swapchainFramebuffers_indirectLgt[x];    //指定渲染结果保存到这里
-        VkOffset2D renderAreaOffset_indirectLgt = { 0, 0 };
-        renderPassBeginInfo_indirectLgt.renderArea.offset = renderAreaOffset_indirectLgt;
-        renderPassBeginInfo_indirectLgt.renderArea.extent = app->swapchainExtent;
 
         VkClearValue clearValues[2] = {
           {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
@@ -2431,6 +2460,401 @@ void VkRayTracingApplication::createCommandBuffers_2pass(VkRayTracingApplication
         }
 
         // 2th renderpass
+        vkCmdBeginRenderPass(app->commandBuffers[x], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(app->commandBuffers[x], VK_PIPELINE_BIND_POINT_GRAPHICS, app->graphicsPipeline);
+
+        vkCmdBindVertexBuffers(app->commandBuffers[x], 0, 1, vertexBuffers, offsets);
+        vkCmdBindIndexBuffer(app->commandBuffers[x], app->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindDescriptorSets(app->commandBuffers[x], VK_PIPELINE_BIND_POINT_GRAPHICS, app->pipelineLayout, 0, 1, &app->rayTraceDescriptorSet, 0, 0);
+        vkCmdBindDescriptorSets(app->commandBuffers[x], VK_PIPELINE_BIND_POINT_GRAPHICS, app->pipelineLayout, 1, 1, &app->materialDescriptorSet, 0, 0);
+
+        vkCmdDrawIndexed(app->commandBuffers[x], scene->attributes.num_faces, 1, 0, 0, 0);
+        vkCmdEndRenderPass(app->commandBuffers[x]);
+
+        {
+            VkImageMemoryBarrier imageMemoryBarrier = {};
+            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            imageMemoryBarrier.pNext = NULL;
+            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            imageMemoryBarrier.image = app->swapchainImages[x];
+            imageMemoryBarrier.subresourceRange = subresourceRange;
+            imageMemoryBarrier.srcAccessMask = 0;
+            imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
+        }
+
+        {
+            VkImageMemoryBarrier imageMemoryBarrier = {};
+            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            imageMemoryBarrier.pNext = NULL;
+            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            imageMemoryBarrier.image = app->rayTraceImage;
+            imageMemoryBarrier.subresourceRange = subresourceRange;
+            imageMemoryBarrier.srcAccessMask = 0;
+            imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
+        }
+
+        {
+            VkImageSubresourceLayers subresourceLayers = {};
+            subresourceLayers.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            subresourceLayers.mipLevel = 0;
+            subresourceLayers.baseArrayLayer = 0;
+            subresourceLayers.layerCount = 1;
+
+            VkOffset3D offset = {};
+            offset.x = 0;
+            offset.y = 0;
+            offset.z = 0;
+
+            VkExtent3D extent = {};
+            extent.width = WIDTH;
+            extent.height = HEIGHT;
+            extent.depth = 1;
+
+            VkImageCopy imageCopy = {};
+            imageCopy.srcSubresource = subresourceLayers;
+            imageCopy.srcOffset = offset;
+            imageCopy.dstSubresource = subresourceLayers;
+            imageCopy.dstOffset = offset;
+            imageCopy.extent = extent;
+
+            //copy 当前帧 渲染结果 到 rayTraceImage
+            vkCmdCopyImage(app->commandBuffers[x], app->swapchainImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->rayTraceImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+        }
+
+        {
+            VkImageSubresourceRange subresourceRange = {};
+            subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            subresourceRange.baseMipLevel = 0;
+            subresourceRange.levelCount = 1;
+            subresourceRange.baseArrayLayer = 0;
+            subresourceRange.layerCount = 1;
+
+            VkImageMemoryBarrier imageMemoryBarrier = {};
+            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            imageMemoryBarrier.pNext = NULL;
+            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            imageMemoryBarrier.image = app->swapchainImages[x];
+            imageMemoryBarrier.subresourceRange = subresourceRange;
+            imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+            imageMemoryBarrier.dstAccessMask = 0;
+
+            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
+        }
+
+        {
+            VkImageSubresourceRange subresourceRange = {};
+            subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            subresourceRange.baseMipLevel = 0;
+            subresourceRange.levelCount = 1;
+            subresourceRange.baseArrayLayer = 0;
+            subresourceRange.layerCount = 1;
+
+            VkImageMemoryBarrier imageMemoryBarrier = {};
+            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            imageMemoryBarrier.pNext = NULL;
+            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+            imageMemoryBarrier.image = app->rayTraceImage;
+            imageMemoryBarrier.subresourceRange = subresourceRange;
+            imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            imageMemoryBarrier.dstAccessMask = 0;
+
+            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
+        }
+
+        if (vkEndCommandBuffer(app->commandBuffers[x]) == VK_SUCCESS) {
+            printf("end recording command buffer for image #%d\n", x);
+        }
+    }
+}
+
+void VkRayTracingApplication::createCommandBuffers_3pass(VkRayTracingApplication* app, Scene* scene)
+{
+    app->commandBuffers = (VkCommandBuffer*)malloc(sizeof(VkCommandBuffer) * app->imageCount);
+
+    VkCommandBufferAllocateInfo commandBufferAllocateInfo = {};
+    commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    commandBufferAllocateInfo.commandPool = app->commandPool;
+    commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    commandBufferAllocateInfo.commandBufferCount = app->imageCount;
+
+    if (vkAllocateCommandBuffers(app->logicalDevice, &commandBufferAllocateInfo, app->commandBuffers) == VK_SUCCESS) {
+        printf("allocated command buffers\n");
+    }
+
+    for (int x = 0; x < app->imageCount; x++) {
+        VkCommandBufferBeginInfo commandBufferBeginCreateInfo = {};
+        commandBufferBeginCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+        VkRenderPassBeginInfo renderPassBeginInfo = {};
+        renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassBeginInfo.renderPass = app->renderPass;
+        renderPassBeginInfo.framebuffer = app->swapchainFramebuffers[x];    //指定渲染结果保存到这里
+        VkOffset2D renderAreaOffset = { 0, 0 };
+        renderPassBeginInfo.renderArea.offset = renderAreaOffset;
+        renderPassBeginInfo.renderArea.extent = app->swapchainExtent;
+
+        VkRenderPassBeginInfo renderPassBeginInfo_indirectLgt = renderPassBeginInfo;
+        renderPassBeginInfo_indirectLgt.renderPass = app->renderPass_indierctLgt;
+
+        VkRenderPassBeginInfo renderPassBeginInfo_indirectLgt_2 = renderPassBeginInfo;
+        renderPassBeginInfo_indirectLgt.renderPass = app->renderPass_indierctLgt_2;
+
+        VkClearValue clearValues[2] = {
+          {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
+          {.depthStencil = {1.0f, 0}}
+        };
+
+        renderPassBeginInfo.clearValueCount = 2;
+        renderPassBeginInfo.pClearValues = clearValues;
+
+        renderPassBeginInfo_indirectLgt.clearValueCount = 2;
+        renderPassBeginInfo_indirectLgt.pClearValues = clearValues;
+
+        renderPassBeginInfo_indirectLgt_2.clearValueCount = 2;
+        renderPassBeginInfo_indirectLgt_2.pClearValues = clearValues;
+
+        VkBuffer vertexBuffers[1] = { app->vertexPositionBuffer };
+        VkDeviceSize offsets[1] = { 0 };
+
+        VkImageSubresourceRange subresourceRange = {};
+        subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        subresourceRange.baseMipLevel = 0;
+        subresourceRange.levelCount = 1;
+        subresourceRange.baseArrayLayer = 0;
+        subresourceRange.layerCount = 1;
+
+        if (vkBeginCommandBuffer(app->commandBuffers[x], &commandBufferBeginCreateInfo) == VK_SUCCESS) {
+            printf("begin recording command buffer for image #%d\n", x);
+        }
+
+        vkCmdBeginRenderPass(app->commandBuffers[x], &renderPassBeginInfo_indirectLgt, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(app->commandBuffers[x], VK_PIPELINE_BIND_POINT_GRAPHICS, app->graphicsPipeline_indierctLgt);
+
+        vkCmdBindVertexBuffers(app->commandBuffers[x], 0, 1, vertexBuffers, offsets);
+        vkCmdBindIndexBuffer(app->commandBuffers[x], app->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindDescriptorSets(app->commandBuffers[x], VK_PIPELINE_BIND_POINT_GRAPHICS, app->pipelineLayout, 0, 1, &app->rayTraceDescriptorSet, 0, 0);
+        vkCmdBindDescriptorSets(app->commandBuffers[x], VK_PIPELINE_BIND_POINT_GRAPHICS, app->pipelineLayout, 1, 1, &app->materialDescriptorSet, 0, 0);
+
+        vkCmdDrawIndexed(app->commandBuffers[x], scene->attributes.num_faces, 1, 0, 0, 0);
+        vkCmdEndRenderPass(app->commandBuffers[x]);
+
+        {
+            VkImageMemoryBarrier imageMemoryBarrier = {};
+            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            imageMemoryBarrier.pNext = NULL;
+            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            imageMemoryBarrier.image = app->swapchainImages[x];
+            imageMemoryBarrier.subresourceRange = subresourceRange;
+            imageMemoryBarrier.srcAccessMask = 0;
+            imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
+        }
+
+        {
+            VkImageMemoryBarrier imageMemoryBarrier = {};
+            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            imageMemoryBarrier.pNext = NULL;
+            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            imageMemoryBarrier.image = app->rayTraceImage;
+            imageMemoryBarrier.subresourceRange = subresourceRange;
+            imageMemoryBarrier.srcAccessMask = 0;
+            imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
+        }
+
+        {
+            VkImageSubresourceLayers subresourceLayers = {};
+            subresourceLayers.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            subresourceLayers.mipLevel = 0;
+            subresourceLayers.baseArrayLayer = 0;
+            subresourceLayers.layerCount = 1;
+
+            VkOffset3D offset = {};
+            offset.x = 0;
+            offset.y = 0;
+            offset.z = 0;
+
+            VkExtent3D extent = {};
+            extent.width = WIDTH;
+            extent.height = HEIGHT;
+            extent.depth = 1;
+
+            VkImageCopy imageCopy = {};
+            imageCopy.srcSubresource = subresourceLayers;
+            imageCopy.srcOffset = offset;
+            imageCopy.dstSubresource = subresourceLayers;
+            imageCopy.dstOffset = offset;
+            imageCopy.extent = extent;
+
+            //copy 当前帧 渲染结果 到 Image_indirectLgt
+            vkCmdCopyImage(app->commandBuffers[x], app->swapchainImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->Image_indirectLgt, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+        }
+
+        {
+            VkImageSubresourceRange subresourceRange = {};
+            subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            subresourceRange.baseMipLevel = 0;
+            subresourceRange.levelCount = 1;
+            subresourceRange.baseArrayLayer = 0;
+            subresourceRange.layerCount = 1;
+
+            VkImageMemoryBarrier imageMemoryBarrier = {};
+            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            imageMemoryBarrier.pNext = NULL;
+            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            imageMemoryBarrier.image = app->swapchainImages[x];
+            imageMemoryBarrier.subresourceRange = subresourceRange;
+            imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+            imageMemoryBarrier.dstAccessMask = 0;
+
+            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
+        }
+
+        {
+            VkImageSubresourceRange subresourceRange = {};
+            subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            subresourceRange.baseMipLevel = 0;
+            subresourceRange.levelCount = 1;
+            subresourceRange.baseArrayLayer = 0;
+            subresourceRange.layerCount = 1;
+
+            VkImageMemoryBarrier imageMemoryBarrier = {};
+            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            imageMemoryBarrier.pNext = NULL;
+            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+            imageMemoryBarrier.image = app->rayTraceImage;
+            imageMemoryBarrier.subresourceRange = subresourceRange;
+            imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            imageMemoryBarrier.dstAccessMask = 0;
+
+            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
+        }
+
+        // 2th renderpass
+        vkCmdBeginRenderPass(app->commandBuffers[x], &renderPassBeginInfo_indirectLgt_2, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(app->commandBuffers[x], VK_PIPELINE_BIND_POINT_GRAPHICS, app->graphicsPipeline_indierctLgt_2);
+
+        vkCmdBindVertexBuffers(app->commandBuffers[x], 0, 1, vertexBuffers, offsets);
+        vkCmdBindIndexBuffer(app->commandBuffers[x], app->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindDescriptorSets(app->commandBuffers[x], VK_PIPELINE_BIND_POINT_GRAPHICS, app->pipelineLayout, 0, 1, &app->rayTraceDescriptorSet, 0, 0);
+        vkCmdBindDescriptorSets(app->commandBuffers[x], VK_PIPELINE_BIND_POINT_GRAPHICS, app->pipelineLayout, 1, 1, &app->materialDescriptorSet, 0, 0);
+
+        vkCmdDrawIndexed(app->commandBuffers[x], scene->attributes.num_faces, 1, 0, 0, 0);
+        vkCmdEndRenderPass(app->commandBuffers[x]);
+
+        {
+            VkImageMemoryBarrier imageMemoryBarrier = {};
+            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            imageMemoryBarrier.pNext = NULL;
+            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            imageMemoryBarrier.image = app->swapchainImages[x];
+            imageMemoryBarrier.subresourceRange = subresourceRange;
+            imageMemoryBarrier.srcAccessMask = 0;
+            imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
+        }
+
+        {
+            VkImageMemoryBarrier imageMemoryBarrier = {};
+            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            imageMemoryBarrier.pNext = NULL;
+            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            imageMemoryBarrier.image = app->rayTraceImage;
+            imageMemoryBarrier.subresourceRange = subresourceRange;
+            imageMemoryBarrier.srcAccessMask = 0;
+            imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
+        }
+
+        {
+            VkImageSubresourceLayers subresourceLayers = {};
+            subresourceLayers.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            subresourceLayers.mipLevel = 0;
+            subresourceLayers.baseArrayLayer = 0;
+            subresourceLayers.layerCount = 1;
+
+            VkOffset3D offset = {};
+            offset.x = 0;
+            offset.y = 0;
+            offset.z = 0;
+
+            VkExtent3D extent = {};
+            extent.width = WIDTH;
+            extent.height = HEIGHT;
+            extent.depth = 1;
+
+            VkImageCopy imageCopy = {};
+            imageCopy.srcSubresource = subresourceLayers;
+            imageCopy.srcOffset = offset;
+            imageCopy.dstSubresource = subresourceLayers;
+            imageCopy.dstOffset = offset;
+            imageCopy.extent = extent;
+
+            //copy 当前帧 渲染结果 到 Image_indirectLgt
+            vkCmdCopyImage(app->commandBuffers[x], app->swapchainImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->Image_indirectLgt_2, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+        }
+
+        {
+            VkImageSubresourceRange subresourceRange = {};
+            subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            subresourceRange.baseMipLevel = 0;
+            subresourceRange.levelCount = 1;
+            subresourceRange.baseArrayLayer = 0;
+            subresourceRange.layerCount = 1;
+
+            VkImageMemoryBarrier imageMemoryBarrier = {};
+            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            imageMemoryBarrier.pNext = NULL;
+            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            imageMemoryBarrier.image = app->swapchainImages[x];
+            imageMemoryBarrier.subresourceRange = subresourceRange;
+            imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+            imageMemoryBarrier.dstAccessMask = 0;
+
+            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
+        }
+
+        {
+            VkImageSubresourceRange subresourceRange = {};
+            subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            subresourceRange.baseMipLevel = 0;
+            subresourceRange.levelCount = 1;
+            subresourceRange.baseArrayLayer = 0;
+            subresourceRange.layerCount = 1;
+
+            VkImageMemoryBarrier imageMemoryBarrier = {};
+            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            imageMemoryBarrier.pNext = NULL;
+            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+            imageMemoryBarrier.image = app->rayTraceImage;
+            imageMemoryBarrier.subresourceRange = subresourceRange;
+            imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            imageMemoryBarrier.dstAccessMask = 0;
+
+            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
+        }
+
+        //3th pass
         vkCmdBeginRenderPass(app->commandBuffers[x], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(app->commandBuffers[x], VK_PIPELINE_BIND_POINT_GRAPHICS, app->graphicsPipeline);
 
@@ -2784,7 +3208,7 @@ void VkRayTracingApplication::createGraphicsPipeline(VkRayTracingApplication* ap
     Shader* vertex_shader=new Shader();
     //vertex_shader->load(app,"shaders/basic.vert.spv");
 #ifdef _DEBUG
-    vertex_shader->load(app, "C:/Users/Vincent/source/repos/VulkanRayTracing/LearnVulkan/shaders/basic.vert.spv");
+    vertex_shader->load(app, "C:/Users/Rocki/source/repos/VulkanBasicRayTracing/LearnVulkan/shaders/basic.vert.spv");
 #else
     vertex_shader->load(app, "shaders/basic.vert.spv");
 #endif // DEBUG
@@ -2792,7 +3216,9 @@ void VkRayTracingApplication::createGraphicsPipeline(VkRayTracingApplication* ap
     Shader* frag_shader = new Shader();
     //frag_shader->load(app, "shaders/basic.frag.spv");
 #ifdef _DEBUG
-    frag_shader->load(app, "C:/Users/Vincent/source/repos/VulkanRayTracing/LearnVulkan/shaders/basic.frag.spv");
+    //frag_shader->load(app, "C:/Users/Vincent/source/repos/VulkanRayTracing/LearnVulkan/shaders/basic.frag.spv");
+    frag_shader->load(app, "C:/Users/Rocki/source/repos/VulkanBasicRayTracing/LearnVulkan/shaders/basic.frag.spv");
+
 #else
     frag_shader->load(app, "shaders/basic.frag.spv");
 #endif // DEBUG
@@ -2928,7 +3354,7 @@ void VkRayTracingApplication::createGraphicsPipeline_indirectLgt(VkRayTracingApp
     Shader* vertex_shader = new Shader();
     //vertex_shader->load(app, "shaders/basic.vert.spv");
 #ifdef _DEBUG
-    vertex_shader->load(app, "C:/Users/Vincent/source/repos/VulkanRayTracing/LearnVulkan/shaders/basic.vert.spv");
+    vertex_shader->load(app, "C:/Users/Rocki/source/repos/VulkanBasicRayTracing/LearnVulkan/shaders/basic.vert.spv");
 #else
     vertex_shader->load(app, "shaders/basic.vert.spv");
 #endif // DEBUG
@@ -2937,7 +3363,7 @@ void VkRayTracingApplication::createGraphicsPipeline_indirectLgt(VkRayTracingApp
     Shader* frag_shader = new Shader();
     //frag_shader->load(app, "shaders/basic_indirectLgt.frag.spv");
 #ifdef _DEBUG
-    frag_shader->load(app, "C:/Users/Vincent/source/repos/VulkanRayTracing/LearnVulkan/shaders/basic_indirectLgt.frag.spv");
+    frag_shader->load(app, "C:/Users/Rocki/source/repos/VulkanBasicRayTracing/LearnVulkan/shaders/basic_indirectLgt.frag.spv");
 #else
     frag_shader->load(app, "shaders/basic_indirectLgt.frag.spv");
 #endif // DEBUG
@@ -3060,6 +3486,151 @@ void VkRayTracingApplication::createGraphicsPipeline_indirectLgt(VkRayTracingApp
 
     if (errorCode == VK_SUCCESS) {
         printf("created graphics pipeline_indirectLgt\n");
+    }
+
+
+    delete vertex_shader;
+    delete frag_shader;
+}
+
+void VkRayTracingApplication::createGraphicsPipeline_indirectLgt_2(VkRayTracingApplication* app)
+{
+
+    Shader* vertex_shader = new Shader();
+    //vertex_shader->load(app, "shaders/basic.vert.spv");
+#ifdef _DEBUG
+    vertex_shader->load(app, "C:/Users/Rocki/source/repos/VulkanBasicRayTracing/LearnVulkan/shaders/basic.vert.spv");
+#else
+    vertex_shader->load(app, "shaders/basic.vert.spv");
+#endif // DEBUG
+
+
+    Shader* frag_shader = new Shader();
+    //frag_shader->load(app, "shaders/basic_indirectLgt.frag.spv");
+#ifdef _DEBUG
+    frag_shader->load(app, "C:/Users/Rocki/source/repos/VulkanBasicRayTracing/LearnVulkan/shaders/basic_filterIndirect.frag.spv");
+#else
+    frag_shader->load(app, "shaders/basic_indirectLgt.frag.spv");
+#endif // DEBUG
+
+    VkPipelineShaderStageCreateInfo shaderStages[2] = { vertex_shader->ShaderStageInfo, frag_shader->ShaderStageInfo };
+
+    app->vertexBindingDescriptions = (VkVertexInputBindingDescription*)malloc(sizeof(VkVertexInputBindingDescription) * 1);
+    app->vertexBindingDescriptions[0].binding = 0;
+    app->vertexBindingDescriptions[0].stride = sizeof(float) * 3;
+    app->vertexBindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    app->vertexAttributeDescriptions = (VkVertexInputAttributeDescription*)malloc(sizeof(VkVertexInputAttributeDescription) * 1);
+    app->vertexAttributeDescriptions[0].binding = 0;
+    app->vertexAttributeDescriptions[0].location = 0;
+    app->vertexAttributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+    app->vertexAttributeDescriptions[0].offset = 0;
+
+    VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = {};
+    vertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
+    vertexInputStateCreateInfo.vertexAttributeDescriptionCount = 1;
+    vertexInputStateCreateInfo.pVertexBindingDescriptions = app->vertexBindingDescriptions;
+    vertexInputStateCreateInfo.pVertexAttributeDescriptions = app->vertexAttributeDescriptions;
+
+    VkPipelineInputAssemblyStateCreateInfo inputAssemblyCreateInfo = {};
+    inputAssemblyCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    inputAssemblyCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    inputAssemblyCreateInfo.primitiveRestartEnable = VK_FALSE;
+
+    VkViewport viewport = {};
+    viewport.x = 0.0f;
+    viewport.y = (float)app->swapchainExtent.height;
+    viewport.width = (float)app->swapchainExtent.width;
+    viewport.height = -(float)app->swapchainExtent.height;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    VkRect2D scissor = {};
+    VkOffset2D scissorOffset = { 0, 0 };
+    scissor.offset = scissorOffset;
+    scissor.extent = app->swapchainExtent;
+
+    VkPipelineViewportStateCreateInfo viewportStateCreateInfo = {};
+    viewportStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewportStateCreateInfo.viewportCount = 1;
+    viewportStateCreateInfo.pViewports = &viewport;
+    viewportStateCreateInfo.scissorCount = 1;
+    viewportStateCreateInfo.pScissors = &scissor;
+
+    VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = {};
+    rasterizationStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizationStateCreateInfo.depthClampEnable = VK_FALSE;
+    rasterizationStateCreateInfo.rasterizerDiscardEnable = VK_FALSE;
+    rasterizationStateCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizationStateCreateInfo.lineWidth = 1.0f;
+    rasterizationStateCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rasterizationStateCreateInfo.depthBiasEnable = VK_FALSE;
+
+    VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo = {};
+    multisampleStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampleStateCreateInfo.sampleShadingEnable = VK_FALSE;
+    multisampleStateCreateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+    VkPipelineDepthStencilStateCreateInfo depthStencil = {};
+    depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencil.depthTestEnable = VK_TRUE;
+    depthStencil.depthWriteEnable = VK_TRUE;
+    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+    depthStencil.depthBoundsTestEnable = VK_FALSE;
+    depthStencil.stencilTestEnable = VK_FALSE;
+
+    VkPipelineColorBlendAttachmentState colorBlendAttachmentState = {};
+    colorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachmentState.blendEnable = VK_FALSE;
+
+    VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo = {};
+    colorBlendStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    colorBlendStateCreateInfo.logicOpEnable = VK_FALSE;
+    colorBlendStateCreateInfo.logicOp = VK_LOGIC_OP_COPY;
+    colorBlendStateCreateInfo.attachmentCount = 1;
+    colorBlendStateCreateInfo.pAttachments = &colorBlendAttachmentState;
+    colorBlendStateCreateInfo.blendConstants[0] = 0.0f;
+    colorBlendStateCreateInfo.blendConstants[1] = 0.0f;
+    colorBlendStateCreateInfo.blendConstants[2] = 0.0f;
+    colorBlendStateCreateInfo.blendConstants[3] = 0.0f;
+
+    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
+    pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutCreateInfo.setLayoutCount = 2;
+    pipelineLayoutCreateInfo.pSetLayouts = app->rayTraceDescriptorSetLayouts;
+
+    if (vkCreatePipelineLayout(app->logicalDevice, &pipelineLayoutCreateInfo, NULL, &app->pipelineLayout_indierctLgt) == VK_SUCCESS) {
+        printf("created pipeline layout\n");
+    }
+
+    VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo = {};
+    graphicsPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    graphicsPipelineCreateInfo.stageCount = 2;
+    graphicsPipelineCreateInfo.pStages = shaderStages;
+    graphicsPipelineCreateInfo.pVertexInputState = &vertexInputStateCreateInfo;
+    graphicsPipelineCreateInfo.pInputAssemblyState = &inputAssemblyCreateInfo;
+    graphicsPipelineCreateInfo.pViewportState = &viewportStateCreateInfo;
+    graphicsPipelineCreateInfo.pRasterizationState = &rasterizationStateCreateInfo;
+    graphicsPipelineCreateInfo.pMultisampleState = &multisampleStateCreateInfo;
+    graphicsPipelineCreateInfo.pDepthStencilState = &depthStencil;
+    graphicsPipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
+    graphicsPipelineCreateInfo.layout = app->pipelineLayout_indierctLgt;
+    graphicsPipelineCreateInfo.renderPass = app->renderPass_indierctLgt;
+    graphicsPipelineCreateInfo.subpass = 0;
+    graphicsPipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+    VkResult errorCode;
+    try {
+        errorCode = vkCreateGraphicsPipelines(app->logicalDevice, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, NULL, &app->graphicsPipeline_indierctLgt_2);
+    }
+    catch (...) {
+        cout << "unknow e";
+    }
+
+    if (errorCode == VK_SUCCESS) {
+        printf("created graphics pipeline_indirectLgt_2\n");
     }
 
 

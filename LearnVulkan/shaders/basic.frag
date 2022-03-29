@@ -48,6 +48,7 @@ layout(binding = 2, set = 0) buffer IndexBuffer { uint data[]; } indexBuffer;
 layout(binding = 3, set = 0) buffer VertexBuffer { float data[]; } vertexBuffer;
 layout(binding = 4, set = 0, rgba32f) uniform image2D image;
 layout(binding = 6, set = 0, rgba32f) uniform image2D image_indirectLgt;
+layout(binding = 7, set = 0, rgba32f) uniform image2D image_indirectLgt_2;
 
 layout(binding = 5, set = 0) uniform ShadingMode {
   //mat4 invViewMatrix;
