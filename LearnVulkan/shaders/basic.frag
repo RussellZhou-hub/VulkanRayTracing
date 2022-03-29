@@ -199,6 +199,7 @@ void main() {
   vec3 previousNormal = geometricNormal;
 
   if(shadingMode.enable2thRayDierctionSpatialFilter==1){
+          float beta_indr=0.5;
           float level=1;
             vec4 preIndirectColor_00 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
             vec4 preIndirectColor_01 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y-level));
@@ -210,10 +211,9 @@ void main() {
             vec4 preIndirectColor_21 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y+level));
             vec4 preIndirectColor_22 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
             vec4 preIndirectColor=(1/4.0)*preIndirectColor_11+(1/8.0)*(preIndirectColor_01+preIndirectColor_10+preIndirectColor_12+preIndirectColor_21)+(1/16.0)*(preIndirectColor_00+preIndirectColor_02+preIndirectColor_20+preIndirectColor_22);
-            rayDirection=normalize(preIndirectColor.xyz);
-            //rayDirection+=preIndirectColor_11.xyz;
-            //rayDirection/=2;
-            //rayDirection=normalize(rayDirection);
+            //rayDirection=normalize(preIndirectColor.xyz);
+            rayDirection=beta_indr*preIndirectColor_11.xyz+(1-beta_indr)*rayDirection;
+            rayDirection=normalize(rayDirection);
           }
 
   bool rayActive = true;

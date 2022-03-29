@@ -112,7 +112,9 @@ void main() {
   
   //direction map
   vec3 rayDirection;
+  vec3 rayDirection_2thRay;
   rayDirection = getSampledReflectedDirection(interpolatedPosition.xyz,geometricNormal,gl_FragCoord.xy,camera.frameCount);
+  rayDirection_2thRay=rayDirection;
   vec3 previousNormal = geometricNormal;
 
   bool rayActive = true;
@@ -146,9 +148,65 @@ void main() {
         outColor=vec4(indirectColor,1.0);
       }
       else {
-      float beta_indirect=0.8;
-        vec4 preDirection = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy));
-        outColor=vec4(beta_indirect*preDirection.xyz+(1-beta_indirect)*rayDirection,1.0); //direction of the 2thRay
+
+      /*
+      float level=8;
+        vec4 preIndirectDirection_00 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
+        vec4 preIndirectDirection_01 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y-level));
+        vec4 preIndirectDirection_02 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y-level));
+        vec4 preIndirectDirection_10 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y));
+        vec4 preIndirectDirection_11 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy));
+        vec4 preIndirectDirection_12 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y));
+        vec4 preIndirectDirection_20 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y+level));
+        vec4 preIndirectDirection_21 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y+level));
+        vec4 preIndirectDirection_22 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
+        vec4 preIndirectDirection=(1/4.0)*preIndirectDirection_11+(1/8.0)*(preIndirectDirection_01+preIndirectDirection_10+preIndirectDirection_12+preIndirectDirection_21)+(1/16.0)*(preIndirectDirection_00+preIndirectDirection_02+preIndirectDirection_20+preIndirectDirection_22);
+
+        outColor=vec4(beta_indirect*preIndirectDirection.xyz+(1-beta_indirect)*rayDirection,1.0); //direction of the 2thRay
+      */
+      float beta_indirect=0.9;
+
+        
+
+        { //5*5 guassian
+            vec4 preIndirectDirection_00 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-2,gl_FragCoord.y-2));
+            vec4 preIndirectDirection_01 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-1,gl_FragCoord.y-2));
+            vec4 preIndirectDirection_02 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y-2));
+            vec4 preIndirectDirection_03 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+1,gl_FragCoord.y-2));
+            vec4 preIndirectDirection_04 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+2,gl_FragCoord.y-2));
+            vec4 r0=1*preIndirectDirection_00+4*preIndirectDirection_01+7*preIndirectDirection_02+4*preIndirectDirection_03+1*preIndirectDirection_04;
+
+            vec4 preIndirectDirection_10 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-2,gl_FragCoord.y-1));
+            vec4 preIndirectDirection_11 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-1,gl_FragCoord.y-1));
+            vec4 preIndirectDirection_12 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y-1));
+            vec4 preIndirectDirection_13 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+1,gl_FragCoord.y-1));
+            vec4 preIndirectDirection_14 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+2,gl_FragCoord.y-1));
+            vec4 r1=4*preIndirectDirection_10+16*preIndirectDirection_11+26*preIndirectDirection_12+16*preIndirectDirection_13+4*preIndirectDirection_14;
+
+            vec4 preIndirectDirection_20 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-2,gl_FragCoord.y));
+            vec4 preIndirectDirection_21 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-1,gl_FragCoord.y));
+            vec4 preIndirectDirection_22 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y));
+            vec4 preIndirectDirection_23 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+1,gl_FragCoord.y));
+            vec4 preIndirectDirection_24 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+2,gl_FragCoord.y));
+            vec4 r2=7*preIndirectDirection_20+26*preIndirectDirection_21+41*preIndirectDirection_22+26*preIndirectDirection_23+7*preIndirectDirection_24;
+
+            vec4 preIndirectDirection_30 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-2,gl_FragCoord.y+1));
+            vec4 preIndirectDirection_31 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-1,gl_FragCoord.y+1));
+            vec4 preIndirectDirection_32 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y+1));
+            vec4 preIndirectDirection_33 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+1,gl_FragCoord.y+1));
+            vec4 preIndirectDirection_34 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+2,gl_FragCoord.y+1));
+            vec4 r3=4*preIndirectDirection_30+16*preIndirectDirection_31+26*preIndirectDirection_32+16*preIndirectDirection_33+4*preIndirectDirection_34;
+
+            vec4 preIndirectDirection_40 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-2,gl_FragCoord.y+2));
+            vec4 preIndirectDirection_41 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-1,gl_FragCoord.y+2));
+            vec4 preIndirectDirection_42 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y+2));
+            vec4 preIndirectDirection_43 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+1,gl_FragCoord.y+2));
+            vec4 preIndirectDirection_44 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+2,gl_FragCoord.y+2));
+            vec4 r4=1*preIndirectDirection_40+4*preIndirectDirection_41+7*preIndirectDirection_42+4*preIndirectDirection_43+1*preIndirectDirection_44;
+
+            vec4 total=(r0+r1+r2+r3+r4)/273;
+            outColor=vec4(beta_indirect*total.xyz+(1-beta_indirect)*rayDirection,1.0); //direction of the 2thRay
+        }
 
 
         RayHitPointFragCoord=getFragCoord(extensionPosition.xyz);
@@ -193,7 +251,8 @@ void main() {
         }
         else {
           rayActive = false;
-          outColor=vec4(0.0,0.0,0.0,1.0);
+
+          //outColor=vec4(0.0,0.0,0.0,1.0);
         }
       }
 
@@ -216,6 +275,10 @@ void main() {
 
 
   vec4 color = vec4(directColor + indirectColor, 1.0);
+
+  if(camera.frameCount==0){
+      outColor=vec4(rayDirection,1.0);
+  }
 
   //outColor = color;
 }

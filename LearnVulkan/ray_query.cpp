@@ -2782,10 +2782,20 @@ void VkRayTracingApplication::createGraphicsPipeline(VkRayTracingApplication* ap
 {
 
     Shader* vertex_shader=new Shader();
-    vertex_shader->load(app,"shaders/basic.vert.spv");
+    //vertex_shader->load(app,"shaders/basic.vert.spv");
+#ifdef _DEBUG
+    vertex_shader->load(app, "C:/Users/Vincent/source/repos/VulkanRayTracing/LearnVulkan/shaders/basic.vert.spv");
+#else
+    vertex_shader->load(app, "shaders/basic.vert.spv");
+#endif // DEBUG
 
     Shader* frag_shader = new Shader();
+    //frag_shader->load(app, "shaders/basic.frag.spv");
+#ifdef _DEBUG
+    frag_shader->load(app, "C:/Users/Vincent/source/repos/VulkanRayTracing/LearnVulkan/shaders/basic.frag.spv");
+#else
     frag_shader->load(app, "shaders/basic.frag.spv");
+#endif // DEBUG
 
     VkPipelineShaderStageCreateInfo shaderStages[2] = { vertex_shader->ShaderStageInfo, frag_shader->ShaderStageInfo };
 
@@ -2916,10 +2926,21 @@ void VkRayTracingApplication::createGraphicsPipeline_indirectLgt(VkRayTracingApp
 {
 
     Shader* vertex_shader = new Shader();
+    //vertex_shader->load(app, "shaders/basic.vert.spv");
+#ifdef _DEBUG
+    vertex_shader->load(app, "C:/Users/Vincent/source/repos/VulkanRayTracing/LearnVulkan/shaders/basic.vert.spv");
+#else
     vertex_shader->load(app, "shaders/basic.vert.spv");
+#endif // DEBUG
+
 
     Shader* frag_shader = new Shader();
+    //frag_shader->load(app, "shaders/basic_indirectLgt.frag.spv");
+#ifdef _DEBUG
+    frag_shader->load(app, "C:/Users/Vincent/source/repos/VulkanRayTracing/LearnVulkan/shaders/basic_indirectLgt.frag.spv");
+#else
     frag_shader->load(app, "shaders/basic_indirectLgt.frag.spv");
+#endif // DEBUG
 
     VkPipelineShaderStageCreateInfo shaderStages[2] = { vertex_shader->ShaderStageInfo, frag_shader->ShaderStageInfo };
 

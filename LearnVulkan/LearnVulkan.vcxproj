@@ -97,7 +97,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>D:\Data\VulkanSDK\1.2.198.1\Include;D:\Data\Vulkan\include;D:\Data\VulkanSDK\1.2.198.1\Include;D:\Data\Vulkan\include;E:\Data\Vulkan\include;E:\Data\VulkanSDK\1.2.198.1\Include;E:\Data\Vulkan\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalOptions>/utf-16 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -117,7 +117,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>D:\Data\VulkanSDK\1.2.198.1\Include;D:\Data\Vulkan\include;D:\Data\VulkanSDK\1.2.198.1\Include;D:\Data\Vulkan\include;E:\Data\Vulkan\include;E:\Data\VulkanSDK\1.2.198.1\Include;E:\Data\OpenGL\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalOptions>/utf-16 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -137,7 +137,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>D:\Data\VulkanSDK\1.2.198.1\Include;D:\Data\Vulkan\include;D:\Data\Vulkan\include;D:\Data\VulkanSDK\1.2.198.1\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalOptions>/utf-16 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -157,7 +157,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>D:\Data\VulkanSDK\1.2.198.1\Include;D:\Data\Vulkan\include;D:\Data\Vulkan\include;D:\Data\VulkanSDK\1.2.198.1\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalOptions>/utf-16 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
