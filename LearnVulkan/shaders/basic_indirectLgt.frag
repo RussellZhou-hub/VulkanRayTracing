@@ -146,7 +146,9 @@ void main() {
         outColor=vec4(indirectColor,1.0);
       }
       else {
-        outColor=vec4(rayDirection,1.0);
+      float beta_indirect=0.8;
+        vec4 preDirection = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy));
+        outColor=vec4(beta_indirect*preDirection.xyz+(1-beta_indirect)*rayDirection,1.0); //direction of the 2thRay
 
 
         RayHitPointFragCoord=getFragCoord(extensionPosition.xyz);
