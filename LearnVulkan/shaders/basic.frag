@@ -211,6 +211,9 @@ void main() {
             vec4 preIndirectColor_22 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
             vec4 preIndirectColor=(1/4.0)*preIndirectColor_11+(1/8.0)*(preIndirectColor_01+preIndirectColor_10+preIndirectColor_12+preIndirectColor_21)+(1/16.0)*(preIndirectColor_00+preIndirectColor_02+preIndirectColor_20+preIndirectColor_22);
             rayDirection=normalize(preIndirectColor.xyz);
+            //rayDirection+=preIndirectColor_11.xyz;
+            //rayDirection/=2;
+            //rayDirection=normalize(rayDirection);
           }
 
   bool rayActive = true;
@@ -463,7 +466,7 @@ vec3 getSampledReflectedDirection(vec3 inRay,vec3 normal,vec2 uv,float seed){
     float theta=M_PI*random(uv);
     float phi=2*M_PI*random(vec2(uv.y,uv.x));
     vec3 RandomRay=vec3(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta));
-    float weight=0.2;  //reflection rate
+    float weight=0.8;  //reflection rate
     return normalize(weight*Ray+(1-weight)*normalize(RandomRay));
 }
 
