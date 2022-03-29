@@ -199,7 +199,7 @@ void main() {
   vec3 previousNormal = geometricNormal;
 
   if(shadingMode.enable2thRayDierctionSpatialFilter==1){
-          float level=2;
+          float level=1;
             vec4 preIndirectColor_00 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
             vec4 preIndirectColor_01 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y-level));
             vec4 preIndirectColor_02 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y-level));

@@ -83,7 +83,7 @@ vec3 alignHemisphereWithCoordinateSystem(vec3 hemisphere, vec3 up);
 void main() {
   vec3 directColor = vec3(0.0, 0.0, 0.0);
   vec3 indirectColor = vec3(0.0, 0.0, 0.0);
-  vec3 indirectColor_2 = vec3(0.0, 0.0, 0.0);
+  outColor.xyz=directColor;
 
   ivec3 indices = ivec3(indexBuffer.data[3 * gl_PrimitiveID + 0], indexBuffer.data[3 * gl_PrimitiveID + 1], indexBuffer.data[3 * gl_PrimitiveID + 2]);
 
@@ -98,6 +98,7 @@ void main() {
   // 40 & 41 == light
   if (gl_PrimitiveID == 40 || gl_PrimitiveID == 41) {
     directColor = materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission;
+    outColor.xyz=directColor;
   }
   else {
 
@@ -145,6 +146,9 @@ void main() {
         outColor=vec4(indirectColor,1.0);
       }
       else {
+        outColor=vec4(rayDirection,1.0);
+
+
         RayHitPointFragCoord=getFragCoord(extensionPosition.xyz);
 
 
@@ -184,10 +188,10 @@ void main() {
         //secondary shadow ray
         if (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
           indirectColor += (1.0 / (rayDepth + 1)) * extensionSurfaceColor * lightColor  * dot(previousNormal, rayDirection) * dot(extensionNormal, positionToLightDirection);
-          outColor=vec4(rayDirection,1.0);
         }
         else {
           rayActive = false;
+          outColor=vec4(0.0,0.0,0.0,1.0);
         }
       }
 
@@ -299,7 +303,7 @@ vec3 getSampledReflectedDirection(vec3 inRay,vec3 normal,vec2 uv,float seed){
     float theta=M_PI*random(uv);
     float phi=2*M_PI*random(vec2(uv.y,uv.x));
     vec3 RandomRay=vec3(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta));
-    float weight=0.2;  //reflection rate
+    float weight=0.8;  //reflection rate
     return normalize(weight*Ray+(1-weight)*normalize(RandomRay));
 }
 
