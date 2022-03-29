@@ -198,6 +198,21 @@ void main() {
   rayDirection = getSampledReflectedDirection(interpolatedPosition.xyz,geometricNormal,gl_FragCoord.xy,camera.frameCount);
   vec3 previousNormal = geometricNormal;
 
+  if(shadingMode.enable2thRayDierctionSpatialFilter==1){
+          float level=2;
+            vec4 preIndirectColor_00 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
+            vec4 preIndirectColor_01 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y-level));
+            vec4 preIndirectColor_02 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y-level));
+            vec4 preIndirectColor_10 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y));
+            vec4 preIndirectColor_11 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy));
+            vec4 preIndirectColor_12 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y));
+            vec4 preIndirectColor_20 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y+level));
+            vec4 preIndirectColor_21 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y+level));
+            vec4 preIndirectColor_22 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
+            vec4 preIndirectColor=(1/4.0)*preIndirectColor_11+(1/8.0)*(preIndirectColor_01+preIndirectColor_10+preIndirectColor_12+preIndirectColor_21)+(1/16.0)*(preIndirectColor_00+preIndirectColor_02+preIndirectColor_20+preIndirectColor_22);
+            rayDirection=normalize(preIndirectColor.xyz);
+          }
+
   bool rayActive = true;
   int maxRayDepth = 1;
   if(shadingMode.enable2Ray==1 && camera.frameCount > 0){
@@ -267,6 +282,7 @@ void main() {
         //secondary shadow ray
         if (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
           indirectColor += (1.0 / (rayDepth + 1)) * extensionSurfaceColor * lightColor  * dot(previousNormal, rayDirection) * dot(extensionNormal, positionToLightDirection);
+          /*
           if(shadingMode.enable2thRayDierctionSpatialFilter==1){
           float level=4;
             vec4 preIndirectColor_00 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
@@ -281,6 +297,8 @@ void main() {
             vec4 preIndirectColor=(1/4.0)*preIndirectColor_11+(1/8.0)*(preIndirectColor_01+preIndirectColor_10+preIndirectColor_12+preIndirectColor_21)+(1/16.0)*(preIndirectColor_00+preIndirectColor_02+preIndirectColor_20+preIndirectColor_22);
             indirectColor=preIndirectColor.xyz;
           }
+          */
+          
         }
         else {
           rayActive = false;

@@ -259,14 +259,14 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
             shadingMode->enable2thRayDierctionSpatialFilter = 0;
         }
         if (keyDownIndex[GLFW_KEY_3]) {   //shadow method:motion vector along
-            shadingMode->enable2thRay = 1;
+            shadingMode->enable2thRay = 0;
             shadingMode->enableShadowMotion = 1;
             shadingMode->enableMeanDiff = 0;
-            shadingMode->enable2thRMotion = 1;
+            shadingMode->enable2thRMotion = 0;
             shadingMode->enable2thRayDierctionSpatialFilter = 0;
         }
         if (keyDownIndex[GLFW_KEY_4]) {   //my shadow method
-            shadingMode->enable2thRay = 1;
+            shadingMode->enable2thRay = 0;
             shadingMode->enableShadowMotion = 1;
             shadingMode->enableMeanDiff = 1;
             shadingMode->enable2thRMotion = 0;
@@ -3051,4 +3051,7 @@ ShadingMode::ShadingMode()
     enable2thRay = 1;
     enableMeanDiff = 0;
     enableShadowMotion = 0;
+    enable2thRayDierctionSpatialFilter = 0;
+    enableShadowMotion = 0;
+    enable2thRMotion = 0;
 }

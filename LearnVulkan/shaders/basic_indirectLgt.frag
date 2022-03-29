@@ -184,7 +184,7 @@ void main() {
         //secondary shadow ray
         if (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
           indirectColor += (1.0 / (rayDepth + 1)) * extensionSurfaceColor * lightColor  * dot(previousNormal, rayDirection) * dot(extensionNormal, positionToLightDirection);
-          outColor=vec4(indirectColor,1.0);
+          outColor=vec4(rayDirection,1.0);
         }
         else {
           rayActive = false;
