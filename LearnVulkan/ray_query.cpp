@@ -110,12 +110,14 @@ void VkRayTracingApplication::initVulkan(Scene* scene)
     createRenderPass(this);
     createCommandPool(this);
     createDepthResources(this);
-    createFramebuffers(this);
+    
 
     createVertexBuffer(this, scene);
     createIndexBuffer(this, scene);
     createMaterialsBuffer(this, scene);
     createTextures(this);
+
+    createFramebuffers(this);
 
     //Acceleration Structure Setup
     createBottomLevelAccelerationStructure(this, scene);
@@ -1172,9 +1174,9 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->Image_indirectLgt, &app->ImageMemory_indirectLgt);
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->Image_indirectLgt_2, &app->ImageMemory_indirectLgt_2);
 
-    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GnormalImage, &app->GnormalImageMemory);
-    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GDirectImage, &app->GDirectImageMemory);
-    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GDepthImage, &app->GDepthImageMemory);
+    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GnormalImage, &app->GnormalImageMemory);
+    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GDirectImage, &app->GDirectImageMemory);
+    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GDepthImage, &app->GDepthImageMemory);
 
 
     VkImageSubresourceRange subresourceRange = {};
@@ -1198,6 +1200,7 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
 
     VkImageViewCreateInfo G_imageViewCreateInfo = imageViewCreateInfo;
     G_imageViewCreateInfo.image = app->GnormalImage;
+    G_imageViewCreateInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
 
     VkImageViewCreateInfo G_imageViewCreateInfo_2 = imageViewCreateInfo;
     G_imageViewCreateInfo_2.image = app->GDirectImage;
