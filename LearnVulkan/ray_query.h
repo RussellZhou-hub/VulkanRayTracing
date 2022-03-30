@@ -194,7 +194,16 @@ private:
 	VkImageView* swapchainImageViews;
 	VkFramebuffer* swapchainFramebuffers;
 
-	VkFramebuffer* swapchainFramebuffers_indirectLgt;
+	VkImage GnormalImage;
+	VkImageView GnormalImageView;
+	VkDeviceMemory GnormalImageMemory;
+	VkImage GDirectImage;
+	VkImageView GDirectImageView;
+	VkDeviceMemory GDirectImageMemory;
+	VkImage GDepthImage;
+	VkImageView GDepthImageView;
+	VkDeviceMemory GDepthImageMemory;
+	VkFramebuffer* GFramebuffersLv0;   //for geometry buffer
 
 	VkRenderPass renderPass;
 	VkPipelineLayout pipelineLayout;

@@ -980,9 +980,11 @@ void VkRayTracingApplication::createRenderPass(VkRayTracingApplication* app)
     depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    VkAttachmentReference colorAttachmentRef = {};
-    colorAttachmentRef.attachment = 0;
-    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    VkAttachmentReference* colorAttachmentRef = (VkAttachmentReference*)malloc(4*sizeof(VkAttachmentReference));
+    for(auto i=0;i<4;i++){
+        colorAttachmentRef[i].attachment = i;
+        colorAttachmentRef[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    };
 
     VkAttachmentReference depthAttachmentRef = {};
     depthAttachmentRef.attachment = 1;
@@ -993,8 +995,14 @@ void VkRayTracingApplication::createRenderPass(VkRayTracingApplication* app)
     VkSubpassDescription subpass = {};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = 1;
-    subpass.pColorAttachments = &colorAttachmentRef;
+    subpass.pColorAttachments = &colorAttachmentRef[0];
     subpass.pDepthStencilAttachment = &depthAttachmentRef;
+
+    VkSubpassDescription G_subpass = {}; //for filter
+    G_subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    G_subpass.colorAttachmentCount = 4;
+    G_subpass.pColorAttachments = colorAttachmentRef;
+    G_subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
     pSubpass[0] = subpass;
 
@@ -1007,6 +1015,7 @@ void VkRayTracingApplication::createRenderPass(VkRayTracingApplication* app)
     dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
     VkAttachmentDescription attachments[2] = { colorAttachment, depthAttachment };
+    VkAttachmentDescription G_attachments[4] = { colorAttachment,colorAttachment,colorAttachment,depthAttachment };
 
     VkRenderPassCreateInfo renderPassInfo = {};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -1017,10 +1026,19 @@ void VkRayTracingApplication::createRenderPass(VkRayTracingApplication* app)
     renderPassInfo.dependencyCount = 1;
     renderPassInfo.pDependencies = &dependency;
 
+    VkRenderPassCreateInfo renderPassInfo_Lv0 = {};
+    renderPassInfo_Lv0.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassInfo_Lv0.attachmentCount = 4;
+    renderPassInfo_Lv0.pAttachments = G_attachments;
+    renderPassInfo_Lv0.subpassCount = 1;
+    renderPassInfo_Lv0.pSubpasses = &G_subpass;
+    renderPassInfo_Lv0.dependencyCount = 1;
+    renderPassInfo_Lv0.pDependencies = &dependency;
+
     if (vkCreateRenderPass(app->logicalDevice, &renderPassInfo, NULL, &app->renderPass) == VK_SUCCESS) {
         printf("created render pass\n");
     }
-    if (vkCreateRenderPass(app->logicalDevice, &renderPassInfo, NULL, &app->renderPass_indierctLgt) == VK_SUCCESS) {
+    if (vkCreateRenderPass(app->logicalDevice, &renderPassInfo_Lv0, NULL, &app->renderPass_indierctLgt) == VK_SUCCESS) {
         printf("created renderPass_indierctLgt pass\n");
     }
     if (vkCreateRenderPass(app->logicalDevice, &renderPassInfo, NULL, &app->renderPass_indierctLgt_2) == VK_SUCCESS) {
@@ -1154,6 +1172,11 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->Image_indirectLgt, &app->ImageMemory_indirectLgt);
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->Image_indirectLgt_2, &app->ImageMemory_indirectLgt_2);
 
+    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GnormalImage, &app->GnormalImageMemory);
+    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GDirectImage, &app->GDirectImageMemory);
+    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GDepthImage, &app->GDepthImageMemory);
+
+
     VkImageSubresourceRange subresourceRange = {};
     subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     subresourceRange.baseMipLevel = 0;
@@ -1168,6 +1191,19 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
     imageViewCreateInfo.format = app->swapchainImageFormat;
     imageViewCreateInfo.subresourceRange = subresourceRange;
     imageViewCreateInfo.image = app->rayTraceImage;
+    imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+    VkImageViewCreateInfo G_imageViewCreateInfo = imageViewCreateInfo;
+    G_imageViewCreateInfo.image = app->GnormalImage;
+
+    VkImageViewCreateInfo G_imageViewCreateInfo_2 = imageViewCreateInfo;
+    G_imageViewCreateInfo_2.image = app->GDirectImage;
+
+    VkImageViewCreateInfo G_imageViewCreateInfo_3 = imageViewCreateInfo;
+    G_imageViewCreateInfo_3.image = app->GDepthImage;
 
     VkImageViewCreateInfo imageViewCreateInfo_2 = imageViewCreateInfo;
     imageViewCreateInfo_2.image = app->Image_indirectLgt;
@@ -1175,15 +1211,27 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
     VkImageViewCreateInfo imageViewCreateInfo_3 = imageViewCreateInfo;
     imageViewCreateInfo_3.image = app->Image_indirectLgt_2;
 
-    if (vkCreateImageView(app->logicalDevice, &imageViewCreateInfo, NULL, &app->rayTraceImageView) == VK_SUCCESS) {
-        printf("created image view\n");
+    if (vkCreateImageView(app->logicalDevice, &G_imageViewCreateInfo, NULL, &app->GnormalImageView) == VK_SUCCESS) {
+        printf("created GnormalImageView\n");
     }
+    if (vkCreateImageView(app->logicalDevice, &G_imageViewCreateInfo_2, NULL, &app->GDirectImageView) == VK_SUCCESS) {
+        printf("created GDirectImageView\n");
+    }
+    if (vkCreateImageView(app->logicalDevice, &G_imageViewCreateInfo_3, NULL, &app->GDepthImageView) == VK_SUCCESS) {
+        printf("created GDepthImageView\n");
+    }
+
     if (vkCreateImageView(app->logicalDevice, &imageViewCreateInfo_2, NULL, &app->ImageView_indirectLgt) == VK_SUCCESS) {
         printf("created image_indirectLgt view\n");
     }
     if (vkCreateImageView(app->logicalDevice, &imageViewCreateInfo_3, NULL, &app->ImageView_indirectLgt_2) == VK_SUCCESS) {
         printf("created image_indirectLgt_2 view\n");
     }
+
+    if (vkCreateImageView(app->logicalDevice, &imageViewCreateInfo_3, NULL, &app->ImageView_indirectLgt_2) == VK_SUCCESS) {
+        printf("created image_indirectLgt_2 view\n");
+    }
+
 
     VkImageMemoryBarrier imageMemoryBarrier = {};
     imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -3158,8 +3206,7 @@ void VkRayTracingApplication::createFramebuffers(VkRayTracingApplication* app)
 {
     app->swapchainFramebuffers = (VkFramebuffer*)malloc(sizeof(VkFramebuffer*) * app->imageCount);
 
-    app->swapchainFramebuffers_indirectLgt = (VkFramebuffer*)malloc(sizeof(VkFramebuffer*) * app->imageCount);
-    
+    app->GFramebuffersLv0 = (VkFramebuffer*)malloc(sizeof(VkFramebuffer*) * 3);   //for 4renderpass (3 filter pass)
 
     for (int x = 0; x < app->imageCount; x++) {
         VkImageView attachments[2] = {
@@ -3181,23 +3228,25 @@ void VkRayTracingApplication::createFramebuffers(VkRayTracingApplication* app)
         }
     }
 
-    for (int x = 0; x < app->imageCount; x++) {
-        VkImageView attachments_indirectLgt[2] = {
-          app->swapchainImageViews[x],
+    for (int x = 0; x < 3; x++) {
+        VkImageView G_attachments[4] = {
+          app->GnormalImageView,
+          app->GDirectImageView,
+          app->GDepthImageView,
           app->depthImageView
         };
 
-        VkFramebufferCreateInfo framebufferCreateInfo_indirectLgt = {};
-        framebufferCreateInfo_indirectLgt.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        framebufferCreateInfo_indirectLgt.renderPass = app->renderPass_indierctLgt;
-        framebufferCreateInfo_indirectLgt.attachmentCount = 2;
-        framebufferCreateInfo_indirectLgt.pAttachments = attachments_indirectLgt;
-        framebufferCreateInfo_indirectLgt.width = app->swapchainExtent.width;
-        framebufferCreateInfo_indirectLgt.height = app->swapchainExtent.height;
-        framebufferCreateInfo_indirectLgt.layers = 1;
+        VkFramebufferCreateInfo GframebufferCreateInfo = {};
+        GframebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        GframebufferCreateInfo.renderPass = app->renderPass_indierctLgt;
+        GframebufferCreateInfo.attachmentCount = 4;
+        GframebufferCreateInfo.pAttachments = G_attachments;
+        GframebufferCreateInfo.width = app->swapchainExtent.width;
+        GframebufferCreateInfo.height = app->swapchainExtent.height;
+        GframebufferCreateInfo.layers = 1;
 
-        if (vkCreateFramebuffer(app->logicalDevice, &framebufferCreateInfo_indirectLgt, NULL, &app->swapchainFramebuffers_indirectLgt[x]) == VK_SUCCESS) {
-            printf("created swapchain framebuffer_indirectLgt #%d\n", x);
+        if (vkCreateFramebuffer(app->logicalDevice, &GframebufferCreateInfo, NULL, &app->GFramebuffersLv0[x]) == VK_SUCCESS) {
+            printf("created swapchain framebuffer GFramebuffersLv0 #%d\n", x);
         }
     }
 }
