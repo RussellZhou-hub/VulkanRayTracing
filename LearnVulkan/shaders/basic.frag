@@ -20,6 +20,8 @@ layout(location = 6) in mat4 invProjMatrix;
 layout(location = 10) in mat4 invViewMatrix;
 
 layout(location = 0) out vec4 outColor;
+layout(location = 1) out vec4 outNormal;
+layout(location = 2) out vec4 outDirect;
 
 vec3 fragPos;
 bool isShadow=false;
@@ -85,6 +87,9 @@ void main() {
   vec3 directColor = vec3(0.0, 0.0, 0.0);
   vec3 indirectColor = vec3(0.0, 0.0, 0.0);
   vec3 indirectColor_2 = vec3(0.0, 0.0, 0.0);
+
+  //outNormal=vec4(1.0,0.0,0.0,1.0);
+  outDirect=vec4(0.0,1.0,0.0,1.0);
 
   ivec3 indices = ivec3(indexBuffer.data[3 * gl_PrimitiveID + 0], indexBuffer.data[3 * gl_PrimitiveID + 1], indexBuffer.data[3 * gl_PrimitiveID + 2]);
 
