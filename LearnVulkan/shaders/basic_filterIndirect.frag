@@ -69,7 +69,26 @@ layout(binding = 1, set = 1) buffer MaterialBuffer { Material data[]; } material
 
 
 void main() {
-    //5*5 guassian
+
+        float level=4;
+        vec4 preIndirectDirection_00 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
+        vec4 preIndirectDirection_01 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y-level));
+        vec4 preIndirectDirection_02 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y-level));
+        vec4 preIndirectDirection_10 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y));
+        vec4 preIndirectDirection_11 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy));
+        vec4 preIndirectDirection_12 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y));
+        vec4 preIndirectDirection_20 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y+level));
+        vec4 preIndirectDirection_21 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y+level));
+        vec4 preIndirectDirection_22 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
+        //vec4 preIndirectDirection=(1/4.0)*preIndirectDirection_11+(1/8.0)*(preIndirectDirection_01+preIndirectDirection_10+preIndirectDirection_12+preIndirectDirection_21)+(1/16.0)*(preIndirectDirection_00+preIndirectDirection_02+preIndirectDirection_20+preIndirectDirection_22);
+        vec4 preIndirectDirection=preIndirectDirection_11+preIndirectDirection_01+preIndirectDirection_10+preIndirectDirection_12+preIndirectDirection_21+preIndirectDirection_00+preIndirectDirection_02+preIndirectDirection_20+preIndirectDirection_22;
+        preIndirectDirection/=9;
+
+        preIndirectDirection_11 = imageLoad(image_indirectLgt_2, ivec2(gl_FragCoord.xy));
+        outColor=0.1*preIndirectDirection+0.9*preIndirectDirection_11; //direction of the 2thRay
+
+        /*
+        //5*5 guassian
             vec4 preIndirectDirection_00 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-2,gl_FragCoord.y-2));
             vec4 preIndirectDirection_01 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-1,gl_FragCoord.y-2));
             vec4 preIndirectDirection_02 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y-2));
@@ -107,5 +126,7 @@ void main() {
 
             vec4 total=(r0+r1+r2+r3+r4)/273;
             outColor=total; //direction of the 2thRay
+        */
+    
             //outColor=imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y));;
 }

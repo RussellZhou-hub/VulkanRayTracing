@@ -165,7 +165,7 @@ void main() {
 
         outColor=vec4(beta_indirect*preIndirectDirection.xyz+(1-beta_indirect)*rayDirection,1.0); //direction of the 2thRay
       */
-      float beta_indirect=0;
+      float beta_indirect=0.8;
 
         
 
@@ -207,7 +207,7 @@ void main() {
             vec4 r4=1*preIndirectDirection_40+4*preIndirectDirection_41+7*preIndirectDirection_42+4*preIndirectDirection_43+1*preIndirectDirection_44;  */
 
             //vec4 total=(r0+r1+r2+r3+r4)/273;
-            vec4 total=vec4(0.0,0.0,0.0,1.0);
+            vec4 total=imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy));;
             outColor=vec4(beta_indirect*total.xyz+(1-beta_indirect)*rayDirection,1.0); //direction of the 2thRay
         }
 

@@ -144,7 +144,7 @@ void main() {
       fragPos.y*=camera.ViewPortHeight;
       //fragPos.x-=500;
       fragPos.xy=floor(fragPos.xy)+0.5;
-
+      fragPos.xy=getFragCoord(interpolatedPosition.xyz);
       vec4 previousColor = imageLoad(image, ivec2(fragPos.xy));
 
       vec4 worldPos=getWorldPos(gl_FragCoord.xyz);
@@ -156,17 +156,21 @@ void main() {
       float alpha=0.9;
       
       int d=10;
-      if(shadingMode.enableShadowMotion==1 && shadingMode.enableMeanDiff==1 && camera.frameCount > 0){  //spatial filter
-        fragPos.x+=d;
-        vec4 previousColorR = imageLoad(image, ivec2(fragPos.xy));
-        fragPos.y+=d;
-        vec4 previousColorRD = imageLoad(image, ivec2(fragPos.xy));
-        fragPos.x-=d;
-        vec4 previousColorD = imageLoad(image, ivec2(fragPos.xy));
+      if(shadingMode.enableShadowMotion==1 && shadingMode.enableMeanDiff==1 && isShadow==true && camera.frameCount > 0){  //spatial filter
+        
+        // bilinear filter  双线性过滤 提升质量
+        
+        float level=4;
+        vec4 preShadow_01 = imageLoad(image, ivec2(fragPos.x,fragPos.y-level));
+        vec4 preShadow_10 = imageLoad(image, ivec2(fragPos.x-level,fragPos.y));
+        vec4 preShadow_12 = imageLoad(image, ivec2(fragPos.x+level,fragPos.y));
+        vec4 preShadow_21 = imageLoad(image, ivec2(fragPos.x,fragPos.y+level));
+        vec4 PreShadow=preShadow_01+preShadow_10+preShadow_12+preShadow_21;
+        //vec4 PreShadow=preShadow_11+preShadow_01+preShadow_10+preShadow_12+preShadow_21+preShadow_00+preShadow_02+preShadow_20+preShadow_22;
+        PreShadow/=4;
+
         float beta=0.25;
-        vec4 avg;
         float avgInt;
-        avg=beta*previousColor+(1-beta)/3*previousColorR+(1-beta)/3*previousColorRD+(1-beta)/3*previousColorD;
 
         //if(avg.x>0.6){
         //    debugPrintfEXT("previousColorR.x is %f\n avg.x is %f",previousColorR.x,avg.x);
@@ -175,16 +179,18 @@ void main() {
         //}
         
         //if((variance.x+variance.y+variance.z)/3>0){  //估计 noisy
-        avgInt=avg.x+avg.y+avg.z;
+        avgInt=PreShadow.x+PreShadow.y+PreShadow.z;
         avgInt/=3;
         if(avgInt>0.35){
             if(isShadow){
                 directColor+=vec3(0.25,0.25,0.25);
             }
         }
+        directColor=alpha*PreShadow.xyz+(1-alpha)*directColor.xyz;
       }
-
-      directColor=alpha*previousColor.xyz+(1-alpha)*directColor.xyz;
+      else{
+        directColor=alpha*previousColor.xyz+(1-alpha)*directColor.xyz;
+      }
     }
   }
 
@@ -196,26 +202,17 @@ void main() {
   
   //direction map
   vec3 rayDirection;
-  rayDirection = getSampledReflectedDirection(interpolatedPosition.xyz,geometricNormal,gl_FragCoord.xy,camera.frameCount);
+  if(shadingMode.enable2thRayDierctionSpatialFilter==1){
+      rayDirection = imageLoad(image_indirectLgt_2, ivec2(gl_FragCoord.xy)).xyz;;
+  }
+  else{
+    rayDirection = getSampledReflectedDirection(interpolatedPosition.xyz,geometricNormal,gl_FragCoord.xy,camera.frameCount);
+  }
+  
+  
   vec3 previousNormal = geometricNormal;
 
-  if(shadingMode.enable2thRayDierctionSpatialFilter==1){
-          float beta_indr=0.5;
-          float level=1;
-            vec4 preIndirectColor_00 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
-            vec4 preIndirectColor_01 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y-level));
-            vec4 preIndirectColor_02 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y-level));
-            vec4 preIndirectColor_10 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y));
-            vec4 preIndirectColor_11 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy));
-            vec4 preIndirectColor_12 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y));
-            vec4 preIndirectColor_20 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y+level));
-            vec4 preIndirectColor_21 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y+level));
-            vec4 preIndirectColor_22 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
-            vec4 preIndirectColor=(1/4.0)*preIndirectColor_11+(1/8.0)*(preIndirectColor_01+preIndirectColor_10+preIndirectColor_12+preIndirectColor_21)+(1/16.0)*(preIndirectColor_00+preIndirectColor_02+preIndirectColor_20+preIndirectColor_22);
-            //rayDirection=normalize(preIndirectColor.xyz);
-            rayDirection=beta_indr*preIndirectColor_11.xyz+(1-beta_indr)*rayDirection;
-            rayDirection=normalize(rayDirection);
-          }
+  
 
   bool rayActive = true;
   int maxRayDepth = 1;
@@ -302,6 +299,7 @@ void main() {
             indirectColor=preIndirectColor.xyz;
           }
           */
+
           
         }
         else {
@@ -349,8 +347,8 @@ void main() {
   vec4 color = vec4(directColor + indirectColor, 1.0);
 
   if(!isShadow && shadingMode.enable2thRMotion==1 && gl_PrimitiveID != 40 && gl_PrimitiveID != 41 && camera.frameCount > 0){
-    vec4 previousColor = imageLoad(image, ivec2(RayHitPointFragCoord.xy));
-    color.xyz=0.3*previousColor.xyz+0.7*color.xyz;
+    vec4 previousColor = imageLoad(image, ivec2(gl_FragCoord.xy));
+    color.xyz=0.8*previousColor.xyz+0.2*color.xyz;
   }
 
   /*

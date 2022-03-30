@@ -292,7 +292,7 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
             shadingMode->enable2thRay = 1;
             shadingMode->enableShadowMotion = 0;
             shadingMode->enableMeanDiff = 0;
-            shadingMode->enable2thRMotion = 0;
+            shadingMode->enable2thRMotion = 1;
             shadingMode->enable2thRayDierctionSpatialFilter = 1;
         }
 
