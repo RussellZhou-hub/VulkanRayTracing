@@ -54,6 +54,7 @@ layout(binding = 3, set = 0) buffer VertexBuffer { float data[]; } vertexBuffer;
 layout(binding = 4, set = 0, rgba32f) uniform image2D image;
 layout(binding = 6, set = 0, rgba32f) uniform image2D image_indirectLgt;
 layout(binding = 7, set = 0, rgba32f) uniform image2D image_indirectLgt_2;
+layout(binding = 8, set = 0, rgba32f) uniform image2D image_directLgtIr;
 
 layout(binding = 5, set = 0) uniform ShadingMode {
   //mat4 invViewMatrix;
@@ -91,7 +92,7 @@ void main() {
   vec3 indirectColor = vec3(0.0, 0.0, 0.0);
   vec3 indirectColor_2 = vec3(0.0, 0.0, 0.0);
 
-  outDirectIr=vec4(1.0,0.0,0.0,1.0);
+  //outDirectIr=vec4(1.0,0.0,0.0,1.0);
   outIndAlbedo=vec4(0.5,0.5,0.5,1.0);
   outIndIr=vec4(0.5,0.5,0.0,1.0);
   outNormal=vec4(0.0,0.5,0.0,1.0);
@@ -124,7 +125,7 @@ void main() {
     vec3 shadowRayDirection = positionToLightDirection;
     float shadowRayDistance = length(lightPosition - interpolatedPosition) - 0.001f;
 
-    
+    vec4 preShadow=imageLoad(image_directLgtIr,ivec2(gl_FragCoord.xy));   //pre shadow
     
     //shadow ray
     rayQueryEXT rayQuery;
@@ -133,10 +134,33 @@ void main() {
     while (rayQueryProceedEXT(rayQuery));
 
     if (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
-      directColor = surfaceColor * lightColor * dot(geometricNormal, positionToLightDirection);    //not in shadow
+      //directColor = surfaceColor * lightColor * dot(geometricNormal, positionToLightDirection);    //not in shadow
+      vec4 irrad=imageLoad(image_directLgtIr,ivec2(gl_FragCoord.xy));
+      float weight=length(irrad);
+      if(shadingMode.enableShadowMotion==1){
+         if(preShadow.w==0.0){  //pre in shadow
+            directColor=preShadow.xyz;
+        }
+        else{
+            directColor = surfaceColor * irrad.xyz;    //not in shadow
+        }
+      }
+      else{  //unenable shadowmotion
+        directColor=surfaceColor * lightColor * dot(geometricNormal, positionToLightDirection); 
+      }
     }
-    else {
-      directColor = vec3(0.0, 0.0, 0.0);                     //in shadow
+    else {  //now in shadow
+        if(shadingMode.enableShadowMotion==1 && preShadow.w==0.0){   //must in shadow
+            vec3 irrad=imageLoad(image_directLgtIr,ivec2(gl_FragCoord.xy)).xyz;
+            directColor=irrad;
+        }
+        if(shadingMode.enableShadowMotion==1 && preShadow.w==1.0){  //contrast , believe pre ,so not in shadow
+            directColor = surfaceColor * preShadow.xyz;
+        }
+        else{
+            directColor=vec3(0.0,0.0,0.0);
+        }
+      
       isShadow=true;
     }
 
@@ -156,8 +180,8 @@ void main() {
       //fragPos.x-=500;
       fragPos.xy=floor(fragPos.xy)+0.5;
       fragPos.xy=getFragCoord(interpolatedPosition.xyz);
-      //vec4 previousColor = imageLoad(image, ivec2(fragPos.xy));
-      vec4 previousColor=vec4(0.0,0.0,0.0,1.0);
+      vec4 previousColor = imageLoad(image, ivec2(fragPos.xy));
+      //vec4 previousColor=vec4(0.0,0.0,0.0,1.0);
 
       vec4 worldPos=getWorldPos(gl_FragCoord.xyz);
       ///if( fragPos.y>1079){
@@ -372,7 +396,7 @@ void main() {
     color /= (camera.frameCount + 1);
   }
   */
-  if(shadingMode.enableShadowMotion==1 && gl_PrimitiveID != 40 && gl_PrimitiveID != 41 && camera.frameCount > 0){
+  if(shadingMode.enable2Ray==1 && shadingMode.enableShadowMotion==1 && gl_PrimitiveID != 40 && gl_PrimitiveID != 41 && camera.frameCount > 0){
     float addBrightness=0.2;
     float addIndirect=0.2;
     if(indirectColor.x>0.0 && color.x<0.5){     //clamp 阴影中的反射颜色

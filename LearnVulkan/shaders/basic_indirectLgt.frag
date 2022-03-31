@@ -20,6 +20,11 @@ layout(location = 6) in mat4 invProjMatrix;
 layout(location = 10) in mat4 invViewMatrix;
 
 layout(location = 0) out vec4 outColor;
+layout(location = 1) out vec4 outDirectIr;
+layout(location = 2) out vec4 outIndAlbedo;
+layout(location = 3) out vec4 outIndIr;
+layout(location = 4) out vec4 outNormal;
+layout(location = 5) out vec4 outWorldPos;
 
 vec3 fragPos;
 bool isShadow=false;
@@ -49,6 +54,7 @@ layout(binding = 3, set = 0) buffer VertexBuffer { float data[]; } vertexBuffer;
 layout(binding = 4, set = 0, rgba32f) uniform image2D image;
 layout(binding = 6, set = 0, rgba32f) uniform image2D image_indirectLgt;
 layout(binding = 7, set = 0, rgba32f) uniform image2D image_indirectLgt_2;
+layout(binding = 8, set = 0, rgba32f) uniform image2D image_directLgtIr;
 
 layout(binding = 5, set = 0) uniform ShadingMode {
   //mat4 invViewMatrix;
@@ -100,9 +106,104 @@ void main() {
   if (gl_PrimitiveID == 40 || gl_PrimitiveID == 41) {
     directColor = materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission;
     outColor.xyz=directColor;
+    outDirectIr=vec4(0.6,0.6,0.6,1.0);
   }
   else {
+        int randomIndex = int(random(gl_FragCoord.xy) * 2 + 40);//40 is the light area
+    vec3 lightColor = vec3(0.6, 0.6, 0.6);
+    //vec3 lightPosition = lightVertexA * lightBarycentric.x + lightVertexB * lightBarycentric.y + lightVertexC * lightBarycentric.z;
+    vec3 lightPosition=getRadomLightPosition(randomIndex);
 
+    vec3 positionToLightDirection = normalize(lightPosition - interpolatedPosition);
+
+    vec3 shadowRayOrigin = interpolatedPosition;
+    vec3 shadowRayDirection = positionToLightDirection;
+    float shadowRayDistance = length(lightPosition - interpolatedPosition) - 0.001f;
+
+    
+    
+    //shadow ray
+    rayQueryEXT rayQuery;
+    rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, shadowRayOrigin, 0.001f, shadowRayDirection, shadowRayDistance);
+  
+    while (rayQueryProceedEXT(rayQuery));
+
+    if (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
+      directColor = surfaceColor * lightColor * dot(geometricNormal, positionToLightDirection);    //not in shadow
+      outDirectIr.xyz=lightColor * dot(geometricNormal, positionToLightDirection);  //irradiance of the direct light
+      outDirectIr.w=1.0;
+    }
+    else {
+      directColor = vec3(0.0, 0.0, 0.0);                     //in shadow
+      outDirectIr=vec4(directColor,0.0);
+      isShadow=true;
+    }
+
+    if(shadingMode.enableShadowMotion==1 && isShadow==true && camera.frameCount > 0){
+      //Implement shadow motion vector algorithm
+      //vec4 prevFramePos=shadingMode.PrevProjectionMatrix*shadingMode.PrevViewMatrix*vec4(interpolatedPosition, 1.0);
+
+      fragPos=clipPos.xyz;
+      
+      //fragPos.xy=clipPos.xy;
+      fragPos.xy/=clipPos.w;
+      fragPos.y=-fragPos.y;
+      fragPos.xy+=1;
+      fragPos.xy/=2;
+      fragPos.x*=camera.ViewPortWidth;
+      fragPos.y*=camera.ViewPortHeight;
+      //fragPos.x-=500;
+      fragPos.xy=floor(fragPos.xy)+0.5;
+      fragPos.xy=getFragCoord(interpolatedPosition.xyz);
+      vec4 previousColor = clamp(imageLoad(image_directLgtIr, ivec2(fragPos.xy)),0.0,0.2);
+      //vec4 previousColor=vec4(0.0,0.0,0.0,1.0);
+
+      vec4 worldPos=getWorldPos(gl_FragCoord.xyz);
+      ///if( fragPos.y>1079){
+      //  debugPrintfEXT("gl_FragCoord.x is %f  gl_FragCoord.y is %f \n worldPos.x is %f   worldPos.y is %f  clipPos.x is %f interpolatedPos.x is %f interpolatedPos.y is %f   clipPos.w is %f   \n\n",
+      //  gl_FragCoord.x,gl_FragCoord.y, worldPos.x,worldPos.y,clipPos.x,interpolatedPosition.x,interpolatedPosition.y,clipPos.w);
+      //}
+
+      float alpha=0.9;
+      
+      int d=10;
+      if(shadingMode.enableMeanDiff==1 && isShadow==true && camera.frameCount > 0){  //spatial filter
+        
+        // bilinear filter  双线性过滤 提升质量
+        
+        float level=4;
+        vec4 preShadow_01 = imageLoad(image, ivec2(fragPos.x,fragPos.y-level));
+        vec4 preShadow_10 = imageLoad(image, ivec2(fragPos.x-level,fragPos.y));
+        vec4 preShadow_12 = imageLoad(image, ivec2(fragPos.x+level,fragPos.y));
+        vec4 preShadow_21 = imageLoad(image, ivec2(fragPos.x,fragPos.y+level));
+        vec4 PreShadow=preShadow_01+preShadow_10+preShadow_12+preShadow_21;
+        //vec4 PreShadow=preShadow_11+preShadow_01+preShadow_10+preShadow_12+preShadow_21+preShadow_00+preShadow_02+preShadow_20+preShadow_22;
+        PreShadow/=4;
+
+        float beta=0.25;
+        float avgInt;
+
+        //if(avg.x>0.6){
+        //    debugPrintfEXT("previousColorR.x is %f\n avg.x is %f",previousColorR.x,avg.x);
+        //    debugPrintfEXT("gl_FragCoord.x is %f  gl_FragCoord.y is %f \n fragPos.x is %f   fragPos.y is %f  clipPos.x is %f interpolatedPos.x is %f   clipPos.w is %f   \n\n",
+        //    gl_FragCoord.x,gl_FragCoord.y, fragPos.x,fragPos.y,clipPos.x,interpolatedPosition.x,clipPos.w);
+        //}
+        
+        //if((variance.x+variance.y+variance.z)/3>0){  //估计 noisy
+        avgInt=PreShadow.x+PreShadow.y+PreShadow.z;
+        avgInt/=3;
+        if(avgInt>0.35){
+            if(isShadow){
+                directColor+=vec3(0.25,0.25,0.25);
+            }
+        }
+        directColor=alpha*PreShadow.xyz+(1-alpha)*directColor.xyz;
+      }
+      else{
+        directColor=alpha*previousColor.xyz+(1-alpha)*directColor.xyz;
+        outDirectIr=vec4(directColor,1.0);
+      }
+    }
   }
 
   vec3 hemisphere = uniformSampleHemisphere(vec2(random(gl_FragCoord.xy, camera.frameCount), random(gl_FragCoord.xy, camera.frameCount + 1)));

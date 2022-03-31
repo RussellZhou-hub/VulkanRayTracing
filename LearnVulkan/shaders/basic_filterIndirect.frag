@@ -20,6 +20,11 @@ layout(location = 6) in mat4 invProjMatrix;
 layout(location = 10) in mat4 invViewMatrix;
 
 layout(location = 0) out vec4 outColor;
+layout(location = 1) out vec4 outDirectIr;
+layout(location = 2) out vec4 outIndAlbedo;
+layout(location = 3) out vec4 outIndIr;
+layout(location = 4) out vec4 outNormal;
+layout(location = 5) out vec4 outWorldPos;
 
 vec3 fragPos;
 bool isShadow=false;
@@ -49,6 +54,7 @@ layout(binding = 3, set = 0) buffer VertexBuffer { float data[]; } vertexBuffer;
 layout(binding = 4, set = 0, rgba32f) uniform image2D image;
 layout(binding = 6, set = 0, rgba32f) uniform image2D image_indirectLgt;
 layout(binding = 7, set = 0, rgba32f) uniform image2D image_indirectLgt_2;
+layout(binding = 8, set = 0, rgba32f) uniform image2D image_directLgtIr;
 
 layout(binding = 5, set = 0) uniform ShadingMode {
   //mat4 invViewMatrix;
@@ -69,7 +75,7 @@ layout(binding = 1, set = 1) buffer MaterialBuffer { Material data[]; } material
 
 
 void main() {
-
+        /*
         float level=4;
         vec4 preIndirectDirection_00 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
         vec4 preIndirectDirection_01 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y-level));
@@ -86,47 +92,72 @@ void main() {
 
         preIndirectDirection_11 = imageLoad(image_indirectLgt_2, ivec2(gl_FragCoord.xy));
         outColor=0.1*preIndirectDirection+0.9*preIndirectDirection_11; //direction of the 2thRay
-
-        /*
-        //5*5 guassian
-            vec4 preIndirectDirection_00 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-2,gl_FragCoord.y-2));
-            vec4 preIndirectDirection_01 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-1,gl_FragCoord.y-2));
-            vec4 preIndirectDirection_02 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y-2));
-            vec4 preIndirectDirection_03 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+1,gl_FragCoord.y-2));
-            vec4 preIndirectDirection_04 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+2,gl_FragCoord.y-2));
-            vec4 r0=1*preIndirectDirection_00+4*preIndirectDirection_01+7*preIndirectDirection_02+4*preIndirectDirection_03+1*preIndirectDirection_04;
-
-            vec4 preIndirectDirection_10 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-2,gl_FragCoord.y-1));
-            vec4 preIndirectDirection_11 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-1,gl_FragCoord.y-1));
-            vec4 preIndirectDirection_12 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y-1));
-            vec4 preIndirectDirection_13 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+1,gl_FragCoord.y-1));
-            vec4 preIndirectDirection_14 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+2,gl_FragCoord.y-1));
-            vec4 r1=4*preIndirectDirection_10+16*preIndirectDirection_11+26*preIndirectDirection_12+16*preIndirectDirection_13+4*preIndirectDirection_14;
-
-            vec4 preIndirectDirection_20 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-2,gl_FragCoord.y));
-            vec4 preIndirectDirection_21 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-1,gl_FragCoord.y));
-            vec4 preIndirectDirection_22 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y));
-            vec4 preIndirectDirection_23 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+1,gl_FragCoord.y));
-            vec4 preIndirectDirection_24 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+2,gl_FragCoord.y));
-            vec4 r2=7*preIndirectDirection_20+26*preIndirectDirection_21+41*preIndirectDirection_22+26*preIndirectDirection_23+7*preIndirectDirection_24;
-
-            vec4 preIndirectDirection_30 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-2,gl_FragCoord.y+1));
-            vec4 preIndirectDirection_31 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-1,gl_FragCoord.y+1));
-            vec4 preIndirectDirection_32 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y+1));
-            vec4 preIndirectDirection_33 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+1,gl_FragCoord.y+1));
-            vec4 preIndirectDirection_34 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+2,gl_FragCoord.y+1));
-            vec4 r3=4*preIndirectDirection_30+16*preIndirectDirection_31+26*preIndirectDirection_32+16*preIndirectDirection_33+4*preIndirectDirection_34;
-
-            vec4 preIndirectDirection_40 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-2,gl_FragCoord.y+2));
-            vec4 preIndirectDirection_41 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-1,gl_FragCoord.y+2));
-            vec4 preIndirectDirection_42 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y+2));
-            vec4 preIndirectDirection_43 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+1,gl_FragCoord.y+2));
-            vec4 preIndirectDirection_44 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+2,gl_FragCoord.y+2));
-            vec4 r4=1*preIndirectDirection_40+4*preIndirectDirection_41+7*preIndirectDirection_42+4*preIndirectDirection_43+1*preIndirectDirection_44;
-
-            vec4 total=(r0+r1+r2+r3+r4)/273;
-            outColor=total; //direction of the 2thRay
         */
-    
-            //outColor=imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y));;
+        
+
+        
+        { /*
+        //5*5 guassian
+        vec4 preDirect_00 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x-2,gl_FragCoord.y-2));
+        vec4 preDirect_01 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x-1,gl_FragCoord.y-2));
+        vec4 preDirect_02 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x,gl_FragCoord.y-2));
+        vec4 preDirect_03 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x+1,gl_FragCoord.y-2));
+        vec4 preDirect_04 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x+2,gl_FragCoord.y-2));
+        vec4 r0=1*preDirect_00+4*preDirect_01+7*preDirect_02+4*preDirect_03+1*preDirect_04;
+
+        vec4 preDirect_10 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x-2,gl_FragCoord.y-1));
+        vec4 preDirect_11 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x-1,gl_FragCoord.y-1));
+        vec4 preDirect_12 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x,gl_FragCoord.y-1));
+        vec4 preDirect_13 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x+1,gl_FragCoord.y-1));
+        vec4 preDirect_14 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x+2,gl_FragCoord.y-1));
+        vec4 r1=4*preDirect_10+16*preDirect_11+26*preDirect_12+16*preDirect_13+4*preDirect_14;
+
+        vec4 preDirect_20 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x-2,gl_FragCoord.y));
+        vec4 preDirect_21 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x-1,gl_FragCoord.y));
+        vec4 preDirect_22 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x,gl_FragCoord.y));
+        vec4 preDirect_23 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x+1,gl_FragCoord.y));
+        vec4 preDirect_24 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x+2,gl_FragCoord.y));
+        vec4 r2=7*preDirect_20+26*preDirect_21+41*preDirect_22+26*preDirect_23+7*preDirect_24;
+
+        vec4 preDirect_30 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x-2,gl_FragCoord.y+1));
+        vec4 preDirect_31 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x-1,gl_FragCoord.y+1));
+        vec4 preDirect_32 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x,gl_FragCoord.y+1));
+        vec4 preDirect_33 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x+1,gl_FragCoord.y+1));
+        vec4 preDirect_34 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x+2,gl_FragCoord.y+1));
+        vec4 r3=4*preDirect_30+16*preDirect_31+26*preDirect_32+16*preDirect_33+4*preDirect_34;
+
+        vec4 preDirect_40 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x-2,gl_FragCoord.y+2));
+        vec4 preDirect_41 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x-1,gl_FragCoord.y+2));
+        vec4 preDirect_42 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x,gl_FragCoord.y+2));
+        vec4 preDirect_43 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x+1,gl_FragCoord.y+2));
+        vec4 preDirect_44 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x+2,gl_FragCoord.y+2));
+        vec4 r4=1*preDirect_40+4*preDirect_41+7*preDirect_42+4*preDirect_43+1*preDirect_44;
+
+        vec4 total=(r0+r1+r2+r3+r4)/273;
+        outDirectIr=total; //smoothed direct light
+        */}
+        vec4 preDirect_11 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.xy));
+        float level=10;
+        float inShadow=0.0;
+        if(preDirect_11.w==1.0){   //not in shadow point
+            level=2;
+            inShadow=1.0;
+        }
+        vec4 preDirect_00 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
+        vec4 preDirect_01 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x,gl_FragCoord.y-level));
+        vec4 preDirect_02 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x+level,gl_FragCoord.y-level));
+        vec4 preDirect_10 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x-level,gl_FragCoord.y));
+        //vec4 preDirect_11 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.xy));
+        vec4 preDirect_12 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x+level,gl_FragCoord.y));
+        vec4 preDirect_20 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x-level,gl_FragCoord.y+level));
+        vec4 preDirect_21 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x,gl_FragCoord.y+level));
+        vec4 preDirect_22 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
+        vec4 preDirect=(1/4.0)*preDirect_11+(1/8.0)*(preDirect_01+preDirect_10+preDirect_12+preDirect_21)+(1/16.0)*(preDirect_00+preDirect_02+preDirect_20+preDirect_22);
+        //vec4 preDirect=preDirect_11+preDirect_01+preDirect_10+preDirect_12+preDirect_21+preDirect_00+preDirect_02+preDirect_20+preDirect_22;
+        //preDirect/=9;
+
+        outDirectIr=preDirect;   //direct shadow
+        outDirectIr.w=inShadow;
+
+        outIndAlbedo=vec4(1.0,0.0,0.0,1.0);
 }

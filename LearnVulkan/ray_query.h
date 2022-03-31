@@ -215,6 +215,11 @@ private:
 	VkImageView GWorldPosImageView;
 	VkDeviceMemory GWorldPosImageMemory;
 
+	//input image ,Historicl information
+	VkImage HDirectIrradImage;   //directlight irradiance
+	VkImageView HDirectIrradImageView;
+	VkDeviceMemory HDirectIrradImageMemory;
+
 	VkFramebuffer* GFramebuffersLv0;   //for geometry buffer
 
 	VkRenderPass renderPass;
