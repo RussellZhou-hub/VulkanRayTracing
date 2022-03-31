@@ -21,7 +21,7 @@ layout(location = 10) in mat4 invViewMatrix;
 
 layout(location = 0) out vec4 outColor;
 layout(location = 1) out vec4 outNormal;
-layout(location = 2) out vec4 outDirect;
+//layout(location = 2) out vec4 outDirect;
 
 vec3 fragPos;
 bool isShadow=false;
@@ -88,8 +88,8 @@ void main() {
   vec3 indirectColor = vec3(0.0, 0.0, 0.0);
   vec3 indirectColor_2 = vec3(0.0, 0.0, 0.0);
 
-  //outNormal=vec4(1.0,0.0,0.0,1.0);
-  outDirect=vec4(0.0,1.0,0.0,1.0);
+  outNormal=vec4(1.0,0.0,0.0,1.0);
+  //outDirect=vec4(0.0,1.0,0.0,1.0);
 
   ivec3 indices = ivec3(indexBuffer.data[3 * gl_PrimitiveID + 0], indexBuffer.data[3 * gl_PrimitiveID + 1], indexBuffer.data[3 * gl_PrimitiveID + 2]);
 
@@ -150,7 +150,8 @@ void main() {
       //fragPos.x-=500;
       fragPos.xy=floor(fragPos.xy)+0.5;
       fragPos.xy=getFragCoord(interpolatedPosition.xyz);
-      vec4 previousColor = imageLoad(image, ivec2(fragPos.xy));
+      //vec4 previousColor = imageLoad(image, ivec2(fragPos.xy));
+      vec4 previousColor=vec4(0.0,0.0,0.0,1.0);
 
       vec4 worldPos=getWorldPos(gl_FragCoord.xyz);
       ///if( fragPos.y>1079){
@@ -207,12 +208,12 @@ void main() {
   
   //direction map
   vec3 rayDirection;
-  if(shadingMode.enable2thRayDierctionSpatialFilter==1){
-      rayDirection = imageLoad(image_indirectLgt_2, ivec2(gl_FragCoord.xy)).xyz;;
-  }
-  else{
+  //if(shadingMode.enable2thRayDierctionSpatialFilter==1){
+     // rayDirection = imageLoad(image_indirectLgt_2, ivec2(gl_FragCoord.xy)).xyz;;
+ // }
+  //else{
     rayDirection = getSampledReflectedDirection(interpolatedPosition.xyz,geometricNormal,gl_FragCoord.xy,camera.frameCount);
-  }
+  //}
   
   
   vec3 previousNormal = geometricNormal;
@@ -353,7 +354,7 @@ void main() {
 
   if(!isShadow && shadingMode.enable2thRMotion==1 && gl_PrimitiveID != 40 && gl_PrimitiveID != 41 && camera.frameCount > 0){
     vec4 previousColor = imageLoad(image, ivec2(gl_FragCoord.xy));
-    color.xyz=0.8*previousColor.xyz+0.2*color.xyz;
+    color.xyz=0*previousColor.xyz+1.0*color.xyz;
   }
 
   /*

@@ -194,9 +194,9 @@ private:
 	VkImageView* swapchainImageViews;
 	VkFramebuffer* swapchainFramebuffers;
 
-	VkImage GnormalImage;
-	VkImageView GnormalImageView;
-	VkDeviceMemory GnormalImageMemory;
+	VkImage* GnormalImages;
+	VkImageView* GnormalImageViews;
+	VkDeviceMemory* GnormalImageMemorys;
 	VkImage GDirectImage;
 	VkImageView GDirectImageView;
 	VkDeviceMemory GDirectImageMemory;
