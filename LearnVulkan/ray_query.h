@@ -194,15 +194,27 @@ private:
 	VkImageView* swapchainImageViews;
 	VkFramebuffer* swapchainFramebuffers;
 
-	VkImage* GnormalImages;
-	VkImageView* GnormalImageViews;
-	VkDeviceMemory* GnormalImageMemorys;
-	VkImage GDirectImage;
+	//output attachment in shader
+	uint32_t colorAttachCount;
+	VkImage GnormalImage;  //normal map
+	VkImageView GnormalImageView;
+	VkDeviceMemory GnormalImageMemory;
+	VkImage GDirectImage;   //directlight albedo
 	VkImageView GDirectImageView;
 	VkDeviceMemory GDirectImageMemory;
-	VkImage GDepthImage;
-	VkImageView GDepthImageView;
-	VkDeviceMemory GDepthImageMemory;
+	VkImage GDirectIrradImage;   //directlight irradiance
+	VkImageView GDirectIrradImageView;
+	VkDeviceMemory GDirectIrradImageMemory;
+	VkImage G_albedoImage;  //indirectlight albedo
+	VkImageView G_albedoImageView;
+	VkDeviceMemory G_albedoImageMemory;
+	VkImage GIrradImage;  //indirectlight Irrad
+	VkImageView GIrradImageView;
+	VkDeviceMemory GIrradImageMemory;
+	VkImage GWorldPosImage;  //world position Irrad
+	VkImageView GWorldPosImageView;
+	VkDeviceMemory GWorldPosImageMemory;
+
 	VkFramebuffer* GFramebuffersLv0;   //for geometry buffer
 
 	VkRenderPass renderPass;

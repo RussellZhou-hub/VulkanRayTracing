@@ -20,8 +20,11 @@ layout(location = 6) in mat4 invProjMatrix;
 layout(location = 10) in mat4 invViewMatrix;
 
 layout(location = 0) out vec4 outColor;
-layout(location = 1) out vec4 outNormal;
-//layout(location = 2) out vec4 outDirect;
+layout(location = 1) out vec4 outDirectIr;
+layout(location = 2) out vec4 outIndAlbedo;
+layout(location = 3) out vec4 outIndIr;
+layout(location = 4) out vec4 outNormal;
+layout(location = 5) out vec4 outWorldPos;
 
 vec3 fragPos;
 bool isShadow=false;
@@ -88,8 +91,11 @@ void main() {
   vec3 indirectColor = vec3(0.0, 0.0, 0.0);
   vec3 indirectColor_2 = vec3(0.0, 0.0, 0.0);
 
-  outNormal=vec4(1.0,0.0,0.0,1.0);
-  //outDirect=vec4(0.0,1.0,0.0,1.0);
+  outDirectIr=vec4(1.0,0.0,0.0,1.0);
+  outIndAlbedo=vec4(0.5,0.5,0.5,1.0);
+  outIndIr=vec4(0.5,0.5,0.0,1.0);
+  outNormal=vec4(0.0,0.5,0.0,1.0);
+  outWorldPos=vec4(0.0,0.0,1.0,1.0);
 
   ivec3 indices = ivec3(indexBuffer.data[3 * gl_PrimitiveID + 0], indexBuffer.data[3 * gl_PrimitiveID + 1], indexBuffer.data[3 * gl_PrimitiveID + 2]);
 
@@ -104,7 +110,7 @@ void main() {
   // 40 & 41 == light
   if (gl_PrimitiveID == 40 || gl_PrimitiveID == 41) {
     directColor = materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission;
-     debugPrintfEXT("lightVertexA.x is %f  lightVertexA.y is %f lightVertexA.z is %f \n lightVertexB.x is %f  lightVertexB.y is %f lightVertexB.z is %f \n lightVertexC.x is %f  lightVertexC.y is %f lightVertexC.z is %f \n",vertexA.x,vertexA.y,vertexA.z,vertexB.x,vertexB.y,vertexB.z,vertexC.x,vertexC.y,vertexC.z);
+     //debugPrintfEXT("lightVertexA.x is %f  lightVertexA.y is %f lightVertexA.z is %f \n lightVertexB.x is %f  lightVertexB.y is %f lightVertexB.z is %f \n lightVertexC.x is %f  lightVertexC.y is %f lightVertexC.z is %f \n",vertexA.x,vertexA.y,vertexA.z,vertexB.x,vertexB.y,vertexB.z,vertexC.x,vertexC.y,vertexC.z);
   }
   else {
     int randomIndex = int(random(gl_FragCoord.xy) * 2 + 40);//40 is the light area

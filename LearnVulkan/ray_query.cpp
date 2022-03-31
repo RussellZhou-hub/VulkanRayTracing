@@ -29,7 +29,7 @@
 #include <glm/ext/matrix_transform.hpp>
 
 
-VkRayTracingApplication::VkRayTracingApplication() {
+VkRayTracingApplication::VkRayTracingApplication():colorAttachCount(6){
     currentFrame = 0;
 }
 
@@ -723,6 +723,8 @@ void VkRayTracingApplication::pickPhysicalDevice(VkRayTracingApplication* app)
     //VkPhysicalDevice* devices = (VkPhysicalDevice*)malloc(sizeof(VkPhysicalDevice) * deviceCount);
     vkEnumeratePhysicalDevices(app->instance, &deviceCount, devices.data());
 
+    
+
     for (const auto& device : devices) {
         if (isDeviceSuitable(device)) {
             app->physicalDevice = device;
@@ -751,6 +753,11 @@ void VkRayTracingApplication::createLogicalConnection(VkRayTracingApplication* a
     app->graphicsQueueIndex = -1;
     app->presentQueueIndex = -1;
     app->computeQueueIndex = -1;
+
+    //VkPhysicalDeviceProperties2 properties = {};
+    //properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    //vkGetPhysicalDeviceProperties2(app->physicalDevice, &properties);
+
 
     uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(app->physicalDevice, &queueFamilyCount, NULL);
@@ -992,27 +999,21 @@ void VkRayTracingApplication::createRenderPass(VkRayTracingApplication* app)
     depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    VkAttachmentReference* colorAttachmentRef = (VkAttachmentReference*)malloc(3*sizeof(VkAttachmentReference));
-    for(auto i=0;i<3;i++){
-        colorAttachmentRef[i].attachment = i;
+    VkAttachmentReference* colorAttachmentRef = (VkAttachmentReference*)malloc(app->colorAttachCount*sizeof(VkAttachmentReference));
+    for(auto i=0;i< app->colorAttachCount;i++){
+        colorAttachmentRef[i].attachment = i;  //location in fragment shader
         colorAttachmentRef[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     };
 
     VkAttachmentReference depthAttachmentRef = {};
-    depthAttachmentRef.attachment = 2;
+    depthAttachmentRef.attachment = app->colorAttachCount;  //location in fragment shader
     depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
     VkSubpassDescription subpass = {};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.colorAttachmentCount = 2;
+    subpass.colorAttachmentCount = app->colorAttachCount;
     subpass.pColorAttachments = colorAttachmentRef;
     subpass.pDepthStencilAttachment = &depthAttachmentRef;
-
-    VkSubpassDescription G_subpass = {}; //for filter
-    G_subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    G_subpass.colorAttachmentCount = 4;
-    G_subpass.pColorAttachments = colorAttachmentRef;
-    G_subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
     VkSubpassDependency dependency = {};
     dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -1022,26 +1023,17 @@ void VkRayTracingApplication::createRenderPass(VkRayTracingApplication* app)
     dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-    VkAttachmentDescription attachments[3] = { colorAttachment,colorAttachment_2, depthAttachment };
-    VkAttachmentDescription G_attachments[4] = { colorAttachment,colorAttachment,colorAttachment,depthAttachment };
+    VkAttachmentDescription attachments[7] = { colorAttachment,colorAttachment_2,colorAttachment_2,colorAttachment_2,colorAttachment_2,colorAttachment_2, depthAttachment };
 
     VkRenderPassCreateInfo renderPassInfo = {};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassInfo.attachmentCount = 3;
+    renderPassInfo.attachmentCount = app->colorAttachCount+1;
     renderPassInfo.pAttachments = attachments;
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subpass;
     renderPassInfo.dependencyCount = 1;
     renderPassInfo.pDependencies = &dependency;
 
-    VkRenderPassCreateInfo renderPassInfo_Lv0 = {};
-    renderPassInfo_Lv0.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassInfo_Lv0.attachmentCount = 4;
-    renderPassInfo_Lv0.pAttachments = G_attachments;
-    renderPassInfo_Lv0.subpassCount = 1;
-    renderPassInfo_Lv0.pSubpasses = &G_subpass;
-    renderPassInfo_Lv0.dependencyCount = 1;
-    renderPassInfo_Lv0.pDependencies = &dependency;
 
     if (vkCreateRenderPass(app->logicalDevice, &renderPassInfo, NULL, &app->renderPass) == VK_SUCCESS) {
         printf("created render pass\n");
@@ -1179,16 +1171,13 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->rayTraceImage, &app->rayTraceImageMemory);
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->Image_indirectLgt, &app->ImageMemory_indirectLgt);
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->Image_indirectLgt_2, &app->ImageMemory_indirectLgt_2);
-
-    app->GnormalImages = (VkImage*)malloc(app->imageCount * sizeof(VkImage));
-    app->GnormalImageMemorys = (VkDeviceMemory*)malloc(app->imageCount * sizeof(VkDeviceMemory));
     
-    for (auto i = 0; i < app->imageCount; i++) {
-        createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GnormalImages[i], &app->GnormalImageMemorys[i]);
-    }
-    
+    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GnormalImage, &app->GnormalImageMemory);
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GDirectImage, &app->GDirectImageMemory);
-    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GDepthImage, &app->GDepthImageMemory);
+    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GDirectIrradImage, &app->GDirectIrradImageMemory);
+    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->G_albedoImage, &app->G_albedoImageMemory);
+    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GIrradImage, &app->GIrradImageMemory);
+    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GWorldPosImage, &app->GWorldPosImageMemory);
 
 
     VkImageSubresourceRange subresourceRange = {};
@@ -1205,26 +1194,24 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
     imageViewCreateInfo.format = app->swapchainImageFormat;
     imageViewCreateInfo.subresourceRange = subresourceRange;
     imageViewCreateInfo.image = app->rayTraceImage;
-    imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-    app->GnormalImageViews = (VkImageView*)malloc(app->imageCount * sizeof(VkImageView));
-    for (auto x = 0; x < app->imageCount;x++) {
-        VkImageViewCreateInfo G_imageViewCreateInfo = imageViewCreateInfo;
-        G_imageViewCreateInfo.image = app->GnormalImages[x];
-        if (vkCreateImageView(app->logicalDevice, &G_imageViewCreateInfo, NULL, &app->GnormalImageViews[x]) == VK_SUCCESS) {
-            printf("created GnormalImageView %d\n",x);
-        }
-    }
     
-
     VkImageViewCreateInfo G_imageViewCreateInfo_2 = imageViewCreateInfo;
-    G_imageViewCreateInfo_2.image = app->GDirectImage;
+    G_imageViewCreateInfo_2.image = app->GnormalImage;
 
     VkImageViewCreateInfo G_imageViewCreateInfo_3 = imageViewCreateInfo;
-    G_imageViewCreateInfo_3.image = app->GDepthImage;
+    G_imageViewCreateInfo_3.image = app->GDirectImage;
+
+    VkImageViewCreateInfo G_imageViewCreateInfo_4 = imageViewCreateInfo;
+    G_imageViewCreateInfo_4.image = app->GDirectIrradImage;
+
+    VkImageViewCreateInfo G_imageViewCreateInfo_5 = imageViewCreateInfo;
+    G_imageViewCreateInfo_5.image = app->G_albedoImage;
+
+    VkImageViewCreateInfo G_imageViewCreateInfo_6 = imageViewCreateInfo;
+    G_imageViewCreateInfo_6.image = app->GIrradImage;
+
+    VkImageViewCreateInfo G_imageViewCreateInfo_7 = imageViewCreateInfo;
+    G_imageViewCreateInfo_7.image = app->GWorldPosImage;
 
     VkImageViewCreateInfo imageViewCreateInfo_2 = imageViewCreateInfo;
     imageViewCreateInfo_2.image = app->Image_indirectLgt;
@@ -1232,11 +1219,25 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
     VkImageViewCreateInfo imageViewCreateInfo_3 = imageViewCreateInfo;
     imageViewCreateInfo_3.image = app->Image_indirectLgt_2;
 
-    
-    if (vkCreateImageView(app->logicalDevice, &G_imageViewCreateInfo_2, NULL, &app->GDirectImageView) == VK_SUCCESS) {
+    if (vkCreateImageView(app->logicalDevice, &imageViewCreateInfo, NULL, &app->rayTraceImageView) == VK_SUCCESS) {
+        printf("created GnormalImageView \n");
+    }
+    if (vkCreateImageView(app->logicalDevice, &G_imageViewCreateInfo_2, NULL, &app->GnormalImageView) == VK_SUCCESS) {
+        printf("created GnormalImageView \n");
+    }
+    if (vkCreateImageView(app->logicalDevice, &G_imageViewCreateInfo_3, NULL, &app->GDirectImageView) == VK_SUCCESS) {
         printf("created GDirectImageView\n");
     }
-    if (vkCreateImageView(app->logicalDevice, &G_imageViewCreateInfo_3, NULL, &app->GDepthImageView) == VK_SUCCESS) {
+    if (vkCreateImageView(app->logicalDevice, &G_imageViewCreateInfo_4, NULL, &app->GDirectIrradImageView) == VK_SUCCESS) {
+        printf("created GDepthImageView\n");
+    }
+    if (vkCreateImageView(app->logicalDevice, &G_imageViewCreateInfo_5, NULL, &app->G_albedoImageView) == VK_SUCCESS) {
+        printf("created GDepthImageView\n");
+    }
+    if (vkCreateImageView(app->logicalDevice, &G_imageViewCreateInfo_6, NULL, &app->GIrradImageView) == VK_SUCCESS) {
+        printf("created GDepthImageView\n");
+    }
+    if (vkCreateImageView(app->logicalDevice, &G_imageViewCreateInfo_7, NULL, &app->GWorldPosImageView) == VK_SUCCESS) {
         printf("created GDepthImageView\n");
     }
 
@@ -2226,7 +2227,11 @@ void VkRayTracingApplication::createCommandBuffers(VkRayTracingApplication* app,
         renderPassBeginInfo.renderArea.offset = renderAreaOffset;
         renderPassBeginInfo.renderArea.extent = app->swapchainExtent;
 
-        VkClearValue clearValues[3] = {
+        VkClearValue clearValues[7] = {
+          {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
+          {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
+          {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
+          {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
           {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
           {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
           {.depthStencil = {1.0f, 0}}
@@ -2239,7 +2244,7 @@ void VkRayTracingApplication::createCommandBuffers(VkRayTracingApplication* app,
         //clearValues[2].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
         //clearValues[3].depthStencil = { 1.0f, 0 };
 
-        renderPassBeginInfo.clearValueCount = 3;
+        renderPassBeginInfo.clearValueCount = app->colorAttachCount+1;
         renderPassBeginInfo.pClearValues = clearValues;
 
         VkBuffer vertexBuffers[1] = { app->vertexPositionBuffer };
@@ -2293,7 +2298,7 @@ void VkRayTracingApplication::createCommandBuffers(VkRayTracingApplication* app,
 
             //copy 当前帧 渲染结果 到 rayTraceImage
             vkCmdCopyImage(app->commandBuffers[x], app->swapchainImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->rayTraceImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
-            vkCmdCopyImage(app->commandBuffers[x], app->GnormalImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->Image_indirectLgt, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+            //vkCmdCopyImage(app->commandBuffers[x], app->GnormalImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->Image_indirectLgt, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
         }
 
 
@@ -2960,20 +2965,21 @@ void VkRayTracingApplication::createFramebuffers(VkRayTracingApplication* app)
 {
     app->swapchainFramebuffers = (VkFramebuffer*)malloc(sizeof(VkFramebuffer*) * app->imageCount);
 
-    app->GFramebuffersLv0 = (VkFramebuffer*)malloc(sizeof(VkFramebuffer*) *app->imageCount);   //for 4renderpass (3 filter pass)
-
     for (int x = 0; x < app->imageCount; x++) {
-        VkImageView attachments[3] = {
+        VkImageView attachments[7] = {
           app->swapchainImageViews[x],
-          app->GnormalImageViews[x],
-          //app->GDirectImageView,
+          app->GDirectIrradImageView,
+          app->G_albedoImageView,
+          app->GIrradImageView,
+          app->GWorldPosImageView,
+          app->GnormalImageView,
           app->depthImageView
         };
 
         VkFramebufferCreateInfo framebufferCreateInfo = {};
         framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         framebufferCreateInfo.renderPass = app->renderPass;
-        framebufferCreateInfo.attachmentCount = 3;
+        framebufferCreateInfo.attachmentCount = app->colorAttachCount+1;
         framebufferCreateInfo.pAttachments = attachments;
         framebufferCreateInfo.width = app->swapchainExtent.width;
         framebufferCreateInfo.height = app->swapchainExtent.height;
@@ -2981,28 +2987,6 @@ void VkRayTracingApplication::createFramebuffers(VkRayTracingApplication* app)
 
         if (vkCreateFramebuffer(app->logicalDevice, &framebufferCreateInfo, NULL, &app->swapchainFramebuffers[x]) == VK_SUCCESS) {
             printf("created swapchain framebuffer #%d\n", x);
-        }
-    }
-
-    for (int x = 0; x < app->imageCount; x++) {
-        VkImageView G_attachments[4] = {
-          app->GnormalImageViews[0],
-          app->GDirectImageView,
-          app->GDepthImageView,
-          app->depthImageView
-        };
-
-        VkFramebufferCreateInfo GframebufferCreateInfo = {};
-        GframebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        GframebufferCreateInfo.renderPass = app->renderPass_indierctLgt;
-        GframebufferCreateInfo.attachmentCount = 4;
-        GframebufferCreateInfo.pAttachments = G_attachments;
-        GframebufferCreateInfo.width = app->swapchainExtent.width;
-        GframebufferCreateInfo.height = app->swapchainExtent.height;
-        GframebufferCreateInfo.layers = 1;
-
-        if (vkCreateFramebuffer(app->logicalDevice, &GframebufferCreateInfo, NULL, &app->GFramebuffersLv0[x]) == VK_SUCCESS) {
-            printf("created swapchain framebuffer GFramebuffersLv0 #%d\n", x);
         }
     }
 }
@@ -3098,12 +3082,12 @@ void VkRayTracingApplication::createGraphicsPipeline(VkRayTracingApplication* ap
     depthStencil.depthBoundsTestEnable = VK_FALSE;
     depthStencil.stencilTestEnable = VK_FALSE;
 
-    VkPipelineColorBlendAttachmentState colorBlendAttachmentState = {};
-    colorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachmentState.blendEnable = VK_FALSE;
+    //VkPipelineColorBlendAttachmentState colorBlendAttachmentState = {};
+    //colorBlendAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    //colorBlendAttachmentState.blendEnable = VK_FALSE;
 
-    VkPipelineColorBlendAttachmentState* pColorBlendAttachmentState = (VkPipelineColorBlendAttachmentState*)malloc(2 * sizeof(VkPipelineColorBlendAttachmentState));
-    for (auto i = 0; i < 2; i++) {
+    VkPipelineColorBlendAttachmentState* pColorBlendAttachmentState = (VkPipelineColorBlendAttachmentState*)malloc(app->colorAttachCount * sizeof(VkPipelineColorBlendAttachmentState));
+    for (auto i = 0; i < app->colorAttachCount; i++) {
         pColorBlendAttachmentState[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
         pColorBlendAttachmentState[i].blendEnable = VK_FALSE;
     }
@@ -3112,7 +3096,7 @@ void VkRayTracingApplication::createGraphicsPipeline(VkRayTracingApplication* ap
     colorBlendStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     colorBlendStateCreateInfo.logicOpEnable = VK_FALSE;
     colorBlendStateCreateInfo.logicOp = VK_LOGIC_OP_COPY;
-    colorBlendStateCreateInfo.attachmentCount = 2;                //Num of color attachment
+    colorBlendStateCreateInfo.attachmentCount = app->colorAttachCount;                //Num of color attachment
     colorBlendStateCreateInfo.pAttachments = pColorBlendAttachmentState;
     colorBlendStateCreateInfo.blendConstants[0] = 0.0f;
     colorBlendStateCreateInfo.blendConstants[1] = 0.0f;
