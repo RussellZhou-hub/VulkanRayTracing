@@ -55,6 +55,9 @@ layout(binding = 4, set = 0, rgba32f) uniform image2D image;
 layout(binding = 6, set = 0, rgba32f) uniform image2D image_indirectLgt;
 layout(binding = 7, set = 0, rgba32f) uniform image2D image_indirectLgt_2;
 layout(binding = 8, set = 0, rgba32f) uniform image2D image_directLgtIr;
+layout(binding = 9, set = 0, rgba32f) uniform image2D image_indirectAlbedo;
+layout(binding = 10, set = 0, rgba32f) uniform image2D image_normal;
+layout(binding = 11, set = 0, rgba32f) uniform image2D image_worldPos;
 
 layout(binding = 5, set = 0) uniform ShadingMode {
   //mat4 invViewMatrix;
@@ -98,6 +101,8 @@ void main() {
   outNormal=vec4(0.0,0.5,0.0,1.0);
   outWorldPos=vec4(0.0,0.0,1.0,1.0);
 
+  vec4 preShadow;
+
   ivec3 indices = ivec3(indexBuffer.data[3 * gl_PrimitiveID + 0], indexBuffer.data[3 * gl_PrimitiveID + 1], indexBuffer.data[3 * gl_PrimitiveID + 2]);
 
   vec3 vertexA = vec3(vertexBuffer.data[3 * indices.x + 0], vertexBuffer.data[3 * indices.x + 1], vertexBuffer.data[3 * indices.x + 2]);
@@ -125,7 +130,7 @@ void main() {
     vec3 shadowRayDirection = positionToLightDirection;
     float shadowRayDistance = length(lightPosition - interpolatedPosition) - 0.001f;
 
-    vec4 preShadow=imageLoad(image_directLgtIr,ivec2(gl_FragCoord.xy));   //pre shadow
+    preShadow=imageLoad(image_directLgtIr,ivec2(gl_FragCoord.xy));   //pre shadow
     
     //shadow ray
     rayQueryEXT rayQuery;
@@ -311,11 +316,15 @@ void main() {
         vec3 shadowRayDirection = positionToLightDirection;
         float shadowRayDistance = length(lightPosition - extensionPosition) - 0.001f;
 
+      
+
+        if(shadingMode.enable2thRMotion==0){
         rayQueryEXT rayQuery;
         rayQueryInitializeEXT(rayQuery, topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, shadowRayOrigin, 0.001f, shadowRayDirection, shadowRayDistance);
       
         while (rayQueryProceedEXT(rayQuery));
 
+        
         //secondary shadow ray
         if (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
           indirectColor += (1.0 / (rayDepth + 1)) * extensionSurfaceColor * lightColor  * dot(previousNormal, rayDirection) * dot(extensionNormal, positionToLightDirection);
@@ -338,15 +347,22 @@ void main() {
 
           
         }
-        else {
-          rayActive = false;
+            else {
+                rayActive = false;
+            }
         }
-
+        else{
+            indirectColor=imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy)).xyz*imageLoad(image_indirectLgt_2, ivec2(gl_FragCoord.xy)).xyz;
+            if( preShadow.w==0.0 ){ //inshadow
+                indirectColor*=0.1;
+            }
+        }
         //if(abs(indirectColor.x-directColor.x)>0.3){
         //    vec3 avgColor=(indirectColor+directColor)/2;
         //    directColor=avgColor;
          //   indirectColor=avgColor;
         //}
+        /*
         if(shadingMode.enableShadowMotion==1 && gl_PrimitiveID != 40 && gl_PrimitiveID != 41){
              float subFactor;
         if(directColor.x<0.1){
@@ -360,6 +376,8 @@ void main() {
         }
         indirectColor-=vec3(subFactor,subFactor,subFactor);
         }
+        */
+        
 
       }
 
@@ -382,10 +400,10 @@ void main() {
 
   vec4 color = vec4(directColor + indirectColor, 1.0);
 
-  if(!isShadow && shadingMode.enable2thRMotion==1 && gl_PrimitiveID != 40 && gl_PrimitiveID != 41 && camera.frameCount > 0){
-    vec4 previousColor = imageLoad(image, ivec2(gl_FragCoord.xy));
-    color.xyz=0*previousColor.xyz+1.0*color.xyz;
-  }
+  //if(!isShadow && shadingMode.enable2thRMotion==1 && gl_PrimitiveID != 40 && gl_PrimitiveID != 41 && camera.frameCount > 0){
+  //  vec4 previousColor = imageLoad(image, ivec2(gl_FragCoord.xy));
+  //  color.xyz=0*previousColor.xyz+1.0*color.xyz;
+  //}
 
   /*
   if (camera.frameCount > 0) {              //静止画面下使用前一帧像素降噪
@@ -396,7 +414,9 @@ void main() {
     color /= (camera.frameCount + 1);
   }
   */
-  if(shadingMode.enable2Ray==1 && shadingMode.enableShadowMotion==1 && gl_PrimitiveID != 40 && gl_PrimitiveID != 41 && camera.frameCount > 0){
+
+  /*
+   if(shadingMode.enable2Ray==1 && shadingMode.enableShadowMotion==1 && gl_PrimitiveID != 40 && gl_PrimitiveID != 41 && camera.frameCount > 0){
     float addBrightness=0.2;
     float addIndirect=0.2;
     if(indirectColor.x>0.0 && color.x<0.5){     //clamp 阴影中的反射颜色
@@ -412,6 +432,9 @@ void main() {
         color.xyz=vec3(addBrightness)+addIndirect*indirectColor;
     }
   }
+  */
+  
+ 
 
   outColor = color;
 }
@@ -501,7 +524,7 @@ vec3 getSampledReflectedDirection(vec3 inRay,vec3 normal,vec2 uv,float seed){
     float theta=M_PI*random(uv);
     float phi=2*M_PI*random(vec2(uv.y,uv.x));
     vec3 RandomRay=vec3(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta));
-    float weight=0.8;  //reflection rate
+    float weight=0.7;  //reflection rate
     return normalize(weight*Ray+(1-weight)*normalize(RandomRay));
 }
 

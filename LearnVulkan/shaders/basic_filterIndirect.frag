@@ -55,6 +55,9 @@ layout(binding = 4, set = 0, rgba32f) uniform image2D image;
 layout(binding = 6, set = 0, rgba32f) uniform image2D image_indirectLgt;
 layout(binding = 7, set = 0, rgba32f) uniform image2D image_indirectLgt_2;
 layout(binding = 8, set = 0, rgba32f) uniform image2D image_directLgtIr;
+layout(binding = 9, set = 0, rgba32f) uniform image2D image_indirectAlbedo;
+layout(binding = 10, set = 0, rgba32f) uniform image2D image_normal;
+layout(binding = 11, set = 0, rgba32f) uniform image2D image_worldPos;
 
 layout(binding = 5, set = 0) uniform ShadingMode {
   //mat4 invViewMatrix;
@@ -160,4 +163,81 @@ void main() {
         outDirectIr.w=inShadow;
 
         outIndAlbedo=vec4(1.0,0.0,0.0,1.0);
+
+
+        //filter indirect irradiance
+        
+        //
+
+        int count=9;//同一平面上的数量
+        mat3 isSamePlane={
+            vec3(1.0,1.0,1.0),
+            vec3(1.0,1.0,1.0),
+            vec3(1.0,1.0,1.0)
+        };
+        vec4 preInd_11 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy));
+        vec4 normal_11 = imageLoad(image_normal, ivec2(gl_FragCoord.xy));
+        level=32;
+        //normal
+         vec4 normal_00 = imageLoad(image_normal, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
+         if(length(normal_11-normal_00)>0.7){ count--;   isSamePlane[0][0]=0.0; }
+        vec4 normal_01 = imageLoad(image_normal, ivec2(gl_FragCoord.x,gl_FragCoord.y-level));
+        if(length(normal_11-normal_01)>0.7){ count--;   isSamePlane[0][1]=0.0; }
+        vec4 normal_02 = imageLoad(image_normal, ivec2(gl_FragCoord.x+level,gl_FragCoord.y-level));
+        if(length(normal_11-normal_02)>0.7){ count--;   isSamePlane[0][2]=0.0; }
+        vec4 normal_10 = imageLoad(image_normal, ivec2(gl_FragCoord.x-level,gl_FragCoord.y));
+        if(length(normal_11-normal_10)>0.7){ count--;   isSamePlane[1][0]=0.0; }
+        //vec4 normal_11 = imageLoad(image_normal, ivec2(gl_FragCoord.xy));
+        vec4 normal_12 = imageLoad(image_normal, ivec2(gl_FragCoord.x+level,gl_FragCoord.y));
+        if(length(normal_11-normal_12)>0.7){ count--;   isSamePlane[1][2]=0.0; }
+        vec4 normal_20 = imageLoad(image_normal, ivec2(gl_FragCoord.x-level,gl_FragCoord.y+level));
+        if(length(normal_11-normal_20)>0.7){ count--;   isSamePlane[2][0]=0.0; }
+        vec4 normal_21 = imageLoad(image_normal, ivec2(gl_FragCoord.x,gl_FragCoord.y+level));
+        if(length(normal_11-normal_21)>0.7){ count--;   isSamePlane[2][1]=0.0; }
+        vec4 normal_22 = imageLoad(image_normal, ivec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
+        if(length(normal_11-normal_22)>0.7){ count--;   isSamePlane[2][2]=0.0; }
+
+        if(count>=6&&count<9){
+            level=16;
+        }
+        else if(count>=4&&count<6){
+            level=8;
+        }
+        else{
+            level=4;
+        }
+
+        //float ShadowHit=1.0f;
+        //if(preInd_11.w==0.0){   //2thShadow ray not Hit
+        //    level=2;
+        //    ShadowHit=0.0;
+        //}
+        vec4 preInd_00 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
+        vec4 preInd_01 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y-level));
+        vec4 preInd_02 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y-level));
+        vec4 preInd_10 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y));
+        //vec4 preInd_11 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy));
+        vec4 preInd_12 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y));
+        vec4 preInd_20 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y+level));
+        vec4 preInd_21 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y+level));
+        vec4 preInd_22 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
+        vec4 preInd;
+        if(count==9){  preInd=(1/4.0)*preInd_11+(1/8.0)*(preInd_01+preInd_10+preInd_12+preInd_21)+(1/16.0)*(preInd_00+preInd_02+preInd_20+preInd_22);  }
+        else{
+            preInd=preInd_00*isSamePlane[0][0]+preInd_01*isSamePlane[0][1]+preInd_02*isSamePlane[0][2]+
+                    preInd_10*isSamePlane[1][0]+preInd_11*isSamePlane[1][1]+preInd_12*isSamePlane[1][2]+
+                    preInd_20*isSamePlane[2][0]+preInd_21*isSamePlane[2][1]+preInd_22*isSamePlane[2][2];
+            preInd/=count;
+        }
+        //vec4 preInd=preInd_11+preInd_01+preInd_10+preInd_12+preInd_21+preInd_00+preInd_02+preInd_20+preInd_22;
+        //preInd/=9;
+        
+
+        //preInd-=0.05*preDirect_11;
+        //if(pre.x!=0.0){
+        //    debugPrintfEXT("preDirect_11.x is %f  1-preDirect_11 .x is %f \n",pre.x,preDirect_11.x);
+        //}
+
+        outIndIr=preInd;   //Ind irradiance
+        //outIndIr.w=ShadowHit;
 }

@@ -53,8 +53,11 @@ layout(binding = 2, set = 0) buffer IndexBuffer { uint data[]; } indexBuffer;
 layout(binding = 3, set = 0) buffer VertexBuffer { float data[]; } vertexBuffer;
 layout(binding = 4, set = 0, rgba32f) uniform image2D image;
 layout(binding = 6, set = 0, rgba32f) uniform image2D image_indirectLgt;
-layout(binding = 7, set = 0, rgba32f) uniform image2D image_indirectLgt_2;
+layout(binding = 7, set = 0, rgba32f) uniform image2D image_indirectLgt_2;  //ind albedo
 layout(binding = 8, set = 0, rgba32f) uniform image2D image_directLgtIr;
+layout(binding = 9, set = 0, rgba32f) uniform image2D image_indirectAlbedo;
+layout(binding = 10, set = 0, rgba32f) uniform image2D image_normal;
+layout(binding = 11, set = 0, rgba32f) uniform image2D image_worldPos;
 
 layout(binding = 5, set = 0) uniform ShadingMode {
   //mat4 invViewMatrix;
@@ -90,7 +93,11 @@ vec3 alignHemisphereWithCoordinateSystem(vec3 hemisphere, vec3 up);
 void main() {
   vec3 directColor = vec3(0.0, 0.0, 0.0);
   vec3 indirectColor = vec3(0.0, 0.0, 0.0);
+  vec3 indirectIrrad = vec3(0.0, 0.0, 0.0);
+  vec3 indirectalbedo = vec3(0.0, 0.0, 0.0);
   outColor.xyz=directColor;
+  outIndIr=vec4(directColor,0.0);
+  vec4 curClipPos;
 
   ivec3 indices = ivec3(indexBuffer.data[3 * gl_PrimitiveID + 0], indexBuffer.data[3 * gl_PrimitiveID + 1], indexBuffer.data[3 * gl_PrimitiveID + 2]);
 
@@ -99,6 +106,12 @@ void main() {
   vec3 vertexC = vec3(vertexBuffer.data[3 * indices.z + 0], vertexBuffer.data[3 * indices.z + 1], vertexBuffer.data[3 * indices.z + 2]);
   
   vec3 geometricNormal = normalize(cross(vertexB - vertexA, vertexC - vertexA));
+  outNormal=vec4(geometricNormal,1.0);
+
+  curClipPos=camera.projMatrix*camera.viewMatrix*vec4(interpolatedPosition,1.0);
+  curClipPos.xyz/=curClipPos.w;
+  curClipPos.y=-curClipPos.y;
+  outWorldPos=curClipPos;
 
   vec3 surfaceColor = materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].diffuse;
 
@@ -120,7 +133,7 @@ void main() {
     vec3 shadowRayDirection = positionToLightDirection;
     float shadowRayDistance = length(lightPosition - interpolatedPosition) - 0.001f;
 
-    
+    outColor=vec4(surfaceColor,1.0);  //direct albedo
     
     //shadow ray
     rayQueryEXT rayQuery;
@@ -132,6 +145,7 @@ void main() {
       directColor = surfaceColor * lightColor * dot(geometricNormal, positionToLightDirection);    //not in shadow
       outDirectIr.xyz=lightColor * dot(geometricNormal, positionToLightDirection);  //irradiance of the direct light
       outDirectIr.w=1.0;
+      
     }
     else {
       directColor = vec3(0.0, 0.0, 0.0);                     //in shadow
@@ -201,7 +215,7 @@ void main() {
       }
       else{
         directColor=alpha*previousColor.xyz+(1-alpha)*directColor.xyz;
-        outDirectIr=vec4(directColor,1.0);
+        outDirectIr.xyz=directColor;
       }
     }
   }
@@ -247,7 +261,8 @@ void main() {
 
       if (extensionPrimitiveIndex == 40 || extensionPrimitiveIndex == 41) {
         indirectColor += (1.0 / (rayDepth + 1)) * materialBuffer.data[materialIndexBuffer.data[extensionPrimitiveIndex]].emission * dot(previousNormal, rayDirection);
-        outColor=vec4(indirectColor,1.0);
+        indirectIrrad+=(1.0 / (rayDepth + 1)) *  dot(previousNormal, rayDirection);
+        outIndIr=vec4(indirectColor,1.0);
       }
       else {
 
@@ -266,7 +281,7 @@ void main() {
 
         outColor=vec4(beta_indirect*preIndirectDirection.xyz+(1-beta_indirect)*rayDirection,1.0); //direction of the 2thRay
       */
-      float beta_indirect=0.8;
+      float beta_indirect=0;
 
         
 
@@ -308,10 +323,9 @@ void main() {
             vec4 r4=1*preIndirectDirection_40+4*preIndirectDirection_41+7*preIndirectDirection_42+4*preIndirectDirection_43+1*preIndirectDirection_44;  */
 
             //vec4 total=(r0+r1+r2+r3+r4)/273;
-            vec4 total=imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy));;
-            outColor=vec4(beta_indirect*total.xyz+(1-beta_indirect)*rayDirection,1.0); //direction of the 2thRay
+            //vec4 total=imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy));;
+            //outIndIr=vec4(beta_indirect*total.xyz+(1-beta_indirect)*rayDirection,1.0); //direction of the 2thRay
         }
-
 
         RayHitPointFragCoord=getFragCoord(extensionPosition.xyz);
 
@@ -320,10 +334,6 @@ void main() {
         vec3 lightColor = vec3(0.6, 0.6, 0.6);
 
         ivec3 lightIndices = ivec3(indexBuffer.data[3 * randomIndex + 0], indexBuffer.data[3 * randomIndex + 1], indexBuffer.data[3 * randomIndex + 2]);
-
-        //vec3 lightVertexA = vec3(vertexBuffer.data[3 * lightIndices.x + 0], vertexBuffer.data[3 * lightIndices.x + 1], vertexBuffer.data[3 * lightIndices.x + 2]);
-        //vec3 lightVertexB = vec3(vertexBuffer.data[3 * lightIndices.y + 0], vertexBuffer.data[3 * lightIndices.y + 1], vertexBuffer.data[3 * lightIndices.y + 2]);
-        //vec3 lightVertexC = vec3(vertexBuffer.data[3 * lightIndices.z + 0], vertexBuffer.data[3 * lightIndices.z + 1], vertexBuffer.data[3 * lightIndices.z + 2]);
 
         vec3 lightVertexA = camera.lightA.xyz;
         vec3 lightVertexB = camera.lightB.xyz;
@@ -352,12 +362,28 @@ void main() {
         //secondary shadow ray
         if (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
           indirectColor += (1.0 / (rayDepth + 1)) * extensionSurfaceColor * lightColor  * dot(previousNormal, rayDirection) * dot(extensionNormal, positionToLightDirection);
+          indirectIrrad+=(1.0 / (rayDepth + 1))*lightColor  * dot(previousNormal, rayDirection) * dot(extensionNormal, positionToLightDirection);
+          indirectalbedo+=extensionSurfaceColor;
+          outIndIr.w=1.0f;
         }
         else {
           rayActive = false;
-
-          //outColor=vec4(0.0,0.0,0.0,1.0);
         }
+
+        if(shadingMode.enableShadowMotion==1 && gl_PrimitiveID != 40 && gl_PrimitiveID != 41){
+             float subFactor;
+        if(directColor.x<0.1){
+            subFactor=0.3;
+        }
+        else if(directColor.x>0.1 && directColor.x<0.3){
+            subFactor=0.25;
+        }
+        else if(directColor.x>0.3 && directColor.x<0.6){
+            subFactor=0.1;
+        }
+        indirectColor-=vec3(subFactor,subFactor,subFactor);
+        }
+
       }
 
       vec3 hemisphere = uniformSampleHemisphere(vec2(random(gl_FragCoord.xy, camera.frameCount + rayDepth), random(gl_FragCoord.xy, camera.frameCount + rayDepth + 1)));
@@ -381,8 +407,20 @@ void main() {
   vec4 color = vec4(directColor + indirectColor, 1.0);
 
   if(camera.frameCount==0){
-      outColor=vec4(rayDirection,1.0);
+      //outColor=vec4(rayDirection,1.0);
   }
+
+  if(shadingMode.enable2thRMotion==1){
+    vec3 preIndIr=imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy)).xyz;
+    vec3 preIndAlbedo=imageLoad(image_indirectLgt_2, ivec2(gl_FragCoord.xy)).xyz;
+    vec3 black=vec3(0.0,0.0,0.0);
+    float beta=0.9;
+    indirectIrrad=beta*preIndIr+(1-beta)*indirectIrrad;
+    indirectalbedo=beta*preIndAlbedo+(1-beta)*indirectalbedo;
+  }
+
+  outIndIr.xyz=indirectIrrad;
+  outIndAlbedo.xyz=indirectalbedo;
 
   //outColor = color;
 }
@@ -472,7 +510,7 @@ vec3 getSampledReflectedDirection(vec3 inRay,vec3 normal,vec2 uv,float seed){
     float theta=M_PI*random(uv);
     float phi=2*M_PI*random(vec2(uv.y,uv.x));
     vec3 RandomRay=vec3(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta));
-    float weight=0.8;  //reflection rate
+    float weight=0.7;  //reflection rate
     return normalize(weight*Ray+(1-weight)*normalize(RandomRay));
 }
 

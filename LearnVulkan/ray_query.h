@@ -220,6 +220,21 @@ private:
 	VkImageView HDirectIrradImageView;
 	VkDeviceMemory HDirectIrradImageMemory;
 
+	//input image ,Historicl information
+	VkImage HDirectAlbedoImage;   //directlight albedo
+	VkImageView HDirectAlbedoImageView;
+	VkDeviceMemory HDirectAlbedoImageMemory;
+
+	//input image ,Historicl information
+	VkImage HNormalImage;   //normal
+	VkImageView HNormalImageView;
+	VkDeviceMemory HNormalImageMemory;
+
+	//input image ,Historicl information
+	VkImage HWorldPosImage;   //world
+	VkImageView HWorldPosImageView;
+	VkDeviceMemory HWorldPosImageMemory;
+
 	VkFramebuffer* GFramebuffersLv0;   //for geometry buffer
 
 	VkRenderPass renderPass;

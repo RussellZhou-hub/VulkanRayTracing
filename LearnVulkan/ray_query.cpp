@@ -263,10 +263,10 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
             shadingMode->enable2thRayDierctionSpatialFilter = 0;
         }
         if (keyDownIndex[GLFW_KEY_3]) {   //shadow method:motion vector along
-            shadingMode->enable2thRay = 0;
+            shadingMode->enable2thRay = 1;
             shadingMode->enableShadowMotion = 1;
             shadingMode->enableMeanDiff = 0;
-            shadingMode->enable2thRMotion = 0;
+            shadingMode->enable2thRMotion = 1;
             shadingMode->enable2thRayDierctionSpatialFilter = 0;
         }
         if (keyDownIndex[GLFW_KEY_4]) {   //my shadow method
@@ -1172,6 +1172,9 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->Image_indirectLgt, &app->ImageMemory_indirectLgt);
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->Image_indirectLgt_2, &app->ImageMemory_indirectLgt_2);
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->HDirectIrradImage, &app->HDirectIrradImageMemory);
+    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->HDirectAlbedoImage, &app->HDirectAlbedoImageMemory);
+    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->HNormalImage, &app->HNormalImageMemory);
+    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->HWorldPosImage, &app->HWorldPosImageMemory);
     
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GnormalImage, &app->GnormalImageMemory);
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GDirectImage, &app->GDirectImageMemory);
@@ -1223,6 +1226,15 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
     VkImageViewCreateInfo imageViewCreateInfo_DirectIrrad = imageViewCreateInfo;
     imageViewCreateInfo_DirectIrrad.image = app->HDirectIrradImage;
 
+    VkImageViewCreateInfo imageViewCreateInfo_DirectAlbedo = imageViewCreateInfo;
+    imageViewCreateInfo_DirectAlbedo.image = app->HDirectAlbedoImage;
+
+    VkImageViewCreateInfo imageViewCreateInfo_Normal = imageViewCreateInfo;
+    imageViewCreateInfo_Normal.image = app->HNormalImage;
+
+    VkImageViewCreateInfo imageViewCreateInfo_WorldPos = imageViewCreateInfo;
+    imageViewCreateInfo_WorldPos.image = app->HWorldPosImage;
+
     if (vkCreateImageView(app->logicalDevice, &imageViewCreateInfo, NULL, &app->rayTraceImageView) == VK_SUCCESS) {
         printf("created GnormalImageView \n");
     }
@@ -1257,6 +1269,15 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
     }
     if (vkCreateImageView(app->logicalDevice, &imageViewCreateInfo_DirectIrrad, NULL, &app->HDirectIrradImageView) == VK_SUCCESS) {
         printf("created HDirectIrradImageView\n");
+    }
+    if (vkCreateImageView(app->logicalDevice, &imageViewCreateInfo_DirectAlbedo, NULL, &app->HDirectAlbedoImageView) == VK_SUCCESS) {
+        printf("created HDirectAlbedoImageView\n");
+    }
+    if (vkCreateImageView(app->logicalDevice, &imageViewCreateInfo_Normal, NULL, &app->HNormalImageView) == VK_SUCCESS) {
+        printf("created HDirectAlbedoImageView\n");
+    }
+    if (vkCreateImageView(app->logicalDevice, &imageViewCreateInfo_WorldPos, NULL, &app->HWorldPosImageView) == VK_SUCCESS) {
+        printf("created HDirectAlbedoImageView\n");
     }
 
     VkImageMemoryBarrier imageMemoryBarrier = {};
@@ -1664,7 +1685,7 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
     descriptorPoolSizes[2].descriptorCount = 4;
 
     descriptorPoolSizes[3].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    descriptorPoolSizes[3].descriptorCount = 5;
+    descriptorPoolSizes[3].descriptorCount = 8;
 
     VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
     descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1677,7 +1698,7 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
     }
 
     {
-        VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[9];
+        VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[12];
         descriptorSetLayoutBindings[0].binding = 0;
         descriptorSetLayoutBindings[0].descriptorCount = 1;
         descriptorSetLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
@@ -1726,15 +1747,33 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
         descriptorSetLayoutBindings[7].pImmutableSamplers = NULL;
         descriptorSetLayoutBindings[7].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-        descriptorSetLayoutBindings[8].binding = 8;           //dierctLgt
+        descriptorSetLayoutBindings[8].binding = 8;           //dierctLgt irrad
         descriptorSetLayoutBindings[8].descriptorCount = 1;
         descriptorSetLayoutBindings[8].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         descriptorSetLayoutBindings[8].pImmutableSamplers = NULL;
         descriptorSetLayoutBindings[8].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
+        descriptorSetLayoutBindings[9].binding = 9;           //dierctLgt albedo
+        descriptorSetLayoutBindings[9].descriptorCount = 1;
+        descriptorSetLayoutBindings[9].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        descriptorSetLayoutBindings[9].pImmutableSamplers = NULL;
+        descriptorSetLayoutBindings[9].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        descriptorSetLayoutBindings[10].binding = 10;           //normal
+        descriptorSetLayoutBindings[10].descriptorCount = 1;
+        descriptorSetLayoutBindings[10].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        descriptorSetLayoutBindings[10].pImmutableSamplers = NULL;
+        descriptorSetLayoutBindings[10].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        descriptorSetLayoutBindings[11].binding = 11;           //world
+        descriptorSetLayoutBindings[11].descriptorCount = 1;
+        descriptorSetLayoutBindings[11].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        descriptorSetLayoutBindings[11].pImmutableSamplers = NULL;
+        descriptorSetLayoutBindings[11].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
         VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
         descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        descriptorSetLayoutCreateInfo.bindingCount = 9;
+        descriptorSetLayoutCreateInfo.bindingCount = 12;
         descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings;
 
         if (vkCreateDescriptorSetLayout(app->logicalDevice, &descriptorSetLayoutCreateInfo, NULL, &app->rayTraceDescriptorSetLayouts[0]) == VK_SUCCESS) {
@@ -1751,7 +1790,7 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
             printf("\033[22;32m%s\033[0m\n", "allocated descriptor sets");
         }
 
-        VkWriteDescriptorSet writeDescriptorSets[9];
+        VkWriteDescriptorSet writeDescriptorSets[12];
 
         VkWriteDescriptorSetAccelerationStructureKHR descriptorSetAccelerationStructure = {};
         descriptorSetAccelerationStructure.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
@@ -1896,7 +1935,49 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
         writeDescriptorSets[8].pBufferInfo = NULL;
         writeDescriptorSets[8].pTexelBufferView = NULL;
 
-        vkUpdateDescriptorSets(app->logicalDevice, 9, writeDescriptorSets, 0, NULL);
+        VkDescriptorImageInfo imageInfo_directLgt_albedo = imageInfo_indirectLgt_2;
+        imageInfo_directLgt_albedo.imageView = app->HDirectAlbedoImageView;
+
+        writeDescriptorSets[9].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSets[9].pNext = NULL;
+        writeDescriptorSets[9].dstSet = app->rayTraceDescriptorSet;
+        writeDescriptorSets[9].dstBinding = 9;
+        writeDescriptorSets[9].dstArrayElement = 0;
+        writeDescriptorSets[9].descriptorCount = 1;
+        writeDescriptorSets[9].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        writeDescriptorSets[9].pImageInfo = &imageInfo_directLgt_albedo;
+        writeDescriptorSets[9].pBufferInfo = NULL;
+        writeDescriptorSets[9].pTexelBufferView = NULL;
+
+        VkDescriptorImageInfo imageInfo_normal = imageInfo_indirectLgt_2;
+        imageInfo_normal.imageView = app->HNormalImageView;
+
+        writeDescriptorSets[10].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSets[10].pNext = NULL;
+        writeDescriptorSets[10].dstSet = app->rayTraceDescriptorSet;
+        writeDescriptorSets[10].dstBinding = 10;
+        writeDescriptorSets[10].dstArrayElement = 0;
+        writeDescriptorSets[10].descriptorCount = 1;
+        writeDescriptorSets[10].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        writeDescriptorSets[10].pImageInfo = &imageInfo_normal;
+        writeDescriptorSets[10].pBufferInfo = NULL;
+        writeDescriptorSets[10].pTexelBufferView = NULL;
+
+        VkDescriptorImageInfo imageInfo_world = imageInfo_indirectLgt_2;
+        imageInfo_world.imageView = app->HWorldPosImageView;
+
+        writeDescriptorSets[11].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSets[11].pNext = NULL;
+        writeDescriptorSets[11].dstSet = app->rayTraceDescriptorSet;
+        writeDescriptorSets[11].dstBinding = 11;
+        writeDescriptorSets[11].dstArrayElement = 0;
+        writeDescriptorSets[11].descriptorCount = 1;
+        writeDescriptorSets[11].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        writeDescriptorSets[11].pImageInfo = &imageInfo_world;
+        writeDescriptorSets[11].pBufferInfo = NULL;
+        writeDescriptorSets[11].pTexelBufferView = NULL;
+
+        vkUpdateDescriptorSets(app->logicalDevice, 12, writeDescriptorSets, 0, NULL);
     }
 
     {
@@ -2720,8 +2801,12 @@ void VkRayTracingApplication::createCommandBuffers_3pass(VkRayTracingApplication
             imageCopy.extent = extent;
 
             //copy 当前帧 渲染结果 到 Image_indirectLgt
-            vkCmdCopyImage(app->commandBuffers[x], app->swapchainImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->Image_indirectLgt, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+            vkCmdCopyImage(app->commandBuffers[x], app->swapchainImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->HDirectAlbedoImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
             vkCmdCopyImage(app->commandBuffers[x], app->GDirectIrradImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->HDirectIrradImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+            vkCmdCopyImage(app->commandBuffers[x], app->GIrradImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->Image_indirectLgt, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+            vkCmdCopyImage(app->commandBuffers[x], app->G_albedoImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->Image_indirectLgt_2, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+            vkCmdCopyImage(app->commandBuffers[x], app->GnormalImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->HNormalImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+            vkCmdCopyImage(app->commandBuffers[x], app->GWorldPosImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->HWorldPosImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
         }
 
         
@@ -2763,8 +2848,9 @@ void VkRayTracingApplication::createCommandBuffers_3pass(VkRayTracingApplication
             imageCopy.extent = extent;
 
             //copy 当前帧 渲染结果 到 Image_indirectLgt
-            vkCmdCopyImage(app->commandBuffers[x], app->swapchainImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->Image_indirectLgt_2, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+            //vkCmdCopyImage(app->commandBuffers[x], app->swapchainImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->Image_indirectLgt_2, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
             vkCmdCopyImage(app->commandBuffers[x], app->GDirectIrradImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->HDirectIrradImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+            vkCmdCopyImage(app->commandBuffers[x], app->GIrradImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->Image_indirectLgt, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
         }
 
         //3th pass
