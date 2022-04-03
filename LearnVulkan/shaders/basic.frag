@@ -55,7 +55,7 @@ layout(binding = 4, set = 0, rgba32f) uniform image2D image;
 layout(binding = 6, set = 0, rgba32f) uniform image2D image_indirectLgt;
 layout(binding = 7, set = 0, rgba32f) uniform image2D image_indirectLgt_2;
 layout(binding = 8, set = 0, rgba32f) uniform image2D image_directLgtIr;
-layout(binding = 9, set = 0, rgba32f) uniform image2D image_indirectAlbedo;
+layout(binding = 9, set = 0, rgba32f) uniform image2D image_directAlbedo;
 layout(binding = 10, set = 0, rgba32f) uniform image2D image_normal;
 layout(binding = 11, set = 0, rgba32f) uniform image2D image_worldPos;
 
@@ -102,6 +102,11 @@ void main() {
   outWorldPos=vec4(0.0,0.0,1.0,1.0);
 
   vec4 preShadow;
+  vec4 directAlbedo;
+  vec4 indirectIr;
+  vec4 indirectAlbedo;
+  float avgShadow;
+  fragPos.xy=getFragCoord(interpolatedPosition.xyz);
 
   ivec3 indices = ivec3(indexBuffer.data[3 * gl_PrimitiveID + 0], indexBuffer.data[3 * gl_PrimitiveID + 1], indexBuffer.data[3 * gl_PrimitiveID + 2]);
 
@@ -113,7 +118,53 @@ void main() {
 
   vec3 surfaceColor = materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].diffuse;
 
-  // 40 & 41 == light
+  if(shadingMode.enable2thRMotion ==1 && camera.frameCount > 0){
+            // 40 & 41 == light
+  if (gl_PrimitiveID == 40 || gl_PrimitiveID == 41) {
+    directColor = materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission;
+     //debugPrintfEXT("lightVertexA.x is %f  lightVertexA.y is %f lightVertexA.z is %f \n lightVertexB.x is %f  lightVertexB.y is %f lightVertexB.z is %f \n lightVertexC.x is %f  lightVertexC.y is %f lightVertexC.z is %f \n",vertexA.x,vertexA.y,vertexA.z,vertexB.x,vertexB.y,vertexB.z,vertexC.x,vertexC.y,vertexC.z);
+  }
+  else {
+    preShadow=imageLoad(image_directLgtIr,ivec2(gl_FragCoord.xy));   //pre shadow
+    directAlbedo=imageLoad(image_directAlbedo,ivec2(gl_FragCoord.xy));
+    indirectIr=imageLoad(image_indirectLgt,ivec2(gl_FragCoord.xy));
+    indirectAlbedo=imageLoad(image_indirectLgt_2,ivec2(gl_FragCoord.xy));
+
+    //int level=3;
+    //avgShadow=imageLoad(image_directLgtIr,ivec2(gl_FragCoord.x-level,gl_FragCoord.y)).w+imageLoad(image_directLgtIr,ivec2(gl_FragCoord.x+level,gl_FragCoord.y)).w+imageLoad(image_directLgtIr,ivec2(gl_FragCoord.x,gl_FragCoord.y-level)).w+imageLoad(image_directLgtIr,ivec2(gl_FragCoord.x,gl_FragCoord.y+level)).w;
+
+    float alpha=0.9;
+    if(preShadow.w==0.0){  // in shadow
+        directColor=preShadow.xyz;
+        vec4 previousShadowColor = imageLoad(image, ivec2(fragPos.xy));
+        directColor=alpha*previousShadowColor.xyz+(1-alpha)*directColor.xyz;
+    }
+    else{
+        directColor = directAlbedo.xyz * preShadow.xyz;    //not in shadow
+    }
+    outIndAlbedo=vec4(directColor,1.0);
+
+    indirectColor=indirectIr.xyz*indirectAlbedo.xyz;
+    if( preShadow.w==0.0 ){ //inshadow,weaken indirect light reflection
+          indirectColor.xyz*=0.2;
+     }
+     //else if(avgShadow<4){  //around shadow
+         //indirectAlbedo.xyz*=0.2;
+     //    indirectIr.xyz*=0.3;
+     //}
+     
+     outIndIr=vec4(indirectColor,1.0);
+  }
+     vec4 color = vec4(directColor + indirectColor, 1.0);
+     vec3 preFinalColor=imageLoad(image, ivec2(fragPos.xy)).xyz;
+     if(length(materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission)==0){
+         color.xyz=0.8*preFinalColor+0.2*color.xyz;
+     }
+     outColor = color;
+ }
+  //not enable2thray motion vector
+  else{
+      // 40 & 41 == light
   if (gl_PrimitiveID == 40 || gl_PrimitiveID == 41) {
     directColor = materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission;
      //debugPrintfEXT("lightVertexA.x is %f  lightVertexA.y is %f lightVertexA.z is %f \n lightVertexB.x is %f  lightVertexB.y is %f lightVertexB.z is %f \n lightVertexC.x is %f  lightVertexC.y is %f lightVertexC.z is %f \n",vertexA.x,vertexA.y,vertexA.z,vertexB.x,vertexB.y,vertexB.z,vertexC.x,vertexC.y,vertexC.z);
@@ -438,6 +489,9 @@ void main() {
  }
   
   outColor = color;
+  }
+
+
 }
 
 

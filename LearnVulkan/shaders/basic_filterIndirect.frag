@@ -55,7 +55,7 @@ layout(binding = 4, set = 0, rgba32f) uniform image2D image;
 layout(binding = 6, set = 0, rgba32f) uniform image2D image_indirectLgt;
 layout(binding = 7, set = 0, rgba32f) uniform image2D image_indirectLgt_2;
 layout(binding = 8, set = 0, rgba32f) uniform image2D image_directLgtIr;
-layout(binding = 9, set = 0, rgba32f) uniform image2D image_indirectAlbedo;
+layout(binding = 9, set = 0, rgba32f) uniform image2D image_directAlbedo;
 layout(binding = 10, set = 0, rgba32f) uniform image2D image_normal;
 layout(binding = 11, set = 0, rgba32f) uniform image2D image_worldPos;
 
@@ -139,11 +139,49 @@ void main() {
         vec4 total=(r0+r1+r2+r3+r4)/273;
         outDirectIr=total; //smoothed direct light
         */}
-        vec4 preDirect_11 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.xy));
+
+
+        int count=9;//同一平面上的数量
+        mat3 isShadowSamePlane={
+            vec3(1.0,1.0,1.0),
+            vec3(1.0,1.0,1.0),
+            vec3(1.0,1.0,1.0)
+        };
+        vec4 shadowNormal_11 = imageLoad(image_normal, ivec2(gl_FragCoord.xy));
         float level=10;
+        //normal
+         vec4 shadowNormal_00 = imageLoad(image_normal, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
+         if(length(shadowNormal_11-shadowNormal_00)>0.7){ count--;   isShadowSamePlane[0][0]=0.0; }
+        vec4 shadowNormal_01 = imageLoad(image_normal, ivec2(gl_FragCoord.x,gl_FragCoord.y-level));
+        if(length(shadowNormal_11-shadowNormal_01)>0.7){ count--;   isShadowSamePlane[0][1]=0.0; }
+        vec4 shadowNormal_02 = imageLoad(image_normal, ivec2(gl_FragCoord.x+level,gl_FragCoord.y-level));
+        if(length(shadowNormal_11-shadowNormal_02)>0.7){ count--;   isShadowSamePlane[0][2]=0.0; }
+        vec4 shadowNormal_10 = imageLoad(image_normal, ivec2(gl_FragCoord.x-level,gl_FragCoord.y));
+        if(length(shadowNormal_11-shadowNormal_10)>0.7){ count--;   isShadowSamePlane[1][0]=0.0; }
+        //vec4 shadowNormal_11 = imageLoad(image_normal, ivec2(gl_FragCoord.xy));
+        vec4 shadowNormal_12 = imageLoad(image_normal, ivec2(gl_FragCoord.x+level,gl_FragCoord.y));
+        if(length(shadowNormal_11-shadowNormal_12)>0.7){ count--;   isShadowSamePlane[1][2]=0.0; }
+        vec4 shadowNormal_20 = imageLoad(image_normal, ivec2(gl_FragCoord.x-level,gl_FragCoord.y+level));
+        if(length(shadowNormal_11-shadowNormal_20)>0.7){ count--;   isShadowSamePlane[2][0]=0.0; }
+        vec4 shadowNormal_21 = imageLoad(image_normal, ivec2(gl_FragCoord.x,gl_FragCoord.y+level));
+        if(length(shadowNormal_11-shadowNormal_21)>0.7){ count--;   isShadowSamePlane[2][1]=0.0; }
+        vec4 shadowNormal_22 = imageLoad(image_normal, ivec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
+        if(length(shadowNormal_11-shadowNormal_22)>0.7){ count--;   isShadowSamePlane[2][2]=0.0; }
+
+        if(count>=6&&count<9){
+            level=4;
+        }
+        else if(count>=4&&count<6){
+            level=2;
+        }
+        else{
+            level=1;
+        }
+
+        vec4 preDirect_11 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.xy));
         float inShadow=0.0;
         if(preDirect_11.w==1.0){   //not in shadow point
-            level=2;
+            level=1;
             inShadow=1.0;
         }
         vec4 preDirect_00 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
@@ -155,21 +193,29 @@ void main() {
         vec4 preDirect_20 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x-level,gl_FragCoord.y+level));
         vec4 preDirect_21 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x,gl_FragCoord.y+level));
         vec4 preDirect_22 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
-        vec4 preDirect=(1/4.0)*preDirect_11+(1/8.0)*(preDirect_01+preDirect_10+preDirect_12+preDirect_21)+(1/16.0)*(preDirect_00+preDirect_02+preDirect_20+preDirect_22);
         //vec4 preDirect=preDirect_11+preDirect_01+preDirect_10+preDirect_12+preDirect_21+preDirect_00+preDirect_02+preDirect_20+preDirect_22;
         //preDirect/=9;
+        vec4 preDirect;
+
+        if(count==9){  preDirect=(1/4.0)*preDirect_11+(1/8.0)*(preDirect_01+preDirect_10+preDirect_12+preDirect_21)+(1/16.0)*(preDirect_00+preDirect_02+preDirect_20+preDirect_22);  }
+        else{
+            preDirect=preDirect_00*isShadowSamePlane[0][0]+preDirect_01*isShadowSamePlane[0][1]+preDirect_02*isShadowSamePlane[0][2]+
+                    preDirect_10*isShadowSamePlane[1][0]+preDirect_11*isShadowSamePlane[1][1]+preDirect_12*isShadowSamePlane[1][2]+
+                    preDirect_20*isShadowSamePlane[2][0]+preDirect_21*isShadowSamePlane[2][1]+preDirect_22*isShadowSamePlane[2][2];
+            preDirect/=count;
+        }
 
         outDirectIr=preDirect;   //direct shadow
         outDirectIr.w=inShadow;
 
-        outIndAlbedo=vec4(1.0,0.0,0.0,1.0);
+        //outIndAlbedo=vec4(1.0,0.0,0.0,1.0);
 
 
         //filter indirect irradiance
         
         //
 
-        int count=9;//同一平面上的数量
+        count=9;//同一平面上的数量
         mat3 isSamePlane={
             vec3(1.0,1.0,1.0),
             vec3(1.0,1.0,1.0),

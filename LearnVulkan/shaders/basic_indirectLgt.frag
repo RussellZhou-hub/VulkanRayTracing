@@ -55,7 +55,7 @@ layout(binding = 4, set = 0, rgba32f) uniform image2D image;
 layout(binding = 6, set = 0, rgba32f) uniform image2D image_indirectLgt;
 layout(binding = 7, set = 0, rgba32f) uniform image2D image_indirectLgt_2;  //ind albedo
 layout(binding = 8, set = 0, rgba32f) uniform image2D image_directLgtIr;
-layout(binding = 9, set = 0, rgba32f) uniform image2D image_indirectAlbedo;
+layout(binding = 9, set = 0, rgba32f) uniform image2D image_directAlbedo;
 layout(binding = 10, set = 0, rgba32f) uniform image2D image_normal;
 layout(binding = 11, set = 0, rgba32f) uniform image2D image_worldPos;
 
