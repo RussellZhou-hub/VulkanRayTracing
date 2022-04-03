@@ -22,3 +22,12 @@ esc：退出
 ## secondary ray：
 
 ![2](readme.assets/2.png)
+
+## raw glossy surface：
+
+![3](readme.assets/raw.png)
+
+
+## denoised glossy surface：
+
+![4](readme.assets/mvec.png)
