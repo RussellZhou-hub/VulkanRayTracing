@@ -168,23 +168,22 @@ void main() {
       
       isShadow=true;
     }
-
+    fragPos.xy=getFragCoord(interpolatedPosition.xyz);
     if(shadingMode.enableShadowMotion==1 && isShadow==true && camera.frameCount > 0){
       //Implement shadow motion vector algorithm
       //vec4 prevFramePos=shadingMode.PrevProjectionMatrix*shadingMode.PrevViewMatrix*vec4(interpolatedPosition, 1.0);
 
-      fragPos=clipPos.xyz;
+      //fragPos=clipPos.xyz;
       
-      //fragPos.xy=clipPos.xy;
-      fragPos.xy/=clipPos.w;
-      fragPos.y=-fragPos.y;
-      fragPos.xy+=1;
-      fragPos.xy/=2;
-      fragPos.x*=camera.ViewPortWidth;
-      fragPos.y*=camera.ViewPortHeight;
-      //fragPos.x-=500;
-      fragPos.xy=floor(fragPos.xy)+0.5;
-      fragPos.xy=getFragCoord(interpolatedPosition.xyz);
+      
+      //fragPos.xy/=clipPos.w;
+      //fragPos.y=-fragPos.y;
+      //fragPos.xy+=1;
+      //fragPos.xy/=2;
+      //fragPos.x*=camera.ViewPortWidth;
+      //fragPos.y*=camera.ViewPortHeight;
+      //fragPos.xy=floor(fragPos.xy)+0.5;
+      
       vec4 previousColor = imageLoad(image, ivec2(fragPos.xy));
       //vec4 previousColor=vec4(0.0,0.0,0.0,1.0);
 
@@ -354,7 +353,7 @@ void main() {
         else{
             indirectColor=imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy)).xyz*imageLoad(image_indirectLgt_2, ivec2(gl_FragCoord.xy)).xyz;
             if( preShadow.w==0.0 ){ //inshadow
-                indirectColor*=0.1;
+                indirectColor*=0.125;
             }
         }
         //if(abs(indirectColor.x-directColor.x)>0.3){
@@ -433,9 +432,11 @@ void main() {
     }
   }
   */
+  vec3 preFinalColor=imageLoad(image, ivec2(fragPos.xy)).xyz;
+ if(shadingMode.enable2thRMotion==1 && preShadow.w==1 && length(materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission)==0){
+    color.xyz=0.8*preFinalColor+0.2*color.xyz;
+ }
   
- 
-
   outColor = color;
 }
 

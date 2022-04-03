@@ -152,31 +152,33 @@ void main() {
       outDirectIr=vec4(directColor,0.0);
       isShadow=true;
     }
+    fragPos.xy=getFragCoord(interpolatedPosition.xyz);
+    if( fragPos.y>1079){
+        debugPrintfEXT("gl_FragCoord.x is %f  gl_FragCoord.y is %f \n fragPos.x is %f   fragPos.y is %f  clipPos.x is %f interpolatedPos.x is %f interpolatedPos.y is %f   clipPos.w is %f   \n\n",
+        gl_FragCoord.x,gl_FragCoord.y, fragPos.x,fragPos.y,clipPos.x,interpolatedPosition.x,interpolatedPosition.y,clipPos.w);
+      }
 
     if(shadingMode.enableShadowMotion==1 && isShadow==true && camera.frameCount > 0){
       //Implement shadow motion vector algorithm
       //vec4 prevFramePos=shadingMode.PrevProjectionMatrix*shadingMode.PrevViewMatrix*vec4(interpolatedPosition, 1.0);
 
-      fragPos=clipPos.xyz;
+      //fragPos=clipPos.xyz;
       
-      //fragPos.xy=clipPos.xy;
-      fragPos.xy/=clipPos.w;
-      fragPos.y=-fragPos.y;
-      fragPos.xy+=1;
-      fragPos.xy/=2;
-      fragPos.x*=camera.ViewPortWidth;
-      fragPos.y*=camera.ViewPortHeight;
+      
+     // fragPos.xy/=clipPos.w;
+      //fragPos.y=-fragPos.y;
+      //fragPos.xy+=1;
+      //fragPos.xy/=2;
+      //fragPos.x*=camera.ViewPortWidth;
+      //fragPos.y*=camera.ViewPortHeight;
       //fragPos.x-=500;
-      fragPos.xy=floor(fragPos.xy)+0.5;
-      fragPos.xy=getFragCoord(interpolatedPosition.xyz);
+      //fragPos.xy=floor(fragPos.xy)+0.5;
+      
       vec4 previousColor = clamp(imageLoad(image_directLgtIr, ivec2(fragPos.xy)),0.0,0.2);
       //vec4 previousColor=vec4(0.0,0.0,0.0,1.0);
 
       vec4 worldPos=getWorldPos(gl_FragCoord.xyz);
-      ///if( fragPos.y>1079){
-      //  debugPrintfEXT("gl_FragCoord.x is %f  gl_FragCoord.y is %f \n worldPos.x is %f   worldPos.y is %f  clipPos.x is %f interpolatedPos.x is %f interpolatedPos.y is %f   clipPos.w is %f   \n\n",
-      //  gl_FragCoord.x,gl_FragCoord.y, worldPos.x,worldPos.y,clipPos.x,interpolatedPosition.x,interpolatedPosition.y,clipPos.w);
-      //}
+      
 
       float alpha=0.9;
       
@@ -411,8 +413,8 @@ void main() {
   }
 
   if(shadingMode.enable2thRMotion==1){
-    vec3 preIndIr=imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy)).xyz;
-    vec3 preIndAlbedo=imageLoad(image_indirectLgt_2, ivec2(gl_FragCoord.xy)).xyz;
+    vec3 preIndIr=imageLoad(image_indirectLgt, ivec2(fragPos.xy)).xyz;
+    vec3 preIndAlbedo=imageLoad(image_indirectLgt_2, ivec2(fragPos.xy)).xyz;
     vec3 black=vec3(0.0,0.0,0.0);
     float beta=0.9;
     indirectIrrad=beta*preIndIr+(1-beta)*indirectIrrad;
