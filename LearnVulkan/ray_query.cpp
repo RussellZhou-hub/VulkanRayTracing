@@ -3438,7 +3438,7 @@ void VkRayTracingApplication::createGraphicsPipeline_indirectLgt_2(VkRayTracingA
     //frag_shader->load(app, "C:/Users/Rocki/source/repos/VulkanBasicRayTracing/LearnVulkan/shaders/basic_filterIndirect.frag.spv");
     frag_shader->load(app, "C:/Users/Vincent/source/repos/VulkanRayTracing/LearnVulkan/shaders/basic_filterIndirect.frag.spv");
 #else
-    frag_shader->load(app, "shaders/basic_indirectLgt.frag.spv");
+    frag_shader->load(app, "shaders/basic_filterIndirect.frag.spv");
 #endif // DEBUG
 
     VkPipelineShaderStageCreateInfo shaderStages[2] = { vertex_shader->ShaderStageInfo, frag_shader->ShaderStageInfo };
