@@ -109,9 +109,6 @@
     <None Include="shaders\basic.vert">
       <Filter>shaders\ray_query</Filter>
     </None>
-    <None Include="basic_no_secondary.frag">
-      <Filter>shaders\ray_query</Filter>
-    </None>
     <None Include="shaders\basic_indirectLgt.frag">
       <Filter>shaders\ray_query</Filter>
     </None>

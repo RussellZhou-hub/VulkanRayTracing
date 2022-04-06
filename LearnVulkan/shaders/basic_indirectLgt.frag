@@ -66,7 +66,7 @@ layout(binding = 5, set = 0) uniform ShadingMode {
   mat4 PrevProjectionMatrix;
   uint enable2Ray;
   uint enableShadowMotion;
-  uint enableMeanDiff;
+  uint enableSVGF;
   uint enable2thRMotion;
   uint enable2thRayDierctionSpatialFilter;
 } shadingMode;
@@ -158,7 +158,7 @@ void main() {
         gl_FragCoord.x,gl_FragCoord.y, fragPos.x,fragPos.y,clipPos.x,interpolatedPosition.x,interpolatedPosition.y,clipPos.w);
       }
 
-    if(shadingMode.enableShadowMotion==1 && isShadow==true && camera.frameCount > 0){
+    if(shadingMode.enableShadowMotion==1 && isShadow==true){
       //Implement shadow motion vector algorithm
       //vec4 prevFramePos=shadingMode.PrevProjectionMatrix*shadingMode.PrevViewMatrix*vec4(interpolatedPosition, 1.0);
 
@@ -183,7 +183,7 @@ void main() {
       float alpha=0.9;
       
       int d=10;
-      if(shadingMode.enableMeanDiff==1 && isShadow==true && camera.frameCount > 0){  //spatial filter
+      if(shadingMode.enableSVGF==1 && isShadow==true > 0){  //spatial filter
         
         // bilinear filter  双线性过滤 提升质量
         
@@ -237,7 +237,7 @@ void main() {
 
   bool rayActive = true;
   int maxRayDepth = 1;
-  if(shadingMode.enable2Ray==1 && camera.frameCount > 0){
+  if(shadingMode.enable2Ray==1){
     for (int rayDepth = 0; rayDepth < maxRayDepth && rayActive; rayDepth++) {
   //secondary ray (or more ray)
     rayQueryEXT rayQuery;

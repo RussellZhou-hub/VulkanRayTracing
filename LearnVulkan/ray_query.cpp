@@ -251,49 +251,49 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
         if (keyDownIndex[GLFW_KEY_1]) {    //shadow Ray without denoising
             shadingMode->enable2thRay = 0;
             shadingMode->enableShadowMotion = 0;
-            shadingMode->enableMeanDiff = 0;
+            shadingMode->enableSVGF = 0;
             shadingMode->enable2thRMotion = 0;
             shadingMode->enable2thRayDierctionSpatialFilter = 0;
         }
         if (keyDownIndex[GLFW_KEY_2]) {    //2th Ray without denoising
             shadingMode->enable2thRay = 1;
             shadingMode->enableShadowMotion = 0;
-            shadingMode->enableMeanDiff = 0;
+            shadingMode->enableSVGF = 0;
             shadingMode->enable2thRMotion = 0;
             shadingMode->enable2thRayDierctionSpatialFilter = 0;
         }
         if (keyDownIndex[GLFW_KEY_3]) {   //shadow method:motion vector along
             shadingMode->enable2thRay = 1;
             shadingMode->enableShadowMotion = 1;
-            shadingMode->enableMeanDiff = 0;
+            shadingMode->enableSVGF = 0;
             shadingMode->enable2thRMotion = 1;
             shadingMode->enable2thRayDierctionSpatialFilter = 0;
         }
-        if (keyDownIndex[GLFW_KEY_4]) {   //my shadow method
-            shadingMode->enable2thRay = 0;
-            shadingMode->enableShadowMotion = 1;
-            shadingMode->enableMeanDiff = 1;
+        if (keyDownIndex[GLFW_KEY_4]) {   //enable SVGF
+            shadingMode->enable2thRay = 1;
+            shadingMode->enableShadowMotion = 0;
+            shadingMode->enableSVGF = 1;
             shadingMode->enable2thRMotion = 0;
             shadingMode->enable2thRayDierctionSpatialFilter = 0;
         }
         if (keyDownIndex[GLFW_KEY_5]) {     //my shadow method + 2th Ray
             shadingMode->enable2thRay = 1;
             shadingMode->enableShadowMotion = 1;
-            shadingMode->enableMeanDiff = 1;
+            shadingMode->enableSVGF = 1;
             shadingMode->enable2thRMotion = 1;
             shadingMode->enable2thRayDierctionSpatialFilter = 0;
         }
         if (keyDownIndex[GLFW_KEY_6]) {     //my shadow method + 2th Ray+2thRayDierctionSpatialFilter
             shadingMode->enable2thRay = 1;
             shadingMode->enableShadowMotion = 1;
-            shadingMode->enableMeanDiff = 1;
+            shadingMode->enableSVGF = 1;
             shadingMode->enable2thRMotion = 1;
             shadingMode->enable2thRayDierctionSpatialFilter = 1;
         }
         if (keyDownIndex[GLFW_KEY_7]) {     //my shadow method + 2th Ray+2*2thRay
             shadingMode->enable2thRay = 1;
             shadingMode->enableShadowMotion = 0;
-            shadingMode->enableMeanDiff = 0;
+            shadingMode->enableSVGF = 0;
             shadingMode->enable2thRMotion = 1;
             shadingMode->enable2thRayDierctionSpatialFilter = 1;
         }
@@ -3571,7 +3571,7 @@ void VkRayTracingApplication::createGraphicsPipeline_indirectLgt_2(VkRayTracingA
 ShadingMode::ShadingMode()
 {
     enable2thRay = 1;
-    enableMeanDiff = 0;
+    enableSVGF = 0;
     enableShadowMotion = 0;
     enable2thRayDierctionSpatialFilter = 0;
     enableShadowMotion = 0;
