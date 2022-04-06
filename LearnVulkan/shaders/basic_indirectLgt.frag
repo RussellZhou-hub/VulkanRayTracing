@@ -183,7 +183,7 @@ void main() {
       float alpha=0.9;
       
       int d=10;
-      if(shadingMode.enableSVGF==1 && isShadow==true > 0){  //spatial filter
+      if(shadingMode.enableSVGF==1 && isShadow==true){  //spatial filter
         
         // bilinear filter  双线性过滤 提升质量
         
