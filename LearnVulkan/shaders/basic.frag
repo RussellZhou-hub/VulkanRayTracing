@@ -195,17 +195,6 @@ void main() {
 
     directColor = directAlbedo.xyz * preShadow.xyz;
     outIndAlbedo=vec4(directColor,1.0);
-
-    /*
-    if( preShadow.w==0.0 ){ //inshadow,weaken indirect light reflection
-          indirectAlbedo.xyz=directAlbedo.xyz*0.5+indirectAlbedo.xyz*0.2;
-          indirectIr.xyz*=0.25;
-     }
-     else if(avgShadow<4){  //around shadow
-         indirectAlbedo.xyz=directAlbedo.xyz*0.5+indirectAlbedo.xyz*0.0;
-         indirectIr.xyz*=0.3;
-     }
-    */
     
      indirectColor=indirectIr.xyz*indirectAlbedo.xyz;
      
