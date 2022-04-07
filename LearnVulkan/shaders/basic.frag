@@ -193,18 +193,10 @@ void main() {
     //int level=3;
     //avgShadow=imageLoad(image_directLgtIr,ivec2(gl_FragCoord.x-level,gl_FragCoord.y)).w+imageLoad(image_directLgtIr,ivec2(gl_FragCoord.x+level,gl_FragCoord.y)).w+imageLoad(image_directLgtIr,ivec2(gl_FragCoord.x,gl_FragCoord.y-level)).w+imageLoad(image_directLgtIr,ivec2(gl_FragCoord.x,gl_FragCoord.y+level)).w;
 
-    float alpha=0.9;
-    if(preShadow.w==0.0){  // in shadow
-        directColor=preShadow.xyz;
-        vec4 previousShadowColor = imageLoad(image, ivec2(fragPos.xy));
-        directColor=alpha*previousShadowColor.xyz+(1-alpha)*directColor.xyz;
-    }
-    else{
-        directColor = directAlbedo.xyz * preShadow.xyz;    //not in shadow
-    }
+    directColor = directAlbedo.xyz * preShadow.xyz;
     outIndAlbedo=vec4(directColor,1.0);
 
-    
+    /*
     if( preShadow.w==0.0 ){ //inshadow,weaken indirect light reflection
           indirectAlbedo.xyz=directAlbedo.xyz*0.5+indirectAlbedo.xyz*0.2;
           indirectIr.xyz*=0.25;
@@ -213,6 +205,8 @@ void main() {
          indirectAlbedo.xyz=directAlbedo.xyz*0.5+indirectAlbedo.xyz*0.0;
          indirectIr.xyz*=0.3;
      }
+    */
+    
      indirectColor=indirectIr.xyz*indirectAlbedo.xyz;
      
      //outIndIr=vec4(indirectColor,1.0);
