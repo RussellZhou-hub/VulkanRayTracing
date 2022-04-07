@@ -1175,7 +1175,7 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->HDirectAlbedoImage, &app->HDirectAlbedoImageMemory);
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->HNormalImage, &app->HNormalImageMemory);
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->HWorldPosImage, &app->HWorldPosImageMemory);
-    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->HDepthImage, &app->HDepthImageMemory);
+    createImage(app, WIDTH, HEIGHT, VK_FORMAT_D32_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->HDepthImage, &app->HDepthImageMemory);
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->HVarImage, &app->HVarImageMemory);
     
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GnormalImage, &app->GnormalImageMemory);
@@ -1239,6 +1239,8 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
 
     VkImageViewCreateInfo imageViewCreateInfo_Depth = imageViewCreateInfo;
     imageViewCreateInfo_Depth.image = app->HDepthImage;
+    imageViewCreateInfo_Depth.format = VK_FORMAT_D32_SFLOAT;
+    imageViewCreateInfo_Depth.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
     VkImageViewCreateInfo imageViewCreateInfo_Var = imageViewCreateInfo;
     imageViewCreateInfo_Var.image = app->HVarImage;
@@ -2946,6 +2948,7 @@ void VkRayTracingApplication::createCommandBuffers_3pass(VkRayTracingApplication
 
             //copy 当前帧 渲染结果 到 rayTraceImage
             vkCmdCopyImage(app->commandBuffers[x], app->swapchainImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->rayTraceImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+            vkCmdCopyImage(app->commandBuffers[x], app->depthImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->HDepthImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
         }
 
 

@@ -25,6 +25,7 @@ layout(location = 2) out vec4 outIndAlbedo;
 layout(location = 3) out vec4 outIndIr;
 layout(location = 4) out vec4 outNormal;
 layout(location = 5) out vec4 outWorldPos;
+layout(location = 6) out vec4 outDepth;
 
 vec3 fragPos;
 bool isShadow=false;
