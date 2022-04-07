@@ -28,6 +28,10 @@ esc：退出
 ![3](readme.assets/raw.png)
 
 
-## denoised glossy surface：
+## denoised glossy surface(Reliable Motion vector)：
 
 ![4](readme.assets/mvec.png)
+
+## denoised glossy surface(SVGF)：
+
+![5](readme.assets/simple SVGF.png)
