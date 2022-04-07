@@ -34,4 +34,4 @@ esc：退出
 
 ## denoised glossy surface(SVGF)：
 
-![5](readme.assets/simple SVGF.png)
+![5](readme.assets/simpleSVGF.png)
