@@ -2863,6 +2863,7 @@ void VkRayTracingApplication::createCommandBuffers_3pass(VkRayTracingApplication
             vkCmdCopyImage(app->commandBuffers[x], app->G_albedoImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->Image_indirectLgt_2, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
             vkCmdCopyImage(app->commandBuffers[x], app->GnormalImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->HNormalImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
             vkCmdCopyImage(app->commandBuffers[x], app->GWorldPosImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->HWorldPosImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+            vkCmdCopyImage(app->commandBuffers[x], app->depthImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->HDepthImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
         }
 
         
@@ -2904,7 +2905,7 @@ void VkRayTracingApplication::createCommandBuffers_3pass(VkRayTracingApplication
             imageCopy.extent = extent;
 
             //copy 当前帧 渲染结果 到 Image_indirectLgt
-            //vkCmdCopyImage(app->commandBuffers[x], app->swapchainImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->Image_indirectLgt_2, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+            vkCmdCopyImage(app->commandBuffers[x], app->swapchainImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->HVarImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
             vkCmdCopyImage(app->commandBuffers[x], app->GDirectIrradImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->HDirectIrradImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
             vkCmdCopyImage(app->commandBuffers[x], app->GIrradImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->Image_indirectLgt, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
         }
@@ -2948,7 +2949,6 @@ void VkRayTracingApplication::createCommandBuffers_3pass(VkRayTracingApplication
 
             //copy 当前帧 渲染结果 到 rayTraceImage
             vkCmdCopyImage(app->commandBuffers[x], app->swapchainImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->rayTraceImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
-            vkCmdCopyImage(app->commandBuffers[x], app->depthImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->HDepthImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
         }
 
 

@@ -25,6 +25,7 @@ layout(location = 2) out vec4 outIndAlbedo;
 layout(location = 3) out vec4 outIndIr;
 layout(location = 4) out vec4 outNormal;
 layout(location = 5) out vec4 outWorldPos;
+layout(location = 6) out vec4 outDepth;
 
 vec3 fragPos;
 bool isShadow=false;
@@ -58,6 +59,8 @@ layout(binding = 8, set = 0, rgba32f) uniform image2D image_directLgtIr;
 layout(binding = 9, set = 0, rgba32f) uniform image2D image_directAlbedo;
 layout(binding = 10, set = 0, rgba32f) uniform image2D image_normal;
 layout(binding = 11, set = 0, rgba32f) uniform image2D image_worldPos;
+layout(binding = 12, set = 0, r32f) uniform image2D image_Depth;
+layout(binding = 13, set = 0, rgba32f) uniform image2D image_Var;  //historic Variance
 
 layout(binding = 5, set = 0) uniform ShadingMode {
   //mat4 invViewMatrix;
@@ -90,6 +93,7 @@ vec3 alignHemisphereWithCoordinateSystem(vec3 hemisphere, vec3 up);
 
 
 
+
 void main() {
   vec3 directColor = vec3(0.0, 0.0, 0.0);
   vec3 indirectColor = vec3(0.0, 0.0, 0.0);
@@ -106,7 +110,13 @@ void main() {
   vec3 vertexC = vec3(vertexBuffer.data[3 * indices.z + 0], vertexBuffer.data[3 * indices.z + 1], vertexBuffer.data[3 * indices.z + 2]);
   
   vec3 geometricNormal = normalize(cross(vertexB - vertexA, vertexC - vertexA));
-  outNormal=vec4(geometricNormal,1.0);
+  outNormal=vec4((geometricNormal+1)/2,1.0);  //[0，1]正则化
+
+  if(gl_FragCoord.x>1979){
+    vec3 AB=vertexB - vertexA;
+    vec3 AC=vertexC - vertexA;
+    debugPrintfEXT("geometricNormal.x is %f  geometricNormal.y is %f \n AB.x is %f   AB.y is %f  AC.x is %f AC.y is %f AC.z is %f\n\n",geometricNormal.x,geometricNormal.y, AB.x,AB.y,AC.x,AC.y,AC.z);
+  }
 
   curClipPos=camera.projMatrix*camera.viewMatrix*vec4(interpolatedPosition,1.0);
   curClipPos.xyz/=curClipPos.w;
@@ -153,10 +163,10 @@ void main() {
       isShadow=true;
     }
     fragPos.xy=getFragCoord(interpolatedPosition.xyz);
-    if( fragPos.y>1079){
-        debugPrintfEXT("gl_FragCoord.x is %f  gl_FragCoord.y is %f \n fragPos.x is %f   fragPos.y is %f  clipPos.x is %f interpolatedPos.x is %f interpolatedPos.y is %f   clipPos.w is %f   \n\n",
-        gl_FragCoord.x,gl_FragCoord.y, fragPos.x,fragPos.y,clipPos.x,interpolatedPosition.x,interpolatedPosition.y,clipPos.w);
-      }
+    //if( fragPos.y>1079){
+    //    debugPrintfEXT("gl_FragCoord.x is %f  gl_FragCoord.y is %f \n fragPos.x is %f   fragPos.y is %f  clipPos.x is %f interpolatedPos.x is %f interpolatedPos.y is %f   clipPos.w is %f   \n\n",
+    //    gl_FragCoord.x,gl_FragCoord.y, fragPos.x,fragPos.y,clipPos.x,interpolatedPosition.x,interpolatedPosition.y,clipPos.w);
+     // }
 
     if(shadingMode.enableShadowMotion==1 && isShadow==true){
       //Implement shadow motion vector algorithm
@@ -530,3 +540,4 @@ vec3 alignHemisphereWithCoordinateSystem(vec3 hemisphere, vec3 up) {
 
   return hemisphere.x * right + hemisphere.y * up + hemisphere.z * forward;
 }
+

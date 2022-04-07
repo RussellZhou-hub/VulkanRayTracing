@@ -19,12 +19,13 @@ layout(location = 2) in mat4 PVMatrix;
 layout(location = 6) in mat4 invProjMatrix;
 layout(location = 10) in mat4 invViewMatrix;
 
-layout(location = 0) out vec4 outColor;
+layout(location = 0) out vec4 outColor;    //this renderpass: variance
 layout(location = 1) out vec4 outDirectIr;
 layout(location = 2) out vec4 outIndAlbedo;
 layout(location = 3) out vec4 outIndIr;
 layout(location = 4) out vec4 outNormal;
 layout(location = 5) out vec4 outWorldPos;
+layout(location = 6) out vec4 outDepth;
 
 vec3 fragPos;
 bool isShadow=false;
@@ -58,6 +59,8 @@ layout(binding = 8, set = 0, rgba32f) uniform image2D image_directLgtIr;
 layout(binding = 9, set = 0, rgba32f) uniform image2D image_directAlbedo;
 layout(binding = 10, set = 0, rgba32f) uniform image2D image_normal;
 layout(binding = 11, set = 0, rgba32f) uniform image2D image_worldPos;
+layout(binding = 12, set = 0, r32f) uniform image2D image_Depth;
+layout(binding = 13, set = 0, rgba32f) uniform image2D image_Var;  //historic Variance
 
 layout(binding = 5, set = 0) uniform ShadingMode {
   //mat4 invViewMatrix;
@@ -75,29 +78,17 @@ layout(binding = 0, set = 1) buffer MaterialIndexBuffer { uint data[]; } materia
 layout(binding = 1, set = 1) buffer MaterialBuffer { Material data[]; } materialBuffer;
 
 
+float weight(vec2 p,vec2 q);
+float w_depth(vec2 p,vec2 q);
+float w_normal(vec2 p,vec2 q);
+float w_lumin(vec2 p,vec2 q);
+vec4 variance(vec2 p);
+vec4 aTrous_indirectIr(vec2 p);
+vec4 aTrous_directIr(vec2 p);
 
+vec2 getFragCoord(vec3 pos);
 
 void main() {
-        /*
-        float level=4;
-        vec4 preIndirectDirection_00 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
-        vec4 preIndirectDirection_01 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y-level));
-        vec4 preIndirectDirection_02 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y-level));
-        vec4 preIndirectDirection_10 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y));
-        vec4 preIndirectDirection_11 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy));
-        vec4 preIndirectDirection_12 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y));
-        vec4 preIndirectDirection_20 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y+level));
-        vec4 preIndirectDirection_21 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y+level));
-        vec4 preIndirectDirection_22 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
-        //vec4 preIndirectDirection=(1/4.0)*preIndirectDirection_11+(1/8.0)*(preIndirectDirection_01+preIndirectDirection_10+preIndirectDirection_12+preIndirectDirection_21)+(1/16.0)*(preIndirectDirection_00+preIndirectDirection_02+preIndirectDirection_20+preIndirectDirection_22);
-        vec4 preIndirectDirection=preIndirectDirection_11+preIndirectDirection_01+preIndirectDirection_10+preIndirectDirection_12+preIndirectDirection_21+preIndirectDirection_00+preIndirectDirection_02+preIndirectDirection_20+preIndirectDirection_22;
-        preIndirectDirection/=9;
-
-        preIndirectDirection_11 = imageLoad(image_indirectLgt_2, ivec2(gl_FragCoord.xy));
-        outColor=0.1*preIndirectDirection+0.9*preIndirectDirection_11; //direction of the 2thRay
-        */
-        
-
         
         { /*
         //5*5 guassian
@@ -140,8 +131,12 @@ void main() {
         outDirectIr=total; //smoothed direct light
         */}
 
-
-        int count=9;//同一平面上的数量
+if(shadingMode.enableSVGF==1){
+            outDirectIr=aTrous_directIr(gl_FragCoord.xy);
+            outIndIr=aTrous_indirectIr(gl_FragCoord.xy);
+        }
+else if(shadingMode.enableShadowMotion==1){
+            int count=9;//同一平面上的数量
         mat3 isShadowSamePlane={
             vec3(1.0,1.0,1.0),
             vec3(1.0,1.0,1.0),
@@ -207,83 +202,283 @@ void main() {
 
         outDirectIr=preDirect;   //direct shadow
         outDirectIr.w=inShadow;
-
-        //outIndAlbedo=vec4(1.0,0.0,0.0,1.0);
-
-
-        //filter indirect irradiance
+}
         
-        //
+if(shadingMode.enable2thRMotion==1){
+            //filter indirect irradiance
+            int count =9;//同一平面上的数量
+            float level=32;
+            mat3 isSamePlane={
+                vec3(1.0,1.0,1.0),
+                vec3(1.0,1.0,1.0),
+                vec3(1.0,1.0,1.0)
+            };
+            vec4 preInd_11 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy));
+            vec4 normal_11 = imageLoad(image_normal, ivec2(gl_FragCoord.xy));
+            //normal
+            vec4 normal_00 = imageLoad(image_normal, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
+            if(length(normal_11-normal_00)>0.7){ count--;   isSamePlane[0][0]=0.0; }
+            vec4 normal_01 = imageLoad(image_normal, ivec2(gl_FragCoord.x,gl_FragCoord.y-level));
+            if(length(normal_11-normal_01)>0.7){ count--;   isSamePlane[0][1]=0.0; }
+            vec4 normal_02 = imageLoad(image_normal, ivec2(gl_FragCoord.x+level,gl_FragCoord.y-level));
+            if(length(normal_11-normal_02)>0.7){ count--;   isSamePlane[0][2]=0.0; }
+            vec4 normal_10 = imageLoad(image_normal, ivec2(gl_FragCoord.x-level,gl_FragCoord.y));
+            if(length(normal_11-normal_10)>0.7){ count--;   isSamePlane[1][0]=0.0; }
+            //vec4 normal_11 = imageLoad(image_normal, ivec2(gl_FragCoord.xy));
+            vec4 normal_12 = imageLoad(image_normal, ivec2(gl_FragCoord.x+level,gl_FragCoord.y));
+            if(length(normal_11-normal_12)>0.7){ count--;   isSamePlane[1][2]=0.0; }
+            vec4 normal_20 = imageLoad(image_normal, ivec2(gl_FragCoord.x-level,gl_FragCoord.y+level));
+            if(length(normal_11-normal_20)>0.7){ count--;   isSamePlane[2][0]=0.0; }
+            vec4 normal_21 = imageLoad(image_normal, ivec2(gl_FragCoord.x,gl_FragCoord.y+level));
+            if(length(normal_11-normal_21)>0.7){ count--;   isSamePlane[2][1]=0.0; }
+            vec4 normal_22 = imageLoad(image_normal, ivec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
+            if(length(normal_11-normal_22)>0.7){ count--;   isSamePlane[2][2]=0.0; }
 
-        count=9;//同一平面上的数量
-        mat3 isSamePlane={
-            vec3(1.0,1.0,1.0),
-            vec3(1.0,1.0,1.0),
-            vec3(1.0,1.0,1.0)
-        };
-        vec4 preInd_11 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy));
-        vec4 normal_11 = imageLoad(image_normal, ivec2(gl_FragCoord.xy));
-        level=32;
-        //normal
-         vec4 normal_00 = imageLoad(image_normal, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
-         if(length(normal_11-normal_00)>0.7){ count--;   isSamePlane[0][0]=0.0; }
-        vec4 normal_01 = imageLoad(image_normal, ivec2(gl_FragCoord.x,gl_FragCoord.y-level));
-        if(length(normal_11-normal_01)>0.7){ count--;   isSamePlane[0][1]=0.0; }
-        vec4 normal_02 = imageLoad(image_normal, ivec2(gl_FragCoord.x+level,gl_FragCoord.y-level));
-        if(length(normal_11-normal_02)>0.7){ count--;   isSamePlane[0][2]=0.0; }
-        vec4 normal_10 = imageLoad(image_normal, ivec2(gl_FragCoord.x-level,gl_FragCoord.y));
-        if(length(normal_11-normal_10)>0.7){ count--;   isSamePlane[1][0]=0.0; }
-        //vec4 normal_11 = imageLoad(image_normal, ivec2(gl_FragCoord.xy));
-        vec4 normal_12 = imageLoad(image_normal, ivec2(gl_FragCoord.x+level,gl_FragCoord.y));
-        if(length(normal_11-normal_12)>0.7){ count--;   isSamePlane[1][2]=0.0; }
-        vec4 normal_20 = imageLoad(image_normal, ivec2(gl_FragCoord.x-level,gl_FragCoord.y+level));
-        if(length(normal_11-normal_20)>0.7){ count--;   isSamePlane[2][0]=0.0; }
-        vec4 normal_21 = imageLoad(image_normal, ivec2(gl_FragCoord.x,gl_FragCoord.y+level));
-        if(length(normal_11-normal_21)>0.7){ count--;   isSamePlane[2][1]=0.0; }
-        vec4 normal_22 = imageLoad(image_normal, ivec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
-        if(length(normal_11-normal_22)>0.7){ count--;   isSamePlane[2][2]=0.0; }
+            if(count>=6&&count<9){
+                level=16;
+            }
+            else if(count>=4&&count<6){
+                level=8;
+            }
+            else{
+                level=4;
+            }
 
-        if(count>=6&&count<9){
-            level=16;
-        }
-        else if(count>=4&&count<6){
-            level=8;
-        }
-        else{
-            level=4;
-        }
-
-        //float ShadowHit=1.0f;
-        //if(preInd_11.w==0.0){   //2thShadow ray not Hit
-        //    level=2;
-        //    ShadowHit=0.0;
-        //}
-        vec4 preInd_00 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
-        vec4 preInd_01 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y-level));
-        vec4 preInd_02 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y-level));
-        vec4 preInd_10 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y));
-        //vec4 preInd_11 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy));
-        vec4 preInd_12 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y));
-        vec4 preInd_20 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y+level));
-        vec4 preInd_21 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y+level));
-        vec4 preInd_22 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
-        vec4 preInd;
-        if(count==9){  preInd=(1/4.0)*preInd_11+(1/8.0)*(preInd_01+preInd_10+preInd_12+preInd_21)+(1/16.0)*(preInd_00+preInd_02+preInd_20+preInd_22);  }
-        else{
-            preInd=preInd_00*isSamePlane[0][0]+preInd_01*isSamePlane[0][1]+preInd_02*isSamePlane[0][2]+
-                    preInd_10*isSamePlane[1][0]+preInd_11*isSamePlane[1][1]+preInd_12*isSamePlane[1][2]+
-                    preInd_20*isSamePlane[2][0]+preInd_21*isSamePlane[2][1]+preInd_22*isSamePlane[2][2];
-            preInd/=count;
-        }
-        //vec4 preInd=preInd_11+preInd_01+preInd_10+preInd_12+preInd_21+preInd_00+preInd_02+preInd_20+preInd_22;
-        //preInd/=9;
+            //float ShadowHit=1.0f;
+            //if(preInd_11.w==0.0){   //2thShadow ray not Hit
+            //    level=2;
+            //    ShadowHit=0.0;
+            //}
+            vec4 preInd_00 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
+            vec4 preInd_01 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y-level));
+            vec4 preInd_02 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y-level));
+            vec4 preInd_10 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y));
+            //vec4 preInd_11 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy));
+            vec4 preInd_12 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y));
+            vec4 preInd_20 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y+level));
+            vec4 preInd_21 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y+level));
+            vec4 preInd_22 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
+            vec4 preInd;
+            if(count==9){  preInd=(1/4.0)*preInd_11+(1/8.0)*(preInd_01+preInd_10+preInd_12+preInd_21)+(1/16.0)*(preInd_00+preInd_02+preInd_20+preInd_22);  }
+            else{
+                preInd=preInd_00*isSamePlane[0][0]+preInd_01*isSamePlane[0][1]+preInd_02*isSamePlane[0][2]+
+                preInd_10*isSamePlane[1][0]+preInd_11*isSamePlane[1][1]+preInd_12*isSamePlane[1][2]+
+                preInd_20*isSamePlane[2][0]+preInd_21*isSamePlane[2][1]+preInd_22*isSamePlane[2][2];
+                preInd/=count;
+            }
+            //vec4 preInd=preInd_11+preInd_01+preInd_10+preInd_12+preInd_21+preInd_00+preInd_02+preInd_20+preInd_22;
+            //preInd/=9;
         
 
-        //preInd-=0.05*preDirect_11;
-        //if(pre.x!=0.0){
-        //    debugPrintfEXT("preDirect_11.x is %f  1-preDirect_11 .x is %f \n",pre.x,preDirect_11.x);
-        //}
+            //preInd-=0.05*preDirect_11;
+            //if(pre.x!=0.0){
+            //    debugPrintfEXT("preDirect_11.x is %f  1-preDirect_11 .x is %f \n",pre.x,preDirect_11.x);
+            //}
 
-        outIndIr=preInd;   //Ind irradiance
-        //outIndIr.w=ShadowHit;
+            outIndIr=preInd;   //Ind irradiance
+}
+            //outIndAlbedo=vec4(1.0,0.0,0.0,1.0);
+            //outIndIr.w=ShadowHit;
+}
+
+
+
+float w_depth(vec2 p,vec2 q){   //weight of depth in the edge stop function in SVGF
+    float sigma_z=1.0;  //1.0 in the SVGF paper
+    float epsil=0.01;
+    //calculate gradient
+    vec2 grad_p;
+    float right=imageLoad(image_Depth,ivec2(p.x+1,p.y)).x;
+    float left=imageLoad(image_Depth,ivec2(p.x-1,p.y)).x;
+    float up=imageLoad(image_Depth,ivec2(p.x,p.y+1)).x;
+    float down=imageLoad(image_Depth,ivec2(p.x,p.y-1)).x;
+    grad_p.x=0.5*right-0.5*left;
+    grad_p.y=0.5*up-0.5*down;
+    //load p,q
+    float depth_p=imageLoad(image_Depth,ivec2(p.x,p.y)).x;
+    float depth_q=imageLoad(image_Depth,ivec2(q.x,q.y)).x;
+    //caculate weight
+    float weight=exp(-(abs(depth_p-depth_q)/sigma_z*dot(grad_p,(p-q))+epsil));
+    return weight;
+}
+
+float w_normal(vec2 p,vec2 q){   //weight of normal in the edge stop function in SVGF
+    float sigma_n=128;
+    vec3 n_p=2*imageLoad(image_normal,ivec2(p.xy)).xyz-1;
+    vec3 n_q=2*imageLoad(image_normal,ivec2(q.xy)).xyz-1;
+    float weight=pow(max(0,dot(n_p,n_q)),sigma_n);
+    return weight;
+}
+
+float w_lumin(vec2 p,vec2 q){//weight of Luminance in the edge stop function in SVGF
+    float sigma_l=4;
+    float epsil=0.01;
+    float lumin_p=length(imageLoad(image_directLgtIr,ivec2(p.xy)).xyz);
+    float lumin_q=length(imageLoad(image_directLgtIr,ivec2(q.xy)).xyz);
+    float weight=exp(-abs(lumin_p-lumin_q)/(sigma_l*variance(p).z+epsil));
+    return weight;
+}
+
+vec4 variance(vec2 p){
+    vec2 prevMoments=vec2(0.0f);
+    float prevHistoryLen=0.0f;
+    float lumin;
+    float factor=0.001; //缩小到0~1.0的范围
+    int cnt=0;  //num of the history moment
+    float variance_out;
+    vec3 normal_p=2*imageLoad(image_normal,ivec2(p.xy)).xyz-1;
+    if(camera.frameCount==0){
+        vec3 curDirectIr=imageLoad(image_directLgtIr,ivec2(p.xy)).xyz;
+        lumin=0.2126*curDirectIr.x+0.7152*curDirectIr.y+0.0722*curDirectIr.z;
+        prevMoments=vec2(lumin,lumin*lumin);
+        variance_out=100.0f;
+    }
+    else{ //get fragPos
+        vec2 prevPos=getFragCoord(interpolatedPosition);
+        lumin=length(imageLoad(image_directLgtIr,ivec2(p.xy)).xyz);
+        
+        vec3 normal_tmp=2*imageLoad(image_normal,ivec2(p.x+1,p.y)).xyz-1;
+        if(length(normal_p-normal_tmp)<0.3){  //valid history moment
+            prevMoments+=imageLoad(image_Var,ivec2(prevPos.x+1,prevPos.y)).zw/factor;
+            cnt++;
+        }
+        normal_tmp=2*imageLoad(image_normal,ivec2(p.x-1,p.y)).xyz-1;
+        if(length(normal_p-normal_tmp)<0.3){  //valid history moment
+            prevMoments+=imageLoad(image_Var,ivec2(prevPos.x-1,prevPos.y)).zw/factor;
+            cnt++;
+        }
+        normal_tmp=2*imageLoad(image_normal,ivec2(p.x,p.y+1)).xyz-1;
+        if(length(normal_p-normal_tmp)<0.3){  //valid history moment
+            prevMoments+=imageLoad(image_Var,ivec2(prevPos.x,prevPos.y+1)).zw/factor;
+            cnt++;
+        }
+        normal_tmp=2*imageLoad(image_normal,ivec2(p.x,p.y-1)).xyz-1;
+        if(length(normal_p-normal_tmp)<0.3){  //valid history moment
+            prevMoments+=imageLoad(image_Var,ivec2(prevPos.x,prevPos.y-1)).zw/factor;
+            cnt++;
+        }
+
+        
+    }
+    if(cnt>0){
+        prevMoments/=cnt;
+    }
+    float moment_alpha =max(1.0f/(cnt+1),0.5);
+    //calculate accumulated moments
+    float first_Moment=moment_alpha*prevMoments.x+(1-moment_alpha)*lumin;
+    float second_Moment=moment_alpha*prevMoments.y+(1-moment_alpha)*lumin*lumin;
+    outColor.zw=vec2(first_Moment*factor,second_Moment*factor);
+    outColor.xy=outColor.zw;
+    variance_out=second_Moment-first_Moment*first_Moment;
+    variance_out=variance_out>0.0f?100.0f*variance_out:0.0f;
+
+    return vec4(first_Moment,second_Moment,variance_out,1.0);
+}
+
+float weight(vec2 p,vec2 q){
+     return  w_normal(p,q)*w_lumin(p,q);//w_depth(p,q)*
+}
+
+vec4 aTrous_indirectIr(vec2 p){
+    vec4 Numerator=vec4(0.0,0.0,0.0,1.0);
+    vec4 Denominator=vec4(0.0,0.0,0.0,1.0);
+
+    float level=4;
+    vec4 Ir_00 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
+    Numerator+=(1.0/16.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x-level,gl_FragCoord.y-level))*Ir_00;
+    Denominator+=(1.0/16.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
+
+    vec4 Ir_01 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y-level));
+    Numerator+=(1.0/8.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x,gl_FragCoord.y-level))*Ir_01;
+    Denominator+=(1.0/8.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x,gl_FragCoord.y-level));
+
+    vec4 Ir_02 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y-level));
+    Numerator+=(1.0/16.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x+level,gl_FragCoord.y-level))*Ir_02;
+    Denominator+=(1.0/16.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x+level,gl_FragCoord.y-level));
+
+    vec4 Ir_10 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y));
+    Numerator+=(1.0/8.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x-level,gl_FragCoord.y))*Ir_10;
+    Denominator+=(1.0/8.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x-level,gl_FragCoord.y));
+
+    vec4 Ir_11 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy));
+    Numerator+=(1.0/4.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.xy))*Ir_11;
+    Denominator+=(1.0/4.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.xy));
+
+    vec4 Ir_12 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y));
+    Numerator+=(1.0/8.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x+level,gl_FragCoord.y))*Ir_12;
+    Denominator+=(1.0/8.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x+level,gl_FragCoord.y));
+
+    vec4 Ir_20 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y+level));
+    Numerator+=(1.0/16.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x-level,gl_FragCoord.y+level))*Ir_20;
+    Denominator+=(1.0/16.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x-level,gl_FragCoord.y+level));
+
+    vec4 Ir_21 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y+level));
+    Numerator+=(1.0/8.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x,gl_FragCoord.y+level))*Ir_21;
+    Denominator+=(1.0/8.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x,gl_FragCoord.y+level));
+
+    vec4 Ir_22 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
+    Numerator+=(1.0/16.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x+level,gl_FragCoord.y+level))*Ir_22;
+    Denominator+=(1.0/16.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
+
+    //vec4 Ir=(1/4.0)*Ir_11+(1/8.0)*(Ir_01+Ir_10+Ir_12+Ir_21)+(1/16.0)*(Ir_00+Ir_02+Ir_20+Ir_22);
+
+    return Numerator/Denominator;
+}
+
+vec4 aTrous_directIr(vec2 p){
+    vec4 Numerator=vec4(0.0,0.0,0.0,1.0);
+    vec4 Denominator=vec4(0.0,0.0,0.0,1.0);
+
+    float level=4;
+    vec4 Ir_00 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
+    Numerator+=(1.0/16.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x-level,gl_FragCoord.y-level))*Ir_00;
+    Denominator+=(1.0/16.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
+
+    vec4 Ir_01 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x,gl_FragCoord.y-level));
+    Numerator+=(1.0/8.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x,gl_FragCoord.y-level))*Ir_01;
+    Denominator+=(1.0/8.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x,gl_FragCoord.y-level));
+
+    vec4 Ir_02 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x+level,gl_FragCoord.y-level));
+    Numerator+=(1.0/16.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x+level,gl_FragCoord.y-level))*Ir_02;
+    Denominator+=(1.0/16.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x+level,gl_FragCoord.y-level));
+
+    vec4 Ir_10 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x-level,gl_FragCoord.y));
+    Numerator+=(1.0/8.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x-level,gl_FragCoord.y))*Ir_10;
+    Denominator+=(1.0/8.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x-level,gl_FragCoord.y));
+
+    vec4 Ir_11 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.xy));
+    Numerator+=(1.0/4.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.xy))*Ir_11;
+    Denominator+=(1.0/4.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.xy));
+
+    vec4 Ir_12 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x+level,gl_FragCoord.y));
+    Numerator+=(1.0/8.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x+level,gl_FragCoord.y))*Ir_12;
+    Denominator+=(1.0/8.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x+level,gl_FragCoord.y));
+
+    vec4 Ir_20 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x-level,gl_FragCoord.y+level));
+    Numerator+=(1.0/16.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x-level,gl_FragCoord.y+level))*Ir_20;
+    Denominator+=(1.0/16.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x-level,gl_FragCoord.y+level));
+
+    vec4 Ir_21 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x,gl_FragCoord.y+level));
+    Numerator+=(1.0/8.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x,gl_FragCoord.y+level))*Ir_21;
+    Denominator+=(1.0/8.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x,gl_FragCoord.y+level));
+
+    vec4 Ir_22 = imageLoad(image_directLgtIr, ivec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
+    Numerator+=(1.0/16.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x+level,gl_FragCoord.y+level))*Ir_22;
+    Denominator+=(1.0/16.0)*weight(gl_FragCoord.xy,vec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
+
+    //vec4 Ir=(1/4.0)*Ir_11+(1/8.0)*(Ir_01+Ir_10+Ir_12+Ir_21)+(1/16.0)*(Ir_00+Ir_02+Ir_20+Ir_22);
+
+    return Numerator/Denominator;
+}
+
+vec2 getFragCoord(vec3 pos){          //从世界坐标获取对应的上一帧里的屏幕坐标
+    vec4 clipPos=PVMatrix*vec4(pos,1.0);
+      
+    clipPos/=clipPos.w;
+    clipPos.y=-clipPos.y;
+    clipPos.xy+=1;
+    clipPos.xy/=2;
+    clipPos.x*=camera.ViewPortWidth;
+    clipPos.y*=camera.ViewPortHeight;
+    return floor(clipPos.xy)+0.5;
 }
