@@ -235,6 +235,16 @@ private:
 	VkImageView HWorldPosImageView;
 	VkDeviceMemory HWorldPosImageMemory;
 
+	//input image ,Historicl information
+	VkImage HDepthImage;   //Depth
+	VkImageView HDepthImageView;
+	VkDeviceMemory HDepthImageMemory;
+
+	//input image ,Historicl information
+	VkImage HVarImage;   //Historic Variance
+	VkImageView HVarImageView;
+	VkDeviceMemory HVarImageMemory;
+
 	VkFramebuffer* GFramebuffersLv0;   //for geometry buffer
 
 	VkRenderPass renderPass;

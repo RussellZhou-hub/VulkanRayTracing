@@ -1175,6 +1175,8 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->HDirectAlbedoImage, &app->HDirectAlbedoImageMemory);
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->HNormalImage, &app->HNormalImageMemory);
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->HWorldPosImage, &app->HWorldPosImageMemory);
+    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->HDepthImage, &app->HDepthImageMemory);
+    createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->HVarImage, &app->HVarImageMemory);
     
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GnormalImage, &app->GnormalImageMemory);
     createImage(app, WIDTH, HEIGHT, app->swapchainImageFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->GDirectImage, &app->GDirectImageMemory);
@@ -1235,6 +1237,12 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
     VkImageViewCreateInfo imageViewCreateInfo_WorldPos = imageViewCreateInfo;
     imageViewCreateInfo_WorldPos.image = app->HWorldPosImage;
 
+    VkImageViewCreateInfo imageViewCreateInfo_Depth = imageViewCreateInfo;
+    imageViewCreateInfo_Depth.image = app->HDepthImage;
+
+    VkImageViewCreateInfo imageViewCreateInfo_Var = imageViewCreateInfo;
+    imageViewCreateInfo_Var.image = app->HVarImage;
+
     if (vkCreateImageView(app->logicalDevice, &imageViewCreateInfo, NULL, &app->rayTraceImageView) == VK_SUCCESS) {
         printf("created GnormalImageView \n");
     }
@@ -1278,6 +1286,12 @@ void VkRayTracingApplication::createTextures(VkRayTracingApplication* app)
     }
     if (vkCreateImageView(app->logicalDevice, &imageViewCreateInfo_WorldPos, NULL, &app->HWorldPosImageView) == VK_SUCCESS) {
         printf("created HDirectAlbedoImageView\n");
+    }
+    if (vkCreateImageView(app->logicalDevice, &imageViewCreateInfo_Depth, NULL, &app->HDepthImageView) == VK_SUCCESS) {
+        printf("created HDepthImageView\n");
+    }
+    if (vkCreateImageView(app->logicalDevice, &imageViewCreateInfo_Var, NULL, &app->HVarImageView) == VK_SUCCESS) {
+        printf("created HVarImageView\n");
     }
 
     VkImageMemoryBarrier imageMemoryBarrier = {};
@@ -1685,7 +1699,7 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
     descriptorPoolSizes[2].descriptorCount = 4;
 
     descriptorPoolSizes[3].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    descriptorPoolSizes[3].descriptorCount = 8;
+    descriptorPoolSizes[3].descriptorCount = 10;
 
     VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
     descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1698,7 +1712,7 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
     }
 
     {
-        VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[12];
+        VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[14];
         descriptorSetLayoutBindings[0].binding = 0;
         descriptorSetLayoutBindings[0].descriptorCount = 1;
         descriptorSetLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
@@ -1771,9 +1785,21 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
         descriptorSetLayoutBindings[11].pImmutableSamplers = NULL;
         descriptorSetLayoutBindings[11].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
+        descriptorSetLayoutBindings[12].binding = 12;           //Depth
+        descriptorSetLayoutBindings[12].descriptorCount = 1;
+        descriptorSetLayoutBindings[12].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        descriptorSetLayoutBindings[12].pImmutableSamplers = NULL;
+        descriptorSetLayoutBindings[12].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        descriptorSetLayoutBindings[13].binding = 13;           //Variance
+        descriptorSetLayoutBindings[13].descriptorCount = 1;
+        descriptorSetLayoutBindings[13].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        descriptorSetLayoutBindings[13].pImmutableSamplers = NULL;
+        descriptorSetLayoutBindings[13].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
         VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
         descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        descriptorSetLayoutCreateInfo.bindingCount = 12;
+        descriptorSetLayoutCreateInfo.bindingCount = 14;
         descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings;
 
         if (vkCreateDescriptorSetLayout(app->logicalDevice, &descriptorSetLayoutCreateInfo, NULL, &app->rayTraceDescriptorSetLayouts[0]) == VK_SUCCESS) {
@@ -1790,7 +1816,7 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
             printf("\033[22;32m%s\033[0m\n", "allocated descriptor sets");
         }
 
-        VkWriteDescriptorSet writeDescriptorSets[12];
+        VkWriteDescriptorSet writeDescriptorSets[14];
 
         VkWriteDescriptorSetAccelerationStructureKHR descriptorSetAccelerationStructure = {};
         descriptorSetAccelerationStructure.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
@@ -1977,7 +2003,35 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
         writeDescriptorSets[11].pBufferInfo = NULL;
         writeDescriptorSets[11].pTexelBufferView = NULL;
 
-        vkUpdateDescriptorSets(app->logicalDevice, 12, writeDescriptorSets, 0, NULL);
+        VkDescriptorImageInfo imageInfo_depth = imageInfo_indirectLgt_2;
+        imageInfo_depth.imageView = app->HDepthImageView;
+
+        writeDescriptorSets[12].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSets[12].pNext = NULL;
+        writeDescriptorSets[12].dstSet = app->rayTraceDescriptorSet;
+        writeDescriptorSets[12].dstBinding = 12;
+        writeDescriptorSets[12].dstArrayElement = 0;
+        writeDescriptorSets[12].descriptorCount = 1;
+        writeDescriptorSets[12].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        writeDescriptorSets[12].pImageInfo = &imageInfo_depth;
+        writeDescriptorSets[12].pBufferInfo = NULL;
+        writeDescriptorSets[12].pTexelBufferView = NULL;
+
+        VkDescriptorImageInfo imageInfo_var = imageInfo_indirectLgt_2;
+        imageInfo_var.imageView = app->HVarImageView;
+
+        writeDescriptorSets[13].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSets[13].pNext = NULL;
+        writeDescriptorSets[13].dstSet = app->rayTraceDescriptorSet;
+        writeDescriptorSets[13].dstBinding = 13;
+        writeDescriptorSets[13].dstArrayElement = 0;
+        writeDescriptorSets[13].descriptorCount = 1;
+        writeDescriptorSets[13].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        writeDescriptorSets[13].pImageInfo = &imageInfo_var;
+        writeDescriptorSets[13].pBufferInfo = NULL;
+        writeDescriptorSets[13].pTexelBufferView = NULL;
+
+        vkUpdateDescriptorSets(app->logicalDevice, 14, writeDescriptorSets, 0, NULL);
     }
 
     {
