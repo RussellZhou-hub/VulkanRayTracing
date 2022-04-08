@@ -136,8 +136,10 @@ void main() {
   }
   else {
     preShadow=imageLoad(image_directLgtIr,ivec2(gl_FragCoord.xy));   //pre shadow
+    outDirectIr=preShadow;
     directAlbedo=imageLoad(image_directAlbedo,ivec2(gl_FragCoord.xy));
     indirectIr=imageLoad(image_indirectLgt,ivec2(gl_FragCoord.xy));
+    outIndIr=indirectIr;
     indirectAlbedo=imageLoad(image_indirectLgt_2,ivec2(gl_FragCoord.xy));
 
     //int level=3;
@@ -152,7 +154,7 @@ void main() {
     else{
         directColor = directAlbedo.xyz * preShadow.xyz;    //not in shadow
     }
-    outIndAlbedo=vec4(directColor,1.0);
+    //outIndAlbedo=vec4(directColor,1.0);
 
     
     if( preShadow.w==0.0 ){ //inshadow,weaken indirect light reflection
@@ -194,7 +196,7 @@ void main() {
     //avgShadow=imageLoad(image_directLgtIr,ivec2(gl_FragCoord.x-level,gl_FragCoord.y)).w+imageLoad(image_directLgtIr,ivec2(gl_FragCoord.x+level,gl_FragCoord.y)).w+imageLoad(image_directLgtIr,ivec2(gl_FragCoord.x,gl_FragCoord.y-level)).w+imageLoad(image_directLgtIr,ivec2(gl_FragCoord.x,gl_FragCoord.y+level)).w;
 
     directColor = directAlbedo.xyz * preShadow.xyz;
-    outIndAlbedo=vec4(directColor,1.0);
+    //outIndAlbedo=vec4(directColor,1.0);
     
      indirectColor=indirectIr.xyz*indirectAlbedo.xyz;
      
@@ -215,6 +217,12 @@ void main() {
      //debugPrintfEXT("lightVertexA.x is %f  lightVertexA.y is %f lightVertexA.z is %f \n lightVertexB.x is %f  lightVertexB.y is %f lightVertexB.z is %f \n lightVertexC.x is %f  lightVertexC.y is %f lightVertexC.z is %f \n",vertexA.x,vertexA.y,vertexA.z,vertexB.x,vertexB.y,vertexB.z,vertexC.x,vertexC.y,vertexC.z);
   }
   else {
+    preShadow=imageLoad(image_directLgtIr,ivec2(gl_FragCoord.xy));   //pre shadow
+    outDirectIr=preShadow;
+    indirectIr=imageLoad(image_indirectLgt,ivec2(gl_FragCoord.xy));
+    outIndIr=indirectIr;
+    indirectAlbedo=imageLoad(image_indirectLgt_2,ivec2(gl_FragCoord.xy));
+
     int randomIndex = int(random(gl_FragCoord.xy) * 2 + 40);//40 is the light area
     vec3 lightColor = vec3(0.6, 0.6, 0.6);
     //vec3 lightPosition = lightVertexA * lightBarycentric.x + lightVertexB * lightBarycentric.y + lightVertexC * lightBarycentric.z;
