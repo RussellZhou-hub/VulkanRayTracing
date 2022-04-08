@@ -37,7 +37,7 @@ layout(binding = 5, set = 0) uniform ShadingMode {
   uint enableShadowMotion;
   uint enableSVGF;
   uint enable2thRMotion;
-  uint enable2thRayDierctionSpatialFilter;
+  uint enableSVGF_withIndAlbedo;
 } shadingMode;
 
 void main() {

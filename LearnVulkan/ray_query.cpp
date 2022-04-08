@@ -253,49 +253,35 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
             shadingMode->enableShadowMotion = 0;
             shadingMode->enableSVGF = 0;
             shadingMode->enable2thRMotion = 0;
-            shadingMode->enable2thRayDierctionSpatialFilter = 0;
+            shadingMode->enableSVGF_withIndAlbedo = 0;
         }
         if (keyDownIndex[GLFW_KEY_2]) {    //2th Ray without denoising
             shadingMode->enable2thRay = 1;
             shadingMode->enableShadowMotion = 0;
             shadingMode->enableSVGF = 0;
             shadingMode->enable2thRMotion = 0;
-            shadingMode->enable2thRayDierctionSpatialFilter = 0;
+            shadingMode->enableSVGF_withIndAlbedo = 0;
         }
         if (keyDownIndex[GLFW_KEY_3]) {   //shadow method:motion vector along
             shadingMode->enable2thRay = 1;
             shadingMode->enableShadowMotion = 1;
             shadingMode->enableSVGF = 0;
             shadingMode->enable2thRMotion = 1;
-            shadingMode->enable2thRayDierctionSpatialFilter = 0;
+            shadingMode->enableSVGF_withIndAlbedo = 0;
         }
         if (keyDownIndex[GLFW_KEY_4]) {   //enable SVGF
             shadingMode->enable2thRay = 1;
             shadingMode->enableShadowMotion = 0;
             shadingMode->enableSVGF = 1;
             shadingMode->enable2thRMotion = 0;
-            shadingMode->enable2thRayDierctionSpatialFilter = 0;
+            shadingMode->enableSVGF_withIndAlbedo = 0;
         }
-        if (keyDownIndex[GLFW_KEY_5]) {     //my shadow method + 2th Ray
-            shadingMode->enable2thRay = 1;
-            shadingMode->enableShadowMotion = 1;
-            shadingMode->enableSVGF = 1;
-            shadingMode->enable2thRMotion = 1;
-            shadingMode->enable2thRayDierctionSpatialFilter = 0;
-        }
-        if (keyDownIndex[GLFW_KEY_6]) {     //my shadow method + 2th Ray+2thRayDierctionSpatialFilter
-            shadingMode->enable2thRay = 1;
-            shadingMode->enableShadowMotion = 1;
-            shadingMode->enableSVGF = 1;
-            shadingMode->enable2thRMotion = 1;
-            shadingMode->enable2thRayDierctionSpatialFilter = 1;
-        }
-        if (keyDownIndex[GLFW_KEY_7]) {     //my shadow method + 2th Ray+2*2thRay
+        if (keyDownIndex[GLFW_KEY_5]) {     //my method
             shadingMode->enable2thRay = 1;
             shadingMode->enableShadowMotion = 0;
-            shadingMode->enableSVGF = 0;
-            shadingMode->enable2thRMotion = 1;
-            shadingMode->enable2thRayDierctionSpatialFilter = 1;
+            shadingMode->enableSVGF = 1;
+            shadingMode->enable2thRMotion = 0;
+            shadingMode->enableSVGF_withIndAlbedo = 1;
         }
 
         static double previousMousePositionX;
@@ -2908,6 +2894,7 @@ void VkRayTracingApplication::createCommandBuffers_3pass(VkRayTracingApplication
             vkCmdCopyImage(app->commandBuffers[x], app->swapchainImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->HVarImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
             vkCmdCopyImage(app->commandBuffers[x], app->GDirectIrradImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->HDirectIrradImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
             vkCmdCopyImage(app->commandBuffers[x], app->GIrradImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->Image_indirectLgt, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+            vkCmdCopyImage(app->commandBuffers[x], app->G_albedoImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->Image_indirectLgt_2, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
         }
 
         //3th pass
@@ -3630,7 +3617,7 @@ ShadingMode::ShadingMode()
     enable2thRay = 1;
     enableSVGF = 0;
     enableShadowMotion = 0;
-    enable2thRayDierctionSpatialFilter = 0;
+    enableSVGF_withIndAlbedo = 0;
     enableShadowMotion = 0;
     enable2thRMotion = 0;
 }
