@@ -35,3 +35,7 @@ esc：退出
 ## denoised glossy surface(SVGF)：
 
 ![5](readme.assets/simpleSVGF.png)
+
+## denoised glossy surface(SVGF with ind albedo filter)：
+
+![](readme.assets/SVGFwithIndAlbedo.png)
