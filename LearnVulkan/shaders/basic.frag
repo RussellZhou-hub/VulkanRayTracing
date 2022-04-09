@@ -573,8 +573,9 @@ vec3 getReflectedDierction(vec3 inRay,vec3 normal ){     //反射角度
 vec3 getSampledReflectedDirection(vec3 inRay,vec3 normal,vec2 uv,float seed){
     inRay=inRay-camera.position.xyz;
     vec3 Ray=getReflectedDierction(inRay,normal);
-    float theta=M_PI*random(uv);
+    float theta=0.5*M_PI*random(uv);  //[0,pi/2]
     float phi=2*M_PI*random(vec2(uv.y,uv.x));
+    theta*=sin(theta);
     vec3 RandomRay=vec3(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta));
     float weight=0.7;  //reflection rate
     return normalize(weight*Ray+(1-weight)*normalize(RandomRay));
