@@ -3679,6 +3679,19 @@ VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass)
     }
 }
 
+void VkRayTracingApplication::load_meshes(Scene* scene) {
+
+    //load the monkey
+    //_monkeyMesh.load_from_obj("../../assets/monkey_smooth.obj");
+    _monkeyMesh.load_from_obj("../../assets/cube_scene.obj");
+
+    //make sure both meshes are sent to the GPU
+    //upload_mesh(_monkeyMesh);
+
+    //note that we are copying them. Eventually we will delete the hardcoded _monkey and _triangle meshes, so it's no problem now.
+    _meshes["monkey"] = _monkeyMesh;
+}
+
 ShadingMode::ShadingMode()
 {
     enable2thRay = 1;
