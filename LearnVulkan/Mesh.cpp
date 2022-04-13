@@ -1,6 +1,7 @@
 #include "Mesh.h"
-#include "tiny_obj_loader.h"
 #include <iostream>
+#define TINYOBJLOADER_IMPLEMENTATION
+#include"tiny_obj_loader.h"
 //just that for now
 
 VertexInputDescription Vertex::get_vertex_description()
@@ -48,7 +49,7 @@ bool Mesh::load_from_obj(const char* filename)
 	tinyobj::attrib_t attrib;
 	//shapes contains the info for each separate object in the file
 	std::vector<tinyobj::shape_t> shapes;
-	//materials contains the information about the material of each shape, but we won't use it.
+	//materials contains the information about the material of each shape.
 	std::vector<tinyobj::material_t> materials;
 
 	//error and warning output from the load function
@@ -56,7 +57,7 @@ bool Mesh::load_from_obj(const char* filename)
 	std::string err;
 
 	//load the OBJ file
-	//tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename, nullptr);
+	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename, nullptr);
 	//make sure to output the warnings to the console, in case there are issues with the file
 	if (!warn.empty()) {
 		std::cout << "WARN: " << warn << std::endl;
@@ -110,6 +111,9 @@ bool Mesh::load_from_obj(const char* filename)
 			index_offset += fv;
 		}
 	}
+	this->attrib = attrib;
+	this->shapes = shapes;
+	this->materials = materials;
 
 	return true;
 }

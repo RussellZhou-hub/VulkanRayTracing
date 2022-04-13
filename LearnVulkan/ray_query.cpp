@@ -95,9 +95,10 @@ void VkRayTracingApplication::run(Scene& scene, Camera& camera, ShadingMode& sha
 
 void VkRayTracingApplication::initializeScene(Scene* scene, const char* fileNameOBJ)
 {
-    tinyobj_attrib_init(&scene->attributes);
-    tinyobj_parse_obj(&scene->attributes, &scene->shapes, &scene->numShapes, &scene->materials, &scene->numMaterials, fileNameOBJ, &readFile, TINYOBJ_FLAG_TRIANGULATE);
+    //tinyobj_attrib_init(&scene->attributes);
+    //tinyobj_parse_obj(&scene->attributes, &scene->shapes, &scene->numShapes, &scene->materials, &scene->numMaterials, fileNameOBJ, &readFile, TINYOBJ_FLAG_TRIANGULATE);
     //loadModel(scene);
+    load_meshes(scene, fileNameOBJ);
 }
 
 void VkRayTracingApplication::initVulkan(Scene* scene)
@@ -423,9 +424,9 @@ void VkRayTracingApplication::cleanup(VkRayTracingApplication* app, Scene* scene
     glfwDestroyWindow(app->window);
     glfwTerminate();
 
-    tinyobj_attrib_free(&scene->attributes);
-    tinyobj_shapes_free(scene->shapes, scene->numShapes);
-    tinyobj_materials_free(scene->materials, scene->numMaterials);
+    //tinyobj_attrib_free(&scene->attributes);
+    //tinyobj_shapes_free(scene->shapes, scene->numShapes);
+    //tinyobj_materials_free(scene->materials, scene->numMaterials);
 }
 
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -3082,41 +3083,6 @@ void VkRayTracingApplication::drawFrame(VkRayTracingApplication* app, Camera* ca
     
 }
 
-
-
-/*
-void VkRayTracingApplication::loadModel(Scene* scene) {
-    tinyobj::attrib_t attrib;
-    std::vector<tinyobj::shape_t> shapes;
-    std::vector<tinyobj::material_t> materials;
-    std::string warn, err;
-
-    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err,"/cube_scene.obj","D: / Data / Vulkan / Resources / cube_box")) {
-        throw std::runtime_error(err);
-    }
-    //tinyobj_attrib_init(&scene->attributes);
- //tinyobj_parse_obj(&scene->attributes, &scene->shapes, &scene->numShapes, &scene->materials, &scene->numMaterials, fileNameOBJ, &readFile, TINYOBJ_FLAG_TRIANGULATE);
-    //Todo:要提供一个原来的c写法的scene对象，现在是c++写法的
-    scene->numShapes = shapes.size();
-    scene->numMaterials = materials.size();
-    scene->attributes.num_vertices = attrib.vertices.size();
-    scene->attributes.num_normals = attrib.normals.size();
-    scene->attributes.num_texcoords = attrib.texcoords.size();
-    if (!attrib.vertices.empty()) {
-        scene->attributes.vertices = &attrib.vertices[0];
-    }
-    if (!attrib.normals.empty()) {
-        scene->attributes.normals = &attrib.normals[0];
-    }
-    if (!attrib.texcoords.empty()) {
-        scene->attributes.texcoords = &attrib.texcoords[0];
-    }
-
-
-
-}
-*/
-
 void VkRayTracingApplication::createDepthResources(VkRayTracingApplication* app)
 {
     VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
@@ -3679,11 +3645,58 @@ VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass)
     }
 }
 
-void VkRayTracingApplication::load_meshes(Scene* scene) {
+void VkRayTracingApplication::load_meshes(Scene* scene, const char* fileNameOBJ) {
 
     //load the monkey
     //_monkeyMesh.load_from_obj("../../assets/monkey_smooth.obj");
-    _monkeyMesh.load_from_obj("../../assets/cube_scene.obj");
+    _monkeyMesh.load_from_obj(fileNameOBJ);
+
+//**********************trans***************************************************************
+    scene->attributes.num_vertices = _monkeyMesh.attrib.vertices.size() / 3;
+    scene->attributes.vertices = _monkeyMesh.attrib.vertices.data();
+    scene->attributes.num_normals = _monkeyMesh.attrib.normals.size() / 3;
+    scene->attributes.normals = _monkeyMesh.attrib.normals.data();
+    scene->attributes.num_texcoords = _monkeyMesh.attrib.texcoords.size() / 2;
+    scene->attributes.texcoords = _monkeyMesh.attrib.texcoords.data();
+
+    scene->attributes.num_faces = 0;               //calculate total indices （not real face ,shit c-version api)
+    scene->attributes.num_face_num_verts = 0;
+    vector<unsigned int> indices;
+    vector<unsigned int> face_num_verts;
+    vector<unsigned int> materialId;
+    for (auto i = _monkeyMesh.shapes.begin(); i != _monkeyMesh.shapes.end(); i++) {
+        scene->attributes.num_faces += (*i).mesh.indices.size();
+        scene->attributes.num_face_num_verts += (*i).mesh.num_face_vertices.size();
+        for (auto j = 0; j < (*i).mesh.indices.size(); j++) {
+            indices.push_back((*i).mesh.indices[j].vertex_index);
+        }
+        for (auto j = 0; j < (*i).mesh.num_face_vertices.size(); j++) {
+            face_num_verts.push_back((*i).mesh.num_face_vertices[j]);
+            materialId.push_back((*i).mesh.material_ids[j]);
+        }
+    }
+    scene->attributes.faces = (tinyobj_vertex_index_t*)malloc(scene->attributes.num_faces*sizeof(tinyobj_vertex_index_t));
+    scene->attributes.face_num_verts = (int*)malloc(scene->attributes.num_face_num_verts * sizeof(int));
+    scene->attributes.material_ids = (int*)malloc(scene->attributes.num_face_num_verts * sizeof(int));
+    for (auto i = 0; i < scene->attributes.num_faces; i++) {
+        scene->attributes.faces[i].v_idx = indices[i];
+    }
+    for (auto i = 0; i < scene->attributes.num_face_num_verts; i++) {
+        scene->attributes.face_num_verts[i] = face_num_verts[i];
+        scene->attributes.material_ids[i] = materialId[i];
+    }
+    //for materials
+    scene->numMaterials = _monkeyMesh.materials.size();
+    scene->materials = (tinyobj_material_t*)malloc(scene->numMaterials*sizeof(tinyobj_material_t));
+    for (auto i = 0; i < scene->numMaterials; i++) {
+        memcpy(scene->materials[i].ambient, _monkeyMesh.materials[i].ambient, sizeof(float) * 3);
+        memcpy(scene->materials[i].diffuse, _monkeyMesh.materials[i].diffuse, sizeof(float) * 3);
+        memcpy(scene->materials[i].specular, _monkeyMesh.materials[i].specular, sizeof(float) * 3);
+        memcpy(scene->materials[i].emission, _monkeyMesh.materials[i].emission, sizeof(float) * 3);
+    }
+
+
+//**********************trans***************************************************************
 
     //make sure both meshes are sent to the GPU
     //upload_mesh(_monkeyMesh);

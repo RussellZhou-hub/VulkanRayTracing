@@ -209,7 +209,7 @@ private:
 	void updateUniformBuffer(VkRayTracingApplication* app, Camera* camera, ShadingMode* shadingMode);
 	void drawFrame(VkRayTracingApplication* app, struct Camera* camera, ShadingMode* shadingMode);
 
-	void load_meshes(Scene* scene);
+	void load_meshes(Scene* scene, const char* fileNameOBJ);
 	void upload_mesh(Mesh& mesh);
 	//create material and add it to the map
 	Material* create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name);
