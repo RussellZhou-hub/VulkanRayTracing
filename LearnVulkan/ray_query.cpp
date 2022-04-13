@@ -25,6 +25,8 @@
 #define STB_IMAGE_IMPLEMENTATION    
 #include "stb_image.h"
 #include <iostream>
+#define VMA_IMPLEMENTATION
+#include<vma/vk_mem_alloc.h>
 #include "Shader.h"
 #include <glm/ext/matrix_transform.hpp>
 
@@ -85,10 +87,7 @@ bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
 
 void VkRayTracingApplication::run(Scene& scene, Camera& camera, ShadingMode& shadingMode)
 {
-    std::string str = GetExePath();
-    str += "\\data\\cube_scene.obj";
-    initializeScene(&scene, str.c_str());
-    //initializeScene(&scene, "D:/Data/Vulkan/Resources/cube_box/cube_scene.obj");
+    
     initVulkan(&scene);
     mainLoop(this, &camera,&shadingMode);
     cleanup(this, &scene);
@@ -111,6 +110,10 @@ void VkRayTracingApplication::initVulkan(Scene* scene)
     createCommandPool(this);
     createDepthResources(this);
     
+    std::string str = GetExePath();
+    str += "\\data\\cube_scene.obj";
+    initializeScene(scene, str.c_str());
+    //initializeScene(&scene, "D:/Data/Vulkan/Resources/cube_box/cube_scene.obj");
 
     createVertexBuffer(this, scene);
     createIndexBuffer(this, scene);
@@ -862,6 +865,13 @@ void VkRayTracingApplication::createLogicalConnection(VkRayTracingApplication* a
     free(deviceEnabledExtensionNames);
     free(queueFamilyProperties);
     free(deviceQueueCreateInfos);
+
+    //initialize the memory allocator
+    VmaAllocatorCreateInfo allocatorInfo = {};
+    allocatorInfo.physicalDevice = app->physicalDevice;
+    allocatorInfo.device = app->logicalDevice;
+    allocatorInfo.instance = app->instance;
+    vmaCreateAllocator(&allocatorInfo, &_allocator);
 }
 
 void VkRayTracingApplication::createSwapchain(VkRayTracingApplication* app)

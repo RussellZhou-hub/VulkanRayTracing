@@ -137,7 +137,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>D:\Data\VulkanSDK\1.2.198.1\Include;D:\Data\Vulkan\include;D:\Data\Vulkan\include;D:\Data\VulkanSDK\1.2.198.1\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalOptions>/utf-16 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -157,7 +157,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>D:\Data\VulkanSDK\1.2.198.1\Include;D:\Data\Vulkan\include;D:\Data\Vulkan\include;D:\Data\VulkanSDK\1.2.198.1\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalOptions>/utf-16 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
@@ -172,7 +172,6 @@
   <ItemGroup>
     <ClCompile Include="App.cpp" />
     <ClCompile Include="Mesh.cpp" />
-    <ClCompile Include="Model.cpp" />
     <ClCompile Include="ray_query.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Utils.cpp" />
@@ -183,7 +182,6 @@
   <ItemGroup>
     <ClInclude Include="App.h" />
     <ClInclude Include="Mesh.h" />
-    <ClInclude Include="Model.h" />
     <ClInclude Include="ray_query.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="Shader.h" />

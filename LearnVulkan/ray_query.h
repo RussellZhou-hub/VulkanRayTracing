@@ -27,6 +27,8 @@ const uint32_t HEIGHT = 2160/2;
 #include <string.h>
 #include <math.h>
 #include<vector>
+#include<deque>
+#include<unordered_map>
 #include<string>
 #include<set>
 
@@ -36,6 +38,9 @@ const uint32_t HEIGHT = 2160/2;
 //}
 
 #include "tinyobj_loader_c.h"
+#include<vma/vk_mem_alloc.h>
+#include <functional>
+#include "Mesh.h"
 
 #define MAX_FRAMES_IN_FLIGHT      1
 #define ENABLE_VALIDATION         1
@@ -123,6 +128,42 @@ public:
 	uint64_t numMaterials;
 };
 
+struct MeshPushConstants {
+	glm::vec4 data;
+	glm::mat4 render_matrix;
+};
+
+struct DeletionQueue
+{
+	std::deque<std::function<void()>> deletors;
+
+	void push_function(std::function<void()>&& function) {
+		deletors.push_back(function);
+	}
+
+	void flush() {
+		// reverse iterate the deletion queue to execute all the functions
+		for (auto it = deletors.rbegin(); it != deletors.rend(); it++) {
+			(*it)(); //call the function
+		}
+
+		deletors.clear();
+	}
+};
+
+//note that we store the VkPipeline and layout by value, not pointer.
+//They are 64 bit handles to internal driver structures anyway so storing pointers to them isn't very useful
+struct Material_pipeline {
+	VkPipeline pipeline;
+	VkPipelineLayout pipelineLayout;
+};
+
+struct RenderObject {
+	Mesh* mesh;
+	Material_pipeline* material;
+	glm::mat4 transformMatrix;
+};
+
 class VkRayTracingApplication {
 public:
 	friend class Shader;
@@ -168,6 +209,17 @@ private:
 	void updateUniformBuffer(VkRayTracingApplication* app, Camera* camera, ShadingMode* shadingMode);
 	void drawFrame(VkRayTracingApplication* app, struct Camera* camera, ShadingMode* shadingMode);
 
+	void load_meshes();
+	void upload_mesh(Mesh& mesh);
+	//create material and add it to the map
+	Material* create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name);
+	//returns nullptr if it can't be found
+	Material* get_material(const std::string& name);
+	//returns nullptr if it can't be found
+	Mesh* get_mesh(const std::string& name);
+	//our draw function
+	void draw_objects(VkCommandBuffer cmd, RenderObject* first, int count);
+
 	int isCameraMoved;
 
 	GLFWwindow* window;
@@ -193,6 +245,21 @@ private:
 	VkExtent2D swapchainExtent;
 	VkImageView* swapchainImageViews;
 	VkFramebuffer* swapchainFramebuffers;
+
+	VmaAllocator _allocator; //vma lib allocator
+
+	//other code ....
+	Mesh _monkeyMesh;
+
+	//default array of renderable objects
+	std::vector<RenderObject> _renderables;
+
+	std::unordered_map<std::string, Material> _materials;
+	std::unordered_map<std::string, Mesh> _meshes;
+
+	int _selectedShader{ 0 };
+
+	DeletionQueue _mainDeletionQueue;
 
 	//output attachment in shader
 	uint32_t colorAttachCount;
