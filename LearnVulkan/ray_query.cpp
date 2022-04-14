@@ -29,7 +29,18 @@
 #include<vma/vk_mem_alloc.h>
 #include "Shader.h"
 #include <glm/ext/matrix_transform.hpp>
+#include <glm/ext/matrix_clip_space.hpp>
 
+#define VK_CHECK(x)                                                 \
+	do                                                              \
+	{                                                               \
+		VkResult err = x;                                           \
+		if (err)                                                    \
+		{                                                           \
+			std::cout <<"Detected Vulkan error: " << err << std::endl; \
+			abort();                                                \
+		}                                                           \
+	} while (0)
 
 VkRayTracingApplication::VkRayTracingApplication():colorAttachCount(6){
     currentFrame = 0;
@@ -41,10 +52,14 @@ Camera::Camera() {
     up[0] = 0.0f; up[1] = 1.0f; up[2] = 0.0f; up[3] = 1.0f;
     forward[0] = 0.0f; forward[1] = 0.0f; forward[2] = 1.0f; forward[3] = 1.0f;
 
-    lightA = glm::vec4(2.81,8.28,-1.6,1.0);
-    lightB = glm::vec4(0.81, 8.28, 0.39, 1.0);
-    lightC = glm::vec4(0.81, 8.28, -1.6, 1.0);
+    //lightA = glm::vec4(2.81,8.28,-1.6,1.0);
+    //lightB = glm::vec4(0.81, 8.28, 0.39, 1.0);
+    //lightC = glm::vec4(0.81, 8.28, -1.6, 1.0);
     lightPad = glm::vec4(0.0,0.0,0.0,1.0);
+
+    lightA = glm::vec4(1.596529, 7.516576, -1.609730, 1.0f);
+    lightB = glm::vec4(-0.403471, 7.516576, 0.390270, 1.0f);
+    lightC = glm::vec4(-0.403471, 7.516576, - 1.609730, 1.0f);
 
     frameCount = 0;
     ViewPortWidth = WIDTH;
@@ -93,12 +108,12 @@ void VkRayTracingApplication::run(Scene& scene, Camera& camera, ShadingMode& sha
     cleanup(this, &scene);
 }
 
-void VkRayTracingApplication::initializeScene(Scene* scene, const char* fileNameOBJ)
+void VkRayTracingApplication::initializeScene(Scene* scene, std::string fileName)
 {
     //tinyobj_attrib_init(&scene->attributes);
     //tinyobj_parse_obj(&scene->attributes, &scene->shapes, &scene->numShapes, &scene->materials, &scene->numMaterials, fileNameOBJ, &readFile, TINYOBJ_FLAG_TRIANGULATE);
     //loadModel(scene);
-    load_meshes(scene, fileNameOBJ);
+    load_meshes(scene, fileName);
 }
 
 void VkRayTracingApplication::initVulkan(Scene* scene)
@@ -112,9 +127,14 @@ void VkRayTracingApplication::initVulkan(Scene* scene)
     createDepthResources(this);
     
     std::string str = GetExePath();
-    str += "\\data\\cube_scene.obj";
-    initializeScene(scene, str.c_str());
+    str += "\\data\\cube_scene"; 
+    //str += "\\data\\mitsuba\\mitsuba-blender";
+    initializeScene(scene, str);
     //initializeScene(&scene, "D:/Data/Vulkan/Resources/cube_box/cube_scene.obj");
+
+    createTextureImage(this);
+    createTextureImageView();
+    createTextureSampler();
 
     createVertexBuffer(this, scene);
     createIndexBuffer(this, scene);
@@ -412,6 +432,12 @@ void VkRayTracingApplication::cleanup(VkRayTracingApplication* app, Scene* scene
 
     free(app->swapchainImages);
     vkDestroySwapchainKHR(app->logicalDevice, app->swapchain, NULL);
+
+    vkDestroyImage(logicalDevice, textureImage, nullptr);
+    vkFreeMemory(logicalDevice, textureImageMemory, nullptr);
+    vkDestroyImageView(logicalDevice, textureImageView, nullptr);
+    vkDestroySampler(logicalDevice, textureSampler, nullptr);
+
 
     vkDestroyDevice(app->logicalDevice, NULL);
 
@@ -1143,10 +1169,10 @@ void VkRayTracingApplication::createMaterialsBuffer(VkRayTracingApplication* app
     createBuffer(app, materialBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &materialStagingBuffer, &materialStagingBufferMemory);
 
     //ÐÞ¸ÄµÆ¹âÑÕÉ«
-    materials[6].emission[0] = 1.0f;
-    materials[6].emission[1] = 0.8f;
-    materials[6].emission[2] = 0.7f;
-    Material mat = materials[6];
+    //materials[6].emission[0] = 1.0f;
+    //materials[6].emission[1] = 0.8f;
+    //materials[6].emission[2] = 0.7f;
+    //Material mat = materials[6];
 
     void* materialData;
     vkMapMemory(app->logicalDevice, materialStagingBufferMemory, 0, materialBufferSize, 0, &materialData);
@@ -1687,7 +1713,7 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
 {
     app->rayTraceDescriptorSetLayouts = (VkDescriptorSetLayout*)malloc(sizeof(VkDescriptorSetLayout) * 2);
 
-    VkDescriptorPoolSize descriptorPoolSizes[4];
+    VkDescriptorPoolSize descriptorPoolSizes[5];
     descriptorPoolSizes[0].type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
     descriptorPoolSizes[0].descriptorCount = 1;
 
@@ -1700,9 +1726,12 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
     descriptorPoolSizes[3].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     descriptorPoolSizes[3].descriptorCount = 10;
 
+    descriptorPoolSizes[4].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorPoolSizes[4].descriptorCount = 4;
+
     VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
     descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    descriptorPoolCreateInfo.poolSizeCount = 4;
+    descriptorPoolCreateInfo.poolSizeCount = 5;
     descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSizes;
     descriptorPoolCreateInfo.maxSets = 2;
 
@@ -1711,7 +1740,7 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
     }
 
     {
-        VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[14];
+        VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[15];
         descriptorSetLayoutBindings[0].binding = 0;
         descriptorSetLayoutBindings[0].descriptorCount = 1;
         descriptorSetLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
@@ -1796,9 +1825,15 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
         descriptorSetLayoutBindings[13].pImmutableSamplers = NULL;
         descriptorSetLayoutBindings[13].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
+        descriptorSetLayoutBindings[14].binding = 14;           //Texture
+        descriptorSetLayoutBindings[14].descriptorCount = 1;
+        descriptorSetLayoutBindings[14].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorSetLayoutBindings[14].pImmutableSamplers = NULL;
+        descriptorSetLayoutBindings[14].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
         VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
         descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        descriptorSetLayoutCreateInfo.bindingCount = 14;
+        descriptorSetLayoutCreateInfo.bindingCount = 15;
         descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings;
 
         if (vkCreateDescriptorSetLayout(app->logicalDevice, &descriptorSetLayoutCreateInfo, NULL, &app->rayTraceDescriptorSetLayouts[0]) == VK_SUCCESS) {
@@ -1815,7 +1850,7 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
             printf("\033[22;32m%s\033[0m\n", "allocated descriptor sets");
         }
 
-        VkWriteDescriptorSet writeDescriptorSets[14];
+        VkWriteDescriptorSet writeDescriptorSets[15];
 
         VkWriteDescriptorSetAccelerationStructureKHR descriptorSetAccelerationStructure = {};
         descriptorSetAccelerationStructure.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
@@ -2030,7 +2065,23 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
         writeDescriptorSets[13].pBufferInfo = NULL;
         writeDescriptorSets[13].pTexelBufferView = NULL;
 
-        vkUpdateDescriptorSets(app->logicalDevice, 14, writeDescriptorSets, 0, NULL);
+        VkDescriptorImageInfo imageInfo_tex{};
+        imageInfo_tex.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo_tex.imageView = textureImageView;
+        imageInfo_tex.sampler = textureSampler;
+
+        writeDescriptorSets[14].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeDescriptorSets[14].pNext = NULL;
+        writeDescriptorSets[14].dstSet = app->rayTraceDescriptorSet;
+        writeDescriptorSets[14].dstBinding = 14;
+        writeDescriptorSets[14].dstArrayElement = 0;
+        writeDescriptorSets[14].descriptorCount = 1;
+        writeDescriptorSets[14].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        writeDescriptorSets[14].pImageInfo = &imageInfo_tex;
+        writeDescriptorSets[14].pBufferInfo = NULL;
+        writeDescriptorSets[14].pTexelBufferView = NULL;
+
+        vkUpdateDescriptorSets(app->logicalDevice, 15, writeDescriptorSets, 0, NULL);
     }
 
     {
@@ -2749,6 +2800,148 @@ void VkRayTracingApplication::createCommandBuffers_2pass(VkRayTracingApplication
         if (vkEndCommandBuffer(app->commandBuffers[x]) == VK_SUCCESS) {
             printf("end recording command buffer for image #%d\n", x);
         }
+    }
+}
+
+void VkRayTracingApplication::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+{
+    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+
+    VkBufferCopy copyRegion{};
+    copyRegion.size = size;
+    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+    endSingleTimeCommands(commandBuffer);
+}
+
+void VkRayTracingApplication::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
+{
+    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+
+    VkPipelineStageFlags sourceStage;
+    VkPipelineStageFlags destinationStage;
+
+    VkImageMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = oldLayout;
+    barrier.newLayout = newLayout;
+
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+    barrier.image = image;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+
+    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    }
+    else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    }
+    else {
+        throw std::invalid_argument("unsupported layout transition!");
+    }
+
+    vkCmdPipelineBarrier(
+        commandBuffer,
+        sourceStage, destinationStage,
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &barrier
+    );
+
+    endSingleTimeCommands(commandBuffer);
+}
+
+void VkRayTracingApplication::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
+{
+    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+
+    VkBufferImageCopy region{};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+
+    region.imageOffset = { 0, 0, 0 };
+    region.imageExtent = {
+        width,
+        height,
+        1
+    };
+
+    vkCmdCopyBufferToImage(
+        commandBuffer,
+        buffer,
+        image,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1,
+        &region
+    );
+
+    endSingleTimeCommands(commandBuffer);
+}
+
+VkImageView VkRayTracingApplication::createImageView(VkImage image, VkFormat format)
+{
+    VkImageViewCreateInfo viewInfo{};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = image;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = format;
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+
+    VkImageView imageView;
+    if (vkCreateImageView(logicalDevice, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create texture image view!");
+    }
+
+    return imageView;
+}
+
+void VkRayTracingApplication::createTextureSampler()
+{
+    VkSamplerCreateInfo samplerInfo{};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = VK_FILTER_LINEAR;
+    samplerInfo.minFilter = VK_FILTER_LINEAR;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.anisotropyEnable = VK_FALSE;
+    samplerInfo.maxAnisotropy = 1.0f;
+    samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    samplerInfo.unnormalizedCoordinates = VK_FALSE;
+    samplerInfo.compareEnable = VK_FALSE;
+    samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    samplerInfo.mipLodBias = 0.0f;
+    samplerInfo.minLod = 0.0f;
+    samplerInfo.maxLod = 0.0f;
+
+    if (vkCreateSampler(logicalDevice, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create texture sampler!");
     }
 }
 
@@ -3645,13 +3838,14 @@ VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass)
     }
 }
 
-void VkRayTracingApplication::load_meshes(Scene* scene, const char* fileNameOBJ) {
+void VkRayTracingApplication::load_meshes(Scene* scene, std::string fileName) {
 
     //load the monkey
     //_monkeyMesh.load_from_obj("../../assets/monkey_smooth.obj");
-    _monkeyMesh.load_from_obj(fileNameOBJ);
+    _monkeyMesh.load_from_obj(fileName);
 
 //**********************trans***************************************************************
+{
     scene->attributes.num_vertices = _monkeyMesh.attrib.vertices.size() / 3;
     scene->attributes.vertices = _monkeyMesh.attrib.vertices.data();
     scene->attributes.num_normals = _monkeyMesh.attrib.normals.size() / 3;
@@ -3695,7 +3889,7 @@ void VkRayTracingApplication::load_meshes(Scene* scene, const char* fileNameOBJ)
         memcpy(scene->materials[i].emission, _monkeyMesh.materials[i].emission, sizeof(float) * 3);
     }
 
-
+}
 //**********************trans***************************************************************
 
     //make sure both meshes are sent to the GPU
@@ -3703,6 +3897,185 @@ void VkRayTracingApplication::load_meshes(Scene* scene, const char* fileNameOBJ)
 
     //note that we are copying them. Eventually we will delete the hardcoded _monkey and _triangle meshes, so it's no problem now.
     _meshes["monkey"] = _monkeyMesh;
+}
+
+void VkRayTracingApplication::createTextureImage(VkRayTracingApplication* app)
+{
+    int texWidth, texHeight, texChannels;
+    std::string str = GetExePath();
+    str += "\\data\\viking_room.png";
+    stbi_uc* pixels = stbi_load(str.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    VkDeviceSize imageSize = texWidth * texHeight * 4;
+
+    if (!pixels) {
+        throw std::runtime_error("failed to load texture image!");
+    }
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    createBuffer(app,imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory);
+    void* data;
+    vkMapMemory(app->logicalDevice, stagingBufferMemory, 0, imageSize, 0, &data);
+    memcpy(data, pixels, static_cast<size_t>(imageSize));
+    vkUnmapMemory(app->logicalDevice, stagingBufferMemory);
+    stbi_image_free(pixels);
+
+    createImage(app,texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &textureImage, &textureImageMemory);
+    transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+    transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    vkDestroyBuffer(logicalDevice, stagingBuffer, nullptr);
+    vkFreeMemory(logicalDevice, stagingBufferMemory, nullptr);
+}
+
+void VkRayTracingApplication::createTextureImageView()
+{
+    textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB);
+}
+
+VkCommandBuffer VkRayTracingApplication::beginSingleTimeCommands()
+{
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandPool = commandPool;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer);
+
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+    return commandBuffer;
+}
+
+void VkRayTracingApplication::endSingleTimeCommands(VkCommandBuffer commandBuffer)
+{
+    vkEndCommandBuffer(commandBuffer);
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+
+    vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(graphicsQueue);
+
+    vkFreeCommandBuffers(logicalDevice, commandPool, 1, &commandBuffer);
+}
+
+void VkRayTracingApplication::upload_mesh(Mesh& mesh) {
+    //allocate vertex buffer
+    VkBufferCreateInfo bufferInfo = {};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    //this is the total size, in bytes, of the buffer we are allocating
+    bufferInfo.size = mesh._vertices.size() * sizeof(Vertex);
+    //this buffer is going to be used as a Vertex Buffer
+    bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+
+    //let the VMA library know that this data should be writeable by CPU, but also readable by GPU
+    VmaAllocationCreateInfo vmaallocInfo = {};
+    vmaallocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+    //allocate the buffer
+    VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &vmaallocInfo,
+        &mesh._vertexBuffer._buffer,
+        &mesh._vertexBuffer._allocation,
+        nullptr));
+
+    //add the destruction of triangle mesh buffer to the deletion queue
+    _mainDeletionQueue.push_function([=]() {
+
+        vmaDestroyBuffer(_allocator, mesh._vertexBuffer._buffer, mesh._vertexBuffer._allocation);
+        });
+
+    //copy vertex data
+    void* data;
+    vmaMapMemory(_allocator, mesh._vertexBuffer._allocation, &data);
+    memcpy(data, mesh._vertices.data(), mesh._vertices.size() * sizeof(Vertex));
+    vmaUnmapMemory(_allocator, mesh._vertexBuffer._allocation);
+}
+
+Material_pipeline* VkRayTracingApplication::create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name)
+{
+    Material_pipeline mat;
+    mat.pipeline = pipeline;
+    mat.pipelineLayout = layout;
+    _materials[name] = mat;
+    return &_materials[name];
+}
+
+Material_pipeline* VkRayTracingApplication::get_material(const std::string& name)
+{
+    //search for the object, and return nullptr if not found
+    auto it = _materials.find(name);
+    if (it == _materials.end()) {
+        return nullptr;
+    }
+    else {
+        return &(*it).second;
+    }
+}
+
+Mesh* VkRayTracingApplication::get_mesh(const std::string& name) {
+    auto it = _meshes.find(name);
+    if (it == _meshes.end()) {
+        return nullptr;
+    }
+    else {
+        return &(*it).second;
+    }
+}
+
+void VkRayTracingApplication::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count) {
+    //make a model view matrix for rendering the object
+    //camera view
+    glm::vec3 camPos = { 0.f,-6.f,-10.f };
+
+    glm::mat4 view = glm::translate(glm::mat4(1.f), camPos);
+    //camera projection
+    glm::mat4 projection = glm::perspective(glm::radians(70.f), 1700.f / 900.f, 0.1f, 200.0f);
+    projection[1][1] *= -1;
+
+    Mesh* lastMesh = nullptr;
+    Material_pipeline* lastMaterial = nullptr;
+    for (int i = 0; i < count; i++)
+    {
+        RenderObject& object = first[i];
+
+        //only bind the pipeline if it doesn't match with the already bound one
+        if (object.material != lastMaterial) {
+
+            vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, object.material->pipeline);
+            lastMaterial = object.material;
+        }
+
+
+        glm::mat4 model = object.transformMatrix;
+        //final render matrix, that we are calculating on the cpu
+        glm::mat4 mesh_matrix = projection * view * model;
+
+        MeshPushConstants constants;
+        constants.render_matrix = mesh_matrix;
+
+        //upload the mesh to the GPU via push constants
+        vkCmdPushConstants(cmd, object.material->pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
+
+        //only bind the mesh if it's a different one from last bind
+        if (object.mesh != lastMesh) {
+            //bind the mesh vertex buffer with offset 0
+            VkDeviceSize offset = 0;
+            vkCmdBindVertexBuffers(cmd, 0, 1, &object.mesh->_vertexBuffer._buffer, &offset);
+            lastMesh = object.mesh;
+        }
+        //we can now draw
+        vkCmdDraw(cmd, object.mesh->_vertices.size(), 1, 0, 0);
+    }
 }
 
 ShadingMode::ShadingMode()

@@ -2,9 +2,11 @@
 
 #include "vk_types.h"
 #include <vector>
+#include<array>
 #include<vulkan/vulkan.h>
 #include <glm/vec3.hpp>
 #include"tiny_obj_loader.h"
+#include <glm/ext/vector_float2.hpp>
 
 struct VertexInputDescription {
 
@@ -19,8 +21,11 @@ struct Vertex {
     glm::vec3 position;
     glm::vec3 normal;
     glm::vec3 color;
+    glm::vec2 texCoord;
 
     static VertexInputDescription get_vertex_description();
+    static VkVertexInputBindingDescription getBindingDescription();
+    static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions();
 };
 
 class Mesh {
@@ -36,5 +41,5 @@ public:
     //materials contains the information about the material of each shape, but we won't use it.
     std::vector<tinyobj::material_t> materials;
 
-    bool load_from_obj(const char* filename);
+    bool load_from_obj(std::string filename);
 };

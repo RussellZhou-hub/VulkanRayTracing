@@ -1,5 +1,6 @@
 #include "Mesh.h"
 #include <iostream>
+#include<array>
 #define TINYOBJLOADER_IMPLEMENTATION
 #include"tiny_obj_loader.h"
 //just that for now
@@ -43,7 +44,44 @@ VertexInputDescription Vertex::get_vertex_description()
 	return description;
 }
 
-bool Mesh::load_from_obj(const char* filename)
+VkVertexInputBindingDescription Vertex::getBindingDescription()
+{
+	VkVertexInputBindingDescription bindingDescription{};
+	bindingDescription.binding = 0;
+	bindingDescription.stride = sizeof(Vertex);
+	bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+	return bindingDescription;
+}
+
+std::array<VkVertexInputAttributeDescription, 4> Vertex::getAttributeDescriptions()
+{
+	std::array<VkVertexInputAttributeDescription,4> attributeDescriptions={};
+
+	attributeDescriptions[0].binding = 0;
+	attributeDescriptions[0].location = 0;
+	attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+	attributeDescriptions[0].offset = offsetof(Vertex, position);
+
+	attributeDescriptions[1].binding = 0;
+	attributeDescriptions[1].location = 1;
+	attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+	attributeDescriptions[1].offset = offsetof(Vertex, normal);
+
+	attributeDescriptions[2].binding = 0;
+	attributeDescriptions[2].location = 2;
+	attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+	attributeDescriptions[2].offset = offsetof(Vertex, color);
+
+	attributeDescriptions[3].binding = 0;
+	attributeDescriptions[3].location = 3;
+	attributeDescriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
+	attributeDescriptions[3].offset = offsetof(Vertex, texCoord);
+
+	return attributeDescriptions;
+}
+
+bool Mesh::load_from_obj(std::string filename)
 {
 	//attrib will contain the vertex arrays of the file
 	tinyobj::attrib_t attrib;
@@ -57,7 +95,10 @@ bool Mesh::load_from_obj(const char* filename)
 	std::string err;
 
 	//load the OBJ file
-	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename, nullptr);
+	std::string objFile = filename + ".obj";
+	auto i = filename.rfind('\\');
+	std::string mtlBase = filename.substr(0, i);
+	tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, objFile.c_str(), mtlBase.c_str());
 	//make sure to output the warnings to the console, in case there are issues with the file
 	if (!warn.empty()) {
 		std::cout << "WARN: " << warn << std::endl;

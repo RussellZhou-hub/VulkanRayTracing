@@ -83,6 +83,7 @@ float random_1(vec2 uv, float seed);
 float avgBrightness(vec3 color);
 vec2 getFragCoord(vec3 pos);
 vec4 getWorldPos(vec3 fragPos);
+bool isLight(vec3 emission);
 vec3 getRadomLightPosition(int randomIndex);
 vec3 getReflectedDierction(vec3 inRay,vec3 normal );
 vec3 getSampledReflectedDirection(vec3 inRay,vec3 normal,vec2 uv,float seed);
@@ -130,8 +131,7 @@ void main() {
   vec3 surfaceColor = materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].diffuse;
 
   if(shadingMode.enable2thRMotion ==1){
-            // 40 & 41 == light
-  if (gl_PrimitiveID == 40 || gl_PrimitiveID == 41) {
+  if (isLight(materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission)||materialIndexBuffer.data[gl_PrimitiveID]==-1) {
     directColor = materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission;
      //debugPrintfEXT("lightVertexA.x is %f  lightVertexA.y is %f lightVertexA.z is %f \n lightVertexB.x is %f  lightVertexB.y is %f lightVertexB.z is %f \n lightVertexC.x is %f  lightVertexC.y is %f lightVertexC.z is %f \n",vertexA.x,vertexA.y,vertexA.z,vertexB.x,vertexB.y,vertexB.z,vertexC.x,vertexC.y,vertexC.z);
   }
@@ -179,7 +179,7 @@ void main() {
  }
   else if(shadingMode.enableSVGF==1){
               // 40 & 41 == light
-  if (gl_PrimitiveID == 40 || gl_PrimitiveID == 41) {
+  if (isLight(materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission)||materialIndexBuffer.data[gl_PrimitiveID]==-1) {
     directColor = materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission;
      //debugPrintfEXT("lightVertexA.x is %f  lightVertexA.y is %f lightVertexA.z is %f \n lightVertexB.x is %f  lightVertexB.y is %f lightVertexB.z is %f \n lightVertexC.x is %f  lightVertexC.y is %f lightVertexC.z is %f \n",vertexA.x,vertexA.y,vertexA.z,vertexB.x,vertexB.y,vertexB.z,vertexC.x,vertexC.y,vertexC.z);
   }
@@ -215,9 +215,10 @@ void main() {
      outColor = color;
   }
   //not enable2thray motion vector
+//**********************************************************raw render******************************************************//
   else{
       // 40 & 41 == light
-  if (gl_PrimitiveID == 40 || gl_PrimitiveID == 41) {
+  if (isLight(materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission) ||materialIndexBuffer.data[gl_PrimitiveID]==-1) {
     directColor = materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission;
      //debugPrintfEXT("lightVertexA.x is %f  lightVertexA.y is %f lightVertexA.z is %f \n lightVertexB.x is %f  lightVertexB.y is %f lightVertexB.z is %f \n lightVertexC.x is %f  lightVertexC.y is %f lightVertexC.z is %f \n",vertexA.x,vertexA.y,vertexA.z,vertexB.x,vertexB.y,vertexB.z,vertexC.x,vertexC.y,vertexC.z);
   }
@@ -389,7 +390,7 @@ void main() {
 
       vec3 extensionSurfaceColor = materialBuffer.data[materialIndexBuffer.data[extensionPrimitiveIndex]].diffuse;
 
-      if (extensionPrimitiveIndex == 40 || extensionPrimitiveIndex == 41) {
+      if (isLight(materialBuffer.data[materialIndexBuffer.data[extensionPrimitiveIndex]].emission)||materialIndexBuffer.data[gl_PrimitiveID]==-1) {
         indirectColor += (1.0 / (rayDepth + 1)) * materialBuffer.data[materialIndexBuffer.data[extensionPrimitiveIndex]].emission * dot(previousNormal, rayDirection);
       }
       else {
@@ -398,25 +399,7 @@ void main() {
 
         int randomIndex = int(random(gl_FragCoord.xy, camera.frameCount + rayDepth) * 2 + 40);
         vec3 lightColor = vec3(0.6, 0.6, 0.6);
-
-        ivec3 lightIndices = ivec3(indexBuffer.data[3 * randomIndex + 0], indexBuffer.data[3 * randomIndex + 1], indexBuffer.data[3 * randomIndex + 2]);
-
-        //vec3 lightVertexA = vec3(vertexBuffer.data[3 * lightIndices.x + 0], vertexBuffer.data[3 * lightIndices.x + 1], vertexBuffer.data[3 * lightIndices.x + 2]);
-        //vec3 lightVertexB = vec3(vertexBuffer.data[3 * lightIndices.y + 0], vertexBuffer.data[3 * lightIndices.y + 1], vertexBuffer.data[3 * lightIndices.y + 2]);
-        //vec3 lightVertexC = vec3(vertexBuffer.data[3 * lightIndices.z + 0], vertexBuffer.data[3 * lightIndices.z + 1], vertexBuffer.data[3 * lightIndices.z + 2]);
-
-        vec3 lightVertexA = camera.lightA.xyz;
-        vec3 lightVertexB = camera.lightB.xyz;
-        vec3 lightVertexC = camera.lightC.xyz;
-
-        vec2 uv = vec2(random(gl_FragCoord.xy, camera.frameCount + rayDepth), random(gl_FragCoord.xy, camera.frameCount + rayDepth + 1));
-        if (uv.x + uv.y > 1.0f) {
-          uv.x = 1.0f - uv.x;
-          uv.y = 1.0f - uv.y;
-        }
-
-        vec3 lightBarycentric = vec3(1.0 - uv.x - uv.y, uv.x, uv.y);
-        vec3 lightPosition = lightVertexA * lightBarycentric.x + lightVertexB * lightBarycentric.y + lightVertexC * lightBarycentric.z;
+        vec3 lightPosition = getRadomLightPosition(randomIndex);
 
         vec3 positionToLightDirection = normalize(lightPosition - extensionPosition);
 
@@ -468,7 +451,7 @@ void main() {
   }
   }
 
-  vec4 color = vec4(directColor + indirectColor, 1.0);
+  vec4 color = vec4(directColor + indirectColor + surfaceColor*0.1, 1.0);
 
   /*
   if (camera.frameCount > 0) {              //静止画面下使用前一帧像素降噪
@@ -537,11 +520,6 @@ vec4 getWorldPos(vec3 fragPos){
 }
 
 vec3 getRadomLightPosition(int randomIndex){
-    ivec3 lightIndices = ivec3(indexBuffer.data[3 * randomIndex + 0], indexBuffer.data[3 * randomIndex + 1], indexBuffer.data[3 * randomIndex + 2]);
-
-    //vec3 lightVertexA = vec3(vertexBuffer.data[3 * lightIndices.x + 0], vertexBuffer.data[3 * lightIndices.x + 1], vertexBuffer.data[3 * lightIndices.x + 2]);
-    //vec3 lightVertexB = vec3(vertexBuffer.data[3 * lightIndices.y + 0], vertexBuffer.data[3 * lightIndices.y + 1], vertexBuffer.data[3 * lightIndices.y + 2]);
-    //vec3 lightVertexC = vec3(vertexBuffer.data[3 * lightIndices.z + 0], vertexBuffer.data[3 * lightIndices.z + 1], vertexBuffer.data[3 * lightIndices.z + 2]);
 
     vec3 lightVertexA = camera.lightA.xyz;
     vec3 lightVertexB = camera.lightB.xyz;
@@ -553,14 +531,14 @@ vec3 getRadomLightPosition(int randomIndex){
       uv.y = 1.0f - uv.y;
     }
 
-    //if( shadingMode.enable2SR==1){
-    //    uv.x=0.3;
-    //    uv.y=0.3;
-    //}
-
     vec3 lightBarycentric = vec3(1.0 - uv.x - uv.y, uv.x, uv.y);
     vec3 lightPosition = lightVertexA * lightBarycentric.x + lightVertexB * lightBarycentric.y + lightVertexC * lightBarycentric.z;
     return lightPosition;
+}
+
+bool isLight(vec3 emission){
+    if(emission.x>0||emission.y>0||emission.z>0) return true;
+    else return false;
 }
 
 vec3 getReflectedDierction(vec3 inRay,vec3 normal ){     //反射角度

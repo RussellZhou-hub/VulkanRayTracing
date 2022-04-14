@@ -171,13 +171,17 @@ public:
 	void run(Scene& scene, Camera& camera, ShadingMode& shadingMode);
 private:
 	//void loadModel(Scene* scene);
-	void initializeScene(Scene* scene, const char* fileNameOBJ);
+	void initializeScene(Scene* scene, std::string fileName);
 	void initVulkan(Scene* scene);
 	void mainLoop(VkRayTracingApplication* app, Camera* camera, ShadingMode* shadingMode);
 	void cleanup(VkRayTracingApplication* app, Scene* scene);
 	void createBuffer(VkRayTracingApplication* app, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags propertyFlags, VkBuffer* buffer, VkDeviceMemory* bufferMemory);
 	void copyBuffer(VkRayTracingApplication* app, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 	void createImage(VkRayTracingApplication* app, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usageFlags, VkMemoryPropertyFlags propertyFlags, VkImage* image, VkDeviceMemory* imageMemory);
+	VkImageView createImageView(VkImage image, VkFormat format);
 	void initializeVulkanContext(VkRayTracingApplication* app);
 	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
 	bool isDeviceSuitable(const VkPhysicalDevice device);
@@ -192,6 +196,9 @@ private:
 	void createIndexBuffer(VkRayTracingApplication* app, Scene* scene);
 	void createMaterialsBuffer(VkRayTracingApplication* app, Scene* scene);
 	void createTextures(VkRayTracingApplication* app);
+	void createTextureImage(VkRayTracingApplication* app);
+	void createTextureImageView();
+	void createTextureSampler();
 	void createBottomLevelAccelerationStructure(VkRayTracingApplication* app, Scene* scene);
 	void createTopLevelAccelerationStructure(VkRayTracingApplication* app);
 	//Descriptor Setup
@@ -209,12 +216,15 @@ private:
 	void updateUniformBuffer(VkRayTracingApplication* app, Camera* camera, ShadingMode* shadingMode);
 	void drawFrame(VkRayTracingApplication* app, struct Camera* camera, ShadingMode* shadingMode);
 
-	void load_meshes(Scene* scene, const char* fileNameOBJ);
+	VkCommandBuffer beginSingleTimeCommands();
+	void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+
+	void load_meshes(Scene* scene, std::string fileName);
 	void upload_mesh(Mesh& mesh);
 	//create material and add it to the map
-	Material* create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name);
+	Material_pipeline* create_material(VkPipeline pipeline, VkPipelineLayout layout, const std::string& name);
 	//returns nullptr if it can't be found
-	Material* get_material(const std::string& name);
+	Material_pipeline* get_material(const std::string& name);
 	//returns nullptr if it can't be found
 	Mesh* get_mesh(const std::string& name);
 	//our draw function
@@ -254,12 +264,18 @@ private:
 	//default array of renderable objects
 	std::vector<RenderObject> _renderables;
 
-	std::unordered_map<std::string, Material> _materials;
+	std::unordered_map<std::string, Material_pipeline> _materials;
 	std::unordered_map<std::string, Mesh> _meshes;
 
 	int _selectedShader{ 0 };
 
 	DeletionQueue _mainDeletionQueue;
+
+	//for texture
+	VkImage textureImage;
+	VkDeviceMemory textureImageMemory;
+	VkImageView textureImageView;
+	VkSampler textureSampler;
 
 	//output attachment in shader
 	uint32_t colorAttachCount;
