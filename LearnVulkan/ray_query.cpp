@@ -128,7 +128,9 @@ void VkRayTracingApplication::initVulkan(Scene* scene)
     
     std::string str = GetExePath();
     str += "\\data\\cube_scene"; 
-    //str += "\\data\\mitsuba\\mitsuba-blender";
+    //str += "\\data\\CornellBox\\CornellBox-Glossy";
+    if (str == "\\data\\cube_scene") isRenderCornellBox = true;
+    else isRenderCornellBox = true;
     initializeScene(scene, str);
     //initializeScene(&scene, "D:/Data/Vulkan/Resources/cube_box/cube_scene.obj");
 
@@ -1082,7 +1084,11 @@ void VkRayTracingApplication::createCommandPool(VkRayTracingApplication* app)
 
 void VkRayTracingApplication::createVertexBuffer(VkRayTracingApplication* app, Scene* scene)
 {
-    VkDeviceSize positionBufferSize = sizeof(float) * scene->attributes.num_vertices * 3;
+    VkDeviceSize positionBufferSize;
+    if(isRenderCornellBox) positionBufferSize = sizeof(float) * scene->attributes.num_vertices * 3;
+    else {
+        positionBufferSize = vertices.size() * sizeof(Vertex);  //c++ version tinyobjloader
+    }
 
     VkBuffer positionStagingBuffer;
     VkDeviceMemory positionStagingBufferMemory;
@@ -1090,10 +1096,13 @@ void VkRayTracingApplication::createVertexBuffer(VkRayTracingApplication* app, S
 
     void* positionData;
     vkMapMemory(app->logicalDevice, positionStagingBufferMemory, 0, positionBufferSize, 0, &positionData);
-    memcpy(positionData, scene->attributes.vertices, positionBufferSize);
+    if (isRenderCornellBox) memcpy(positionData, scene->attributes.vertices, positionBufferSize);
+    else {
+        memcpy(positionData, vertices.data(), positionBufferSize);
+    }
     vkUnmapMemory(app->logicalDevice, positionStagingBufferMemory);
 
-    createBuffer(app, positionBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->vertexPositionBuffer, &app->vertexPositionBufferMemory);
+    createBuffer(app, positionBufferSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR|VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->vertexPositionBuffer, &app->vertexPositionBufferMemory);
 
     copyBuffer(app, positionStagingBuffer, app->vertexPositionBuffer, positionBufferSize);
 
@@ -1119,7 +1128,7 @@ void VkRayTracingApplication::createIndexBuffer(VkRayTracingApplication* app, Sc
     memcpy(data, positionIndices, bufferSize);
     vkUnmapMemory(app->logicalDevice, stagingBufferMemory);
 
-    createBuffer(app, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->indexBuffer, &app->indexBufferMemory);
+    createBuffer(app, bufferSize, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR|VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->indexBuffer, &app->indexBufferMemory);
 
     copyBuffer(app, stagingBuffer, app->indexBuffer, bufferSize);
 
@@ -1131,7 +1140,7 @@ void VkRayTracingApplication::createIndexBuffer(VkRayTracingApplication* app, Sc
 
 void VkRayTracingApplication::createMaterialsBuffer(VkRayTracingApplication* app, Scene* scene)
 {
-    VkDeviceSize indexBufferSize = sizeof(uint32_t) * scene->attributes.num_face_num_verts;
+    VkDeviceSize indexBufferSize = sizeof(uint32_t) * scene->attributes.num_face_num_verts;  //总三角形面数
 
     VkBuffer indexStagingBuffer;
     VkDeviceMemory indexStagingBufferMemory;
@@ -1476,7 +1485,7 @@ void VkRayTracingApplication::createBottomLevelAccelerationStructure(VkRayTracin
     accelerationStructureBuildGeometryInfo.dstAccelerationStructure = app->accelerationStructure;
 
     VkAccelerationStructureBuildRangeInfoKHR accelerationStructureBuildRangeInfoKHR = {
-        .primitiveCount = scene->attributes.num_face_num_verts,
+        .primitiveCount = scene->attributes.num_face_num_verts,   //三角形面数
             .primitiveOffset = 0,
             .firstVertex = 0,
             .transformOffset = 0
@@ -3893,8 +3902,47 @@ void VkRayTracingApplication::load_meshes(Scene* scene, std::string fileName) {
 //**********************trans***************************************************************
 
     //make sure both meshes are sent to the GPU
-    //upload_mesh(_monkeyMesh);
+   upload_mesh(_monkeyMesh);
 
+   std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+   for (const auto& shape : _monkeyMesh.shapes) {
+       for (const auto& index : shape.mesh.indices) {
+           Vertex vertex{};
+
+           vertex.position = {
+                _monkeyMesh.attrib.vertices[3 * index.vertex_index + 0],
+                _monkeyMesh.attrib.vertices[3 * index.vertex_index + 1],
+                _monkeyMesh.attrib.vertices[3 * index.vertex_index + 2]
+           };
+           vertex.normal = {
+               _monkeyMesh.attrib.normals[3 * index.normal_index + 0],
+               _monkeyMesh.attrib.normals[3 * index.normal_index + 1],
+               _monkeyMesh.attrib.normals[3 * index.normal_index + 2]
+           };
+           vertex.texCoord = {   //翻转
+               _monkeyMesh.attrib.texcoords[2 * index.texcoord_index + 0],
+               1.0f - _monkeyMesh.attrib.texcoords[2 * index.texcoord_index + 1]
+           };
+
+           vertex.color = { 1.0f, 1.0f, 1.0f };
+
+           if (uniqueVertices.count(vertex) == 0) {
+               uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+               vertices.push_back(vertex);
+           }
+
+           indices.push_back(uniqueVertices[vertex]);
+       }
+   }
+
+   for (const auto& mat : _monkeyMesh.materials) {
+       Material m;
+       memcpy(m.ambient, mat.ambient, sizeof(float) * 3);
+       memcpy(m.diffuse, mat.diffuse, sizeof(float) * 3);
+       memcpy(m.specular, mat.specular, sizeof(float) * 3);
+       memcpy(m.emission, mat.emission, sizeof(float) * 3);
+       materials.push_back(m);
+   }
     //note that we are copying them. Eventually we will delete the hardcoded _monkey and _triangle meshes, so it's no problem now.
     _meshes["monkey"] = _monkeyMesh;
 }

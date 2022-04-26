@@ -7,6 +7,8 @@
 #include <glm/vec3.hpp>
 #include"tiny_obj_loader.h"
 #include <glm/ext/vector_float2.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
 
 struct VertexInputDescription {
 
@@ -26,7 +28,21 @@ struct Vertex {
     static VertexInputDescription get_vertex_description();
     static VkVertexInputBindingDescription getBindingDescription();
     static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions();
+
+    bool operator==(const Vertex& other) const {
+        return position == other.position && normal == other.normal && color == other.color && texCoord == other.texCoord;
+    }
 };
+
+namespace std {
+    template<> struct hash<Vertex> {
+        size_t operator()(Vertex const& vertex) const {
+            return ((hash<glm::vec3>()(vertex.position) ^
+                (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
+                (hash<glm::vec2>()(vertex.texCoord) << 1);
+        }
+    };
+}
 
 class Mesh {
 public:

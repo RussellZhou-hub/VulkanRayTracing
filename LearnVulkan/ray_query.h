@@ -230,7 +230,14 @@ private:
 	//our draw function
 	void draw_objects(VkCommandBuffer cmd, RenderObject* first, int count);
 
+	std::vector<Vertex> vertices;
+	std::vector<uint32_t> indices;
+	std::vector<Material> materials;
+	VkBuffer vertexBuffer;
+	VkDeviceMemory vertexBufferMemory;
+
 	int isCameraMoved;
+	bool isRenderCornellBox;
 
 	GLFWwindow* window;
 	VkSurfaceKHR surface;
