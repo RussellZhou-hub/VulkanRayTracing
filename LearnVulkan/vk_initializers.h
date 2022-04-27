@@ -13,9 +13,11 @@ namespace vkinit {
 	VkDeviceQueueCreateInfo device_Queue_create_info(uint32_t queueFamilyIndex,const float* pQueuePriorities, uint32_t queueCount=1);
 	VkDeviceCreateInfo device_create_info(const void* pNext,uint32_t queueCreateInfoCount,const VkDeviceQueueCreateInfo* pQueueCreateInfos,uint32_t enabledExtensionCount,const char* const* ppEnabledExtensionNames,const VkPhysicalDeviceFeatures* pEnabledFeatures, 
 						uint32_t enabledLayerCount=0,VkDeviceCreateFlags flags=0);
+	//******************************************swap chain**********************************************
 	VkSwapchainCreateInfoKHR swapchain_create_info(VkSurfaceKHR surface,uint32_t minImageCount,VkFormat imageFormat,VkColorSpaceKHR imageColorSpace,VkExtent2D imageExtent,uint32_t imageArrayLayers=1,
 							VkImageUsageFlags imageUsage= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 	VkImageViewCreateInfo imageView_create_info(VkImage image,VkFormat format,uint32_t baseMipLevel,VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D);
+	//******************************************end********swap chain**********************************************
 	//******************************************render pass stuff **************************************
 	VkAttachmentDescription colorAttachment_des(VkFormat format,VkImageLayout finalLayout= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT);
 	VkAttachmentDescription depthAttachment_des(VkFormat format= VK_FORMAT_D32_SFLOAT, VkImageLayout finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT);
@@ -23,5 +25,15 @@ namespace vkinit {
 	VkSubpassDependency dependency_des(uint32_t dstSubpass, uint32_t srcSubpass = VK_SUBPASS_EXTERNAL);
 	VkRenderPassCreateInfo renderPass_create_info(uint32_t attachmentCount,const VkAttachmentDescription* pAttachments,uint32_t subpassCount,const VkSubpassDescription* pSubpasses,
 							uint32_t dependencyCount,const VkSubpassDependency* pDependencies);
-	//******************************************render pass stuff **************************************
+	//******************************************end*******render pass stuff **************************************
+	//******************************************command pool*****************************************************
+	VkCommandPoolCreateInfo commandPool_create_info(uint32_t queueFamilyIndex);
+
+	//******************************************end**************************************************************
+	//******************************************Image************************************************************
+	VkImageViewCreateInfo view_ceate_info(VkImage image,VkFormat format,  VkImageAspectFlags aspectMask, uint32_t baseMipLevel = 0, VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D);
+	VkImageCreateInfo image_create_info(VkFormat format, uint32_t width, uint32_t height,VkImageUsageFlags usage,
+						VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL,VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE,VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT, uint32_t mipLevels = 1, VkImageType imageType= VK_IMAGE_TYPE_2D);
+	VkMemoryAllocateInfo memoryAllocate_info(VkDeviceSize allocationSize,uint32_t memoryTypeIndex);
+	//******************************************end**************************************************************
 }

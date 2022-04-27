@@ -563,20 +563,7 @@ void VkRayTracingApplication::copyBuffer(VkRayTracingApplication* app, VkBuffer 
 
 void VkRayTracingApplication::createImage(VkRayTracingApplication* app, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usageFlags, VkMemoryPropertyFlags propertyFlags, VkImage* image, VkDeviceMemory* imageMemory)
 {
-    VkImageCreateInfo imageCreateInfo = {};
-    imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageCreateInfo.extent.width = width;
-    imageCreateInfo.extent.height = height;
-    imageCreateInfo.extent.depth = 1;
-    imageCreateInfo.mipLevels = 1;
-    imageCreateInfo.arrayLayers = 1;
-    imageCreateInfo.format = format;
-    imageCreateInfo.tiling = tiling;
-    imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageCreateInfo.usage = usageFlags;
-    imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    VkImageCreateInfo imageCreateInfo = vkinit::image_create_info(format, width, height, usageFlags,tiling);
 
     if (vkCreateImage(app->logicalDevice, &imageCreateInfo, NULL, image) == VK_SUCCESS) {
         printf("created image\n");
@@ -585,10 +572,6 @@ void VkRayTracingApplication::createImage(VkRayTracingApplication* app, uint32_t
     VkMemoryRequirements memoryRequirements;
     vkGetImageMemoryRequirements(app->logicalDevice, *image, &memoryRequirements);
 
-    VkMemoryAllocateInfo memoryAllocateInfo = {};
-    memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memoryAllocateInfo.allocationSize = memoryRequirements.size;
-
     uint32_t memoryTypeIndex = -1;
     for (int x = 0; x < app->memoryProperties.memoryTypeCount; x++) {
         if ((memoryRequirements.memoryTypeBits & (1 << x)) && (app->memoryProperties.memoryTypes[x].propertyFlags & propertyFlags) == propertyFlags) {
@@ -596,7 +579,8 @@ void VkRayTracingApplication::createImage(VkRayTracingApplication* app, uint32_t
             break;
         }
     }
-    memoryAllocateInfo.memoryTypeIndex = memoryTypeIndex;
+
+    VkMemoryAllocateInfo memoryAllocateInfo = vkinit::memoryAllocate_info(memoryRequirements.size, memoryTypeIndex);
 
     if (vkAllocateMemory(app->logicalDevice, &memoryAllocateInfo, NULL, imageMemory) != VK_SUCCESS) {
         printf("allocated image memory\n");
@@ -966,10 +950,7 @@ void VkRayTracingApplication::createRenderPass(VkRayTracingApplication* app)
 
 void VkRayTracingApplication::createCommandPool(VkRayTracingApplication* app)
 {
-    VkCommandPoolCreateInfo commandPoolCreateInfo = {};
-    commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    commandPoolCreateInfo.queueFamilyIndex = app->graphicsQueueIndex;
-
+    VkCommandPoolCreateInfo commandPoolCreateInfo = vkinit::commandPool_create_info(app->graphicsQueueIndex);
     if (vkCreateCommandPool(app->logicalDevice, &commandPoolCreateInfo, NULL, &app->commandPool) == VK_SUCCESS) {
         printf("created command pool\n");
     }
@@ -3184,16 +3165,7 @@ void VkRayTracingApplication::createDepthResources(VkRayTracingApplication* app)
 
     createImage(app, app->swapchainExtent.width, app->swapchainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->depthImage, &app->depthImageMemory);
 
-    VkImageViewCreateInfo viewInfo = {};
-    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image = app->depthImage;
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format = depthFormat;
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-    viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = 1;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = 1;
+    VkImageViewCreateInfo viewInfo = vkinit::view_ceate_info(app->depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 
     if (vkCreateImageView(app->logicalDevice, &viewInfo, NULL, &app->depthImageView) == VK_SUCCESS) {
         printf("created texture image view\n");

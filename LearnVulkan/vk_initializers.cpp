@@ -201,3 +201,54 @@ VkRenderPassCreateInfo vkinit::renderPass_create_info(uint32_t attachmentCount, 
 	renderPassInfo.pDependencies = pDependencies;
 	return renderPassInfo;
 }
+
+VkCommandPoolCreateInfo vkinit::commandPool_create_info(uint32_t queueFamilyIndex)
+{
+	VkCommandPoolCreateInfo commandPoolCreateInfo = {};
+	commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	commandPoolCreateInfo.queueFamilyIndex = queueFamilyIndex;
+	return commandPoolCreateInfo;
+}
+
+VkImageViewCreateInfo vkinit::view_ceate_info(VkImage image, VkFormat format, VkImageAspectFlags aspectMask, uint32_t baseMipLevel, VkImageViewType viewType)
+{
+	VkImageViewCreateInfo viewInfo = {};
+	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	viewInfo.image = image;
+	viewInfo.viewType = viewType;
+	viewInfo.format = format;
+	viewInfo.subresourceRange.aspectMask = aspectMask;
+	viewInfo.subresourceRange.baseMipLevel = baseMipLevel;
+	viewInfo.subresourceRange.levelCount = 1;
+	viewInfo.subresourceRange.baseArrayLayer = 0;
+	viewInfo.subresourceRange.layerCount = 1;
+	return viewInfo;
+}
+
+VkImageCreateInfo vkinit::image_create_info(VkFormat format, uint32_t width, uint32_t height, VkImageUsageFlags usage, VkImageTiling tiling, VkSharingMode sharingMode,VkSampleCountFlagBits samples, uint32_t mipLevels, VkImageType imageType)
+{
+	VkImageCreateInfo imageCreateInfo = {};
+	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageCreateInfo.imageType = imageType;
+	imageCreateInfo.extent.width = width;
+	imageCreateInfo.extent.height = height;
+	imageCreateInfo.extent.depth = 1;
+	imageCreateInfo.mipLevels = mipLevels;
+	imageCreateInfo.arrayLayers = 1;
+	imageCreateInfo.format = format;
+	imageCreateInfo.tiling = tiling;
+	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageCreateInfo.usage = usage;
+	imageCreateInfo.samples = samples;
+	imageCreateInfo.sharingMode = sharingMode;
+	return imageCreateInfo;
+}
+
+VkMemoryAllocateInfo vkinit::memoryAllocate_info(VkDeviceSize allocationSize, uint32_t memoryTypeIndex)
+{
+	VkMemoryAllocateInfo memoryAllocateInfo = {};
+	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memoryAllocateInfo.allocationSize = allocationSize;
+	memoryAllocateInfo.memoryTypeIndex = memoryTypeIndex;
+	return memoryAllocateInfo;
+}
