@@ -885,15 +885,7 @@ void VkRayTracingApplication::createSwapchain(VkRayTracingApplication* app)
         app->imageCount = surfaceCapabilities.maxImageCount;
     }
 
-    VkSwapchainCreateInfoKHR swapchainCreateInfo = {};
-    swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    swapchainCreateInfo.surface = app->surface;
-    swapchainCreateInfo.minImageCount = app->imageCount;
-    swapchainCreateInfo.imageFormat = surfaceFormat.format;
-    swapchainCreateInfo.imageColorSpace = surfaceFormat.colorSpace;
-    swapchainCreateInfo.imageExtent = extent;
-    swapchainCreateInfo.imageArrayLayers = 1;
-    swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    VkSwapchainCreateInfoKHR swapchainCreateInfo = vkinit::swapchain_create_info(app->surface, app->imageCount, surfaceFormat.format, surfaceFormat.colorSpace, extent);
 
     if (app->graphicsQueueIndex != app->presentQueueIndex) {
         uint32_t queueFamilyIndices[2] = { app->graphicsQueueIndex, app->presentQueueIndex };
@@ -926,21 +918,7 @@ void VkRayTracingApplication::createSwapchain(VkRayTracingApplication* app)
     app->swapchainImageViews = (VkImageView*)malloc(sizeof(VkImageView) * app->imageCount);
 
     for (int x = 0; x < app->imageCount; x++) {
-        VkImageViewCreateInfo imageViewCreateInfo = {};
-        imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        imageViewCreateInfo.image = app->swapchainImages[x];
-        imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        imageViewCreateInfo.format = app->swapchainImageFormat;
-        imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-        imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-        imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-        imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-        imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
-        imageViewCreateInfo.subresourceRange.levelCount = 1;
-        imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-        imageViewCreateInfo.subresourceRange.layerCount = 1;
-
+        VkImageViewCreateInfo imageViewCreateInfo = vkinit::imageView_create_info(app->swapchainImages[x], app->swapchainImageFormat,0);
         if (vkCreateImageView(app->logicalDevice, &imageViewCreateInfo, NULL, &app->swapchainImageViews[x]) == VK_SUCCESS) {
             printf("created image view #%d\n", x);
         }
@@ -952,35 +930,10 @@ void VkRayTracingApplication::createSwapchain(VkRayTracingApplication* app)
 
 void VkRayTracingApplication::createRenderPass(VkRayTracingApplication* app)
 {
-    VkAttachmentDescription colorAttachment = {};
-    colorAttachment.format = app->swapchainImageFormat;
-    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    VkAttachmentDescription colorAttachment = vkinit::colorAttachment_des(app->swapchainImageFormat, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    VkAttachmentDescription colorAttachment_2 = vkinit::colorAttachment_des(app->swapchainImageFormat, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    VkAttachmentDescription colorAttachment_2 = {};
-    colorAttachment_2.format = app->swapchainImageFormat;
-    colorAttachment_2.samples = VK_SAMPLE_COUNT_1_BIT;
-    colorAttachment_2.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttachment_2.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAttachment_2.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colorAttachment_2.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAttachment_2.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAttachment_2.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-    VkAttachmentDescription depthAttachment = {};
-    depthAttachment.format = VK_FORMAT_D32_SFLOAT;
-    depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    VkAttachmentDescription depthAttachment = vkinit::depthAttachment_des();
 
     VkAttachmentReference* colorAttachmentRef = (VkAttachmentReference*)malloc(app->colorAttachCount*sizeof(VkAttachmentReference));
     for(auto i=0;i< app->colorAttachCount;i++){
@@ -989,33 +942,15 @@ void VkRayTracingApplication::createRenderPass(VkRayTracingApplication* app)
     };
 
     VkAttachmentReference depthAttachmentRef = {};
-    depthAttachmentRef.attachment = app->colorAttachCount;  //location in fragment shader
+    depthAttachmentRef.attachment = app->colorAttachCount;  //location in fragment shader     now is 6
     depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    VkSubpassDescription subpass = {};
-    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.colorAttachmentCount = app->colorAttachCount;
-    subpass.pColorAttachments = colorAttachmentRef;
-    subpass.pDepthStencilAttachment = &depthAttachmentRef;
-
-    VkSubpassDependency dependency = {};
-    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependency.dstSubpass = 0;
-    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.srcAccessMask = 0;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    VkSubpassDescription subpass = vkinit::subpass_des(app->colorAttachCount, colorAttachmentRef, &depthAttachmentRef);
+    VkSubpassDependency dependency = vkinit::dependency_des(0);
 
     VkAttachmentDescription attachments[7] = { colorAttachment,colorAttachment_2,colorAttachment_2,colorAttachment_2,colorAttachment_2,colorAttachment_2, depthAttachment };
 
-    VkRenderPassCreateInfo renderPassInfo = {};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassInfo.attachmentCount = app->colorAttachCount+1;
-    renderPassInfo.pAttachments = attachments;
-    renderPassInfo.subpassCount = 1;
-    renderPassInfo.pSubpasses = &subpass;
-    renderPassInfo.dependencyCount = 1;
-    renderPassInfo.pDependencies = &dependency;
+    VkRenderPassCreateInfo renderPassInfo = vkinit::renderPass_create_info(app->colorAttachCount + 1, attachments,1,&subpass,1,&dependency);
 
 
     if (vkCreateRenderPass(app->logicalDevice, &renderPassInfo, NULL, &app->renderPass) == VK_SUCCESS) {

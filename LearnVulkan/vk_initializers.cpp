@@ -105,3 +105,99 @@ VkDeviceCreateInfo vkinit::device_create_info(const void* pNext, uint32_t queueC
 	deviceCreateInfo.pEnabledFeatures = pEnabledFeatures;
 	return deviceCreateInfo;
 }
+
+VkSwapchainCreateInfoKHR vkinit::swapchain_create_info(VkSurfaceKHR surface, uint32_t minImageCount, VkFormat imageFormat, VkColorSpaceKHR imageColorSpace, VkExtent2D imageExtent, uint32_t imageArrayLayers, VkImageUsageFlags imageUsage)
+{
+	VkSwapchainCreateInfoKHR swapchainCreateInfo = {};
+	swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	swapchainCreateInfo.surface = surface;
+	swapchainCreateInfo.minImageCount = minImageCount;
+	swapchainCreateInfo.imageFormat = imageFormat;
+	swapchainCreateInfo.imageColorSpace = imageColorSpace;
+	swapchainCreateInfo.imageExtent = imageExtent;
+	swapchainCreateInfo.imageArrayLayers = imageArrayLayers;
+	swapchainCreateInfo.imageUsage = imageUsage;
+	return swapchainCreateInfo;
+}
+
+VkImageViewCreateInfo vkinit::imageView_create_info(VkImage image, VkFormat format, uint32_t baseMipLevel, VkImageViewType viewType)
+{
+	VkImageViewCreateInfo imageViewCreateInfo = {};
+	imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	imageViewCreateInfo.image = image;
+	imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	imageViewCreateInfo.format = format;
+	imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+	imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	imageViewCreateInfo.subresourceRange.baseMipLevel = baseMipLevel;
+	imageViewCreateInfo.subresourceRange.levelCount = 1;
+	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+	imageViewCreateInfo.subresourceRange.layerCount = 1;
+	return imageViewCreateInfo;
+}
+
+VkAttachmentDescription vkinit::colorAttachment_des(VkFormat format, VkImageLayout finalLayout, VkSampleCountFlagBits samples)
+{
+	VkAttachmentDescription colorAttachment = {};
+	colorAttachment.format = format;
+	colorAttachment.samples = samples;
+	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	colorAttachment.finalLayout = finalLayout;
+	return colorAttachment;
+}
+
+VkAttachmentDescription vkinit::depthAttachment_des(VkFormat format, VkImageLayout finalLayout, VkSampleCountFlagBits samples)
+{
+	VkAttachmentDescription depthAttachment = {};
+	depthAttachment.format = format;
+	depthAttachment.samples = samples;
+	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depthAttachment.finalLayout = finalLayout;
+	return depthAttachment;
+}
+
+VkSubpassDescription vkinit::subpass_des(uint32_t colorAttachmentCount, const VkAttachmentReference* pColorAttachments, const VkAttachmentReference* pDepthStencilAttachment, VkPipelineBindPoint pipelineBindPoint)
+{
+	VkSubpassDescription subpass = {};
+	subpass.pipelineBindPoint = pipelineBindPoint;
+	subpass.colorAttachmentCount = colorAttachmentCount;
+	subpass.pColorAttachments = pColorAttachments;
+	subpass.pDepthStencilAttachment = pDepthStencilAttachment;
+	return subpass;
+}
+
+VkSubpassDependency vkinit::dependency_des(uint32_t dstSubpass, uint32_t srcSubpass)
+{
+	VkSubpassDependency dependency = {};
+	dependency.srcSubpass = srcSubpass;
+	dependency.dstSubpass = dstSubpass;
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.srcAccessMask = 0;
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	return dependency;
+}
+
+VkRenderPassCreateInfo vkinit::renderPass_create_info(uint32_t attachmentCount, const VkAttachmentDescription* pAttachments, uint32_t subpassCount, const VkSubpassDescription* pSubpasses, uint32_t dependencyCount, const VkSubpassDependency* pDependencies)
+{
+	VkRenderPassCreateInfo renderPassInfo = {};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassInfo.attachmentCount = attachmentCount;
+	renderPassInfo.pAttachments = pAttachments;
+	renderPassInfo.subpassCount = subpassCount;
+	renderPassInfo.pSubpasses = pSubpasses;
+	renderPassInfo.dependencyCount = dependencyCount;
+	renderPassInfo.pDependencies = pDependencies;
+	return renderPassInfo;
+}
