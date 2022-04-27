@@ -45,6 +45,18 @@ const uint32_t HEIGHT = 2160/2;
 #define MAX_FRAMES_IN_FLIGHT      1
 #define ENABLE_VALIDATION         1
 
+#define VK_CHECK(x)                                                 \
+	do                                                              \
+	{                                                               \
+		VkResult err = x;                                           \
+		if (err)                                                    \
+		{                                                           \
+			std::cout <<"Detected Vulkan error: " << err << std::endl; \
+			abort();                                                \
+		}                                                           \
+	} while (0)
+
+
 //#include "tinyobj_loader_c.c"
 //#include "tiny_obj_loader.h"
 
@@ -161,7 +173,11 @@ struct Material_pipeline {
 struct RenderObject {
 	Mesh* mesh;
 	Material_pipeline* material;
-	glm::mat4 transformMatrix;
+	glm::mat4 transformMatrix = {1.0f,0.0f,0.0f,0.0f,
+		0.0f,1.0f,0.0f,0.0f,
+		0.0f,0.0f,1.0f,0.0f,
+		0.0f,0.0f,0.0f,1.0f
+	};
 };
 
 class VkRayTracingApplication {
@@ -215,6 +231,8 @@ private:
 	void createSynchronizationObjects(VkRayTracingApplication* app);
 	void updateUniformBuffer(VkRayTracingApplication* app, Camera* camera, ShadingMode* shadingMode);
 	void drawFrame(VkRayTracingApplication* app, struct Camera* camera, ShadingMode* shadingMode);
+
+	std::vector<const char*> enabledDeviceExtensions;
 
 	VkCommandBuffer beginSingleTimeCommands();
 	void endSingleTimeCommands(VkCommandBuffer commandBuffer);

@@ -178,6 +178,7 @@
     <ClCompile Include="glad.c" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="tinyobj_loader_c.cpp" />
+    <ClCompile Include="vk_initializers.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
@@ -189,6 +190,8 @@
     <ClInclude Include="tinyobj_loader_c.h" />
     <ClInclude Include="tiny_obj_loader.h" />
     <ClInclude Include="Utils.h" />
+    <ClInclude Include="vkTypes.h" />
+    <ClInclude Include="vk_initializers.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\basic.frag" />

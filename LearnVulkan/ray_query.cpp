@@ -28,6 +28,7 @@
 #define VMA_IMPLEMENTATION
 #include<vma/vk_mem_alloc.h>
 #include "Shader.h"
+#include"vk_initializers.h"
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/matrix_clip_space.hpp>
 
@@ -622,35 +623,16 @@ void VkRayTracingApplication::initializeVulkanContext(VkRayTracingApplication* a
     extensionNames[glfwExtensionCount] = "VK_KHR_get_physical_device_properties2";
     extensionNames[glfwExtensionCount + 1] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
 
-    VkApplicationInfo applicationInfo = {};
-    applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    applicationInfo.pApplicationName = "vulkan_c_ray_tracing";
-    applicationInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    applicationInfo.pEngineName = "No Engine";
-    applicationInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    applicationInfo.apiVersion = VK_API_VERSION_1_2;
-
-    VkInstanceCreateInfo instanceCreateInfo = {};
-    instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    instanceCreateInfo.flags = 0;
-    instanceCreateInfo.pApplicationInfo = &applicationInfo;
-    instanceCreateInfo.enabledExtensionCount = extensionCount;
-    instanceCreateInfo.ppEnabledExtensionNames = extensionNames;
+    VkApplicationInfo applicationInfo = vkinit::application_info("vulkan_ray_tracing");
+    VkInstanceCreateInfo instanceCreateInfo = vkinit::instance_create_info(&applicationInfo, extensionCount, extensionNames);
 
     const std::vector<VkValidationFeatureEnableEXT> enabledValidationLayers = {
         VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT
     };
 
     // debugPrintf
-    VkValidationFeaturesEXT validationFeatures{};
-    validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-    validationFeatures.pNext = nullptr;
-    validationFeatures.pEnabledValidationFeatures = enabledValidationLayers.data();
-    validationFeatures.enabledValidationFeatureCount = enabledValidationLayers.size();
-    validationFeatures.pDisabledValidationFeatures = nullptr;
-    validationFeatures.disabledValidationFeatureCount = 0;
+    VkValidationFeaturesEXT validationFeatures=vkinit::validation_Features_info(enabledValidationLayers.size(), enabledValidationLayers.data());
 
-    
     instanceCreateInfo.pNext = &validationFeatures;;
 
     if (ENABLE_VALIDATION) {
@@ -803,7 +785,9 @@ void VkRayTracingApplication::createLogicalConnection(VkRayTracingApplication* a
         }
     }
 
-    uint32_t deviceEnabledExtensionCount = 13;
+    enabledDeviceExtensions = vkinit::enableExt_names();
+
+    uint32_t deviceEnabledExtensionCount = enabledDeviceExtensions.size();
     const char** deviceEnabledExtensionNames = (const char**)malloc(sizeof(const char*) * deviceEnabledExtensionCount);
     deviceEnabledExtensionNames[0] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
     deviceEnabledExtensionNames[1] = "VK_KHR_ray_query";
@@ -823,26 +807,9 @@ void VkRayTracingApplication::createLogicalConnection(VkRayTracingApplication* a
     uint32_t deviceQueueCreateInfoCount = 3;
     VkDeviceQueueCreateInfo* deviceQueueCreateInfos = (VkDeviceQueueCreateInfo*)malloc(sizeof(VkDeviceQueueCreateInfo) * deviceQueueCreateInfoCount);
 
-    deviceQueueCreateInfos[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    deviceQueueCreateInfos[0].pNext = NULL;
-    deviceQueueCreateInfos[0].flags = 0;
-    deviceQueueCreateInfos[0].queueFamilyIndex = app->graphicsQueueIndex;
-    deviceQueueCreateInfos[0].queueCount = 1;
-    deviceQueueCreateInfos[0].pQueuePriorities = &queuePriority;
-
-    deviceQueueCreateInfos[1].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    deviceQueueCreateInfos[1].pNext = NULL;
-    deviceQueueCreateInfos[1].flags = 0;
-    deviceQueueCreateInfos[1].queueFamilyIndex = app->presentQueueIndex;
-    deviceQueueCreateInfos[1].queueCount = 1;
-    deviceQueueCreateInfos[1].pQueuePriorities = &queuePriority;
-
-    deviceQueueCreateInfos[2].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    deviceQueueCreateInfos[2].pNext = NULL;
-    deviceQueueCreateInfos[2].flags = 0;
-    deviceQueueCreateInfos[2].queueFamilyIndex = app->computeQueueIndex;
-    deviceQueueCreateInfos[2].queueCount = 1;
-    deviceQueueCreateInfos[2].pQueuePriorities = &queuePriority;
+    deviceQueueCreateInfos[0] = vkinit::device_Queue_create_info(app->graphicsQueueIndex, &queuePriority);
+    deviceQueueCreateInfos[1] = vkinit::device_Queue_create_info(app->presentQueueIndex, &queuePriority);
+    deviceQueueCreateInfos[2] = vkinit::device_Queue_create_info(app->computeQueueIndex, &queuePriority);
 
     VkPhysicalDeviceBufferDeviceAddressFeaturesEXT bufferDeviceAddressFeatures = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT,
@@ -872,16 +839,7 @@ void VkRayTracingApplication::createLogicalConnection(VkRayTracingApplication* a
     deviceFeatures.geometryShader = VK_TRUE;
     deviceFeatures.fragmentStoresAndAtomics = VK_TRUE;
 
-    VkDeviceCreateInfo deviceCreateInfo = {};
-    deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    deviceCreateInfo.pNext = &accelerationStructureFeatures;
-    deviceCreateInfo.flags = 0;
-    deviceCreateInfo.queueCreateInfoCount = deviceQueueCreateInfoCount;
-    deviceCreateInfo.pQueueCreateInfos = deviceQueueCreateInfos;
-    deviceCreateInfo.enabledLayerCount = 0;
-    deviceCreateInfo.enabledExtensionCount = deviceEnabledExtensionCount;
-    deviceCreateInfo.ppEnabledExtensionNames = deviceEnabledExtensionNames;
-    deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
+    VkDeviceCreateInfo deviceCreateInfo = vkinit::device_create_info(&accelerationStructureFeatures, deviceQueueCreateInfoCount, deviceQueueCreateInfos, (uint32_t)enabledDeviceExtensions.size(),deviceEnabledExtensionNames, &deviceFeatures);
 
     if (vkCreateDevice(app->physicalDevice, &deviceCreateInfo, NULL, &app->logicalDevice) == VK_SUCCESS) {
         printf("created logical connection to device\n");
