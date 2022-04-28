@@ -39,10 +39,20 @@ namespace vkinit {
 	//******************************************Texture**********************************************************
 	VkImageMemoryBarrier barrier_des(VkImage image,VkImageLayout oldLayout,VkImageLayout newLayout);
 	VkBufferCreateInfo buffer_create_info(VkDeviceSize size,VkBufferUsageFlags usage,VkSharingMode sharingMode= VK_SHARING_MODE_EXCLUSIVE);
+	VkBufferImageCopy imageCopy_region(uint32_t width, uint32_t height,uint32_t mipLevel = 0 );
+	VkSamplerCreateInfo sampler_create_info(VkSamplerAddressMode addressModeU= VK_SAMPLER_ADDRESS_MODE_REPEAT,VkSamplerAddressMode addressModeV= VK_SAMPLER_ADDRESS_MODE_REPEAT,VkSamplerAddressMode addressModeW= VK_SAMPLER_ADDRESS_MODE_REPEAT,
+						VkBool32 anisotropyEnable = VK_FALSE,float maxAnisotropy = 1.0f,VkSamplerMipmapMode mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,VkFilter magFilter = VK_FILTER_LINEAR,VkFilter minFilter = VK_FILTER_LINEAR);
 	//******************************************end**************************************************************
 	//******************************************commandBuffer****************************************************
 	VkCommandBufferAllocateInfo alloc_info(VkCommandPool commandPool, uint32_t commandBufferCount=1,VkCommandBufferLevel level= VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 	VkCommandBufferBeginInfo cmdbuf_begin_info(VkCommandBufferUsageFlags flags= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	VkSubmitInfo submit_info(const VkCommandBuffer* pCommandBuffers, uint32_t commandBufferCount=1);
 	//******************************************end**************************************************************
+	//******************************************frameBuffer******************************************************
+	VkFramebufferCreateInfo framebuffer_create_info(VkRenderPass renderPass,uint32_t attachmentCount,const VkImageView* pAttachments,uint32_t width,uint32_t height,uint32_t layers=1);
+	//******************************************end**************************************************************
+	//******************************************descriptorSet**********************************************
+	VkDescriptorPoolCreateInfo descriptorPool_create_info(uint32_t maxSets,uint32_t poolSizeCount,const VkDescriptorPoolSize* pPoolSizes);
+	VkDescriptorSetLayoutBinding descriptorSet_layout_bindings(uint32_t binding, uint32_t descriptorCount, VkDescriptorType descriptorType,VkShaderStageFlags stageFlags,const VkSampler* pImmutableSamplers=nullptr);
+	//******************************************end********************************************************
 }

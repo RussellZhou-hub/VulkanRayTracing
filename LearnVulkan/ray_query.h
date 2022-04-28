@@ -24,7 +24,6 @@ const uint32_t HEIGHT = 2160/2;
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <string.h>
 #include <math.h>
 #include<vector>
 #include<deque>
@@ -214,9 +213,12 @@ private:
 	void createMaterialsBuffer(VkRayTracingApplication* app, Scene* scene);
 	void createTextures(VkRayTracingApplication* app);
 	void createTextureImage(VkRayTracingApplication* app);
-	void createTextureImage(std::string texPath);
+	void createTextureImage(std::string texPath, VkImage & texImage,VkDeviceMemory & texImageMemory);
 	void createTextureImageView();
+	void createTextureImageView(VkImage & texImage,VkImageView & ImgView);
 	void createTextureSampler();
+	void createTextureSampler(VkSampler & sampler);
+	void createTexture(std::string texPath, Texture tex);
 	void createBottomLevelAccelerationStructure(VkRayTracingApplication* app, Scene* scene);
 	void createTopLevelAccelerationStructure(VkRayTracingApplication* app);
 	//Descriptor Setup

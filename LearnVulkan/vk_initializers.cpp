@@ -282,6 +282,49 @@ VkBufferCreateInfo vkinit::buffer_create_info(VkDeviceSize size, VkBufferUsageFl
 	return bufferCreateInfo;
 }
 
+VkBufferImageCopy vkinit::imageCopy_region(uint32_t width, uint32_t height, uint32_t mipLevel)
+{
+	VkBufferImageCopy region{};
+	region.bufferOffset = 0;
+	region.bufferRowLength = 0;
+	region.bufferImageHeight = 0;
+
+	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	region.imageSubresource.mipLevel = mipLevel;
+	region.imageSubresource.baseArrayLayer = 0;
+	region.imageSubresource.layerCount = 1;
+
+	region.imageOffset = { 0, 0, 0 };
+	region.imageExtent = {
+		width,
+		height,
+		1
+	};
+	return region;
+}
+
+VkSamplerCreateInfo vkinit::sampler_create_info(VkSamplerAddressMode addressModeU, VkSamplerAddressMode addressModeV, VkSamplerAddressMode addressModeW, VkBool32 anisotropyEnable, float maxAnisotropy, VkSamplerMipmapMode mipmapMode, VkFilter magFilter, VkFilter minFilter)
+{
+	VkSamplerCreateInfo samplerInfo{};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.magFilter = magFilter;
+	samplerInfo.minFilter = minFilter;
+	samplerInfo.addressModeU = addressModeU;
+	samplerInfo.addressModeV = addressModeV;
+	samplerInfo.addressModeW = addressModeW;
+	samplerInfo.anisotropyEnable = anisotropyEnable;
+	samplerInfo.maxAnisotropy = maxAnisotropy;
+	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerInfo.compareEnable = VK_FALSE;
+	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+	samplerInfo.mipmapMode = mipmapMode;
+	samplerInfo.mipLodBias = 0.0f;
+	samplerInfo.minLod = 0.0f;
+	samplerInfo.maxLod = 0.0f;
+	return samplerInfo;
+}
+
 VkCommandBufferAllocateInfo vkinit::alloc_info(VkCommandPool commandPool, uint32_t commandBufferCount, VkCommandBufferLevel level)
 {
 	VkCommandBufferAllocateInfo allocInfo{};
@@ -307,4 +350,38 @@ VkSubmitInfo vkinit::submit_info(const VkCommandBuffer* pCommandBuffers, uint32_
 	submitInfo.commandBufferCount = commandBufferCount;
 	submitInfo.pCommandBuffers = pCommandBuffers;
 	return submitInfo;
+}
+
+VkFramebufferCreateInfo vkinit::framebuffer_create_info(VkRenderPass renderPass, uint32_t attachmentCount, const VkImageView* pAttachments, uint32_t width, uint32_t height, uint32_t layers)
+{
+	VkFramebufferCreateInfo framebufferCreateInfo = {};
+	framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	framebufferCreateInfo.renderPass = renderPass;
+	framebufferCreateInfo.attachmentCount = attachmentCount;
+	framebufferCreateInfo.pAttachments = pAttachments;
+	framebufferCreateInfo.width = width;
+	framebufferCreateInfo.height = height;
+	framebufferCreateInfo.layers = layers;
+	return framebufferCreateInfo;
+}
+
+VkDescriptorPoolCreateInfo vkinit::descriptorPool_create_info(uint32_t maxSets, uint32_t poolSizeCount, const VkDescriptorPoolSize* pPoolSizes)
+{
+	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
+	descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	descriptorPoolCreateInfo.poolSizeCount = poolSizeCount;
+	descriptorPoolCreateInfo.pPoolSizes = pPoolSizes;
+	descriptorPoolCreateInfo.maxSets = maxSets;
+	return descriptorPoolCreateInfo;
+}
+
+VkDescriptorSetLayoutBinding vkinit::descriptorSet_layout_bindings(uint32_t binding, uint32_t descriptorCount, VkDescriptorType descriptorType, VkShaderStageFlags stageFlags, const VkSampler* pImmutableSamplers)
+{
+	VkDescriptorSetLayoutBinding descriptorSetLayoutBinding;
+	descriptorSetLayoutBinding.binding = binding;
+	descriptorSetLayoutBinding.descriptorCount = descriptorCount;
+	descriptorSetLayoutBinding.descriptorType = descriptorType;
+	descriptorSetLayoutBinding.pImmutableSamplers = pImmutableSamplers;
+	descriptorSetLayoutBinding.stageFlags = stageFlags;
+	return descriptorSetLayoutBinding;
 }

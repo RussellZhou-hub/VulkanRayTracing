@@ -10,7 +10,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <string.h>
 #include <math.h>
 #include<vector>
 #include<string>
@@ -138,6 +137,7 @@ void VkRayTracingApplication::initVulkan(Scene* scene)
     createTextureImage(this);
     createTextureImageView();
     createTextureSampler();
+    //createTexture(path,tex);
 
     createVertexBuffer(this, scene);
     createIndexBuffer(this, scene);
@@ -1605,107 +1605,29 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
     descriptorPoolSizes[4].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     descriptorPoolSizes[4].descriptorCount = 4;
 
-    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {};
-    descriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    descriptorPoolCreateInfo.poolSizeCount = 5;
-    descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSizes;
-    descriptorPoolCreateInfo.maxSets = 2;
-
+    VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = vkinit::descriptorPool_create_info(2,5, descriptorPoolSizes);  //maxSets,poolSizeCount,pPoolSizes
+    
     if (vkCreateDescriptorPool(app->logicalDevice, &descriptorPoolCreateInfo, NULL, &app->descriptorPool) == VK_SUCCESS) {
         printf("\033[22;32m%s\033[0m\n", "created descriptor pool");
     }
 
     {
         VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[15];
-        descriptorSetLayoutBindings[0].binding = 0;
-        descriptorSetLayoutBindings[0].descriptorCount = 1;
-        descriptorSetLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-        descriptorSetLayoutBindings[0].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        descriptorSetLayoutBindings[1].binding = 1;
-        descriptorSetLayoutBindings[1].descriptorCount = 1;
-        descriptorSetLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptorSetLayoutBindings[1].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        descriptorSetLayoutBindings[2].binding = 2;
-        descriptorSetLayoutBindings[2].descriptorCount = 1;
-        descriptorSetLayoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptorSetLayoutBindings[2].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        descriptorSetLayoutBindings[3].binding = 3;
-        descriptorSetLayoutBindings[3].descriptorCount = 1;
-        descriptorSetLayoutBindings[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptorSetLayoutBindings[3].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        descriptorSetLayoutBindings[4].binding = 4;           //前一帧图像
-        descriptorSetLayoutBindings[4].descriptorCount = 1;
-        descriptorSetLayoutBindings[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        descriptorSetLayoutBindings[4].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        descriptorSetLayoutBindings[5].binding = 5;
-        descriptorSetLayoutBindings[5].descriptorCount = 1;
-        descriptorSetLayoutBindings[5].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptorSetLayoutBindings[5].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[5].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        descriptorSetLayoutBindings[6].binding = 6;           //前一帧indierctLgt
-        descriptorSetLayoutBindings[6].descriptorCount = 1;
-        descriptorSetLayoutBindings[6].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        descriptorSetLayoutBindings[6].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[6].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        descriptorSetLayoutBindings[7].binding = 7;           //前一帧indierctLgt_2
-        descriptorSetLayoutBindings[7].descriptorCount = 1;
-        descriptorSetLayoutBindings[7].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        descriptorSetLayoutBindings[7].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[7].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        descriptorSetLayoutBindings[8].binding = 8;           //dierctLgt irrad
-        descriptorSetLayoutBindings[8].descriptorCount = 1;
-        descriptorSetLayoutBindings[8].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        descriptorSetLayoutBindings[8].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[8].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        descriptorSetLayoutBindings[9].binding = 9;           //dierctLgt albedo
-        descriptorSetLayoutBindings[9].descriptorCount = 1;
-        descriptorSetLayoutBindings[9].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        descriptorSetLayoutBindings[9].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[9].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        descriptorSetLayoutBindings[10].binding = 10;           //normal
-        descriptorSetLayoutBindings[10].descriptorCount = 1;
-        descriptorSetLayoutBindings[10].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        descriptorSetLayoutBindings[10].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[10].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        descriptorSetLayoutBindings[11].binding = 11;           //world
-        descriptorSetLayoutBindings[11].descriptorCount = 1;
-        descriptorSetLayoutBindings[11].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        descriptorSetLayoutBindings[11].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[11].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        descriptorSetLayoutBindings[12].binding = 12;           //Depth
-        descriptorSetLayoutBindings[12].descriptorCount = 1;
-        descriptorSetLayoutBindings[12].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        descriptorSetLayoutBindings[12].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[12].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        descriptorSetLayoutBindings[13].binding = 13;           //Variance
-        descriptorSetLayoutBindings[13].descriptorCount = 1;
-        descriptorSetLayoutBindings[13].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        descriptorSetLayoutBindings[13].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[13].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        descriptorSetLayoutBindings[14].binding = 14;           //Texture
-        descriptorSetLayoutBindings[14].descriptorCount = 1;
-        descriptorSetLayoutBindings[14].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorSetLayoutBindings[14].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[14].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        descriptorSetLayoutBindings[0]=vkinit::descriptorSet_layout_bindings(0,1, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_FRAGMENT_BIT);
+        descriptorSetLayoutBindings[1] = vkinit::descriptorSet_layout_bindings(1, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+        descriptorSetLayoutBindings[2] = vkinit::descriptorSet_layout_bindings(2, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);
+        descriptorSetLayoutBindings[3] = vkinit::descriptorSet_layout_bindings(3, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);
+        descriptorSetLayoutBindings[4] = vkinit::descriptorSet_layout_bindings(4, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT);//前一帧图像
+        descriptorSetLayoutBindings[5] = vkinit::descriptorSet_layout_bindings(5, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+        descriptorSetLayoutBindings[6] = vkinit::descriptorSet_layout_bindings(6, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT);//前一帧indierctLgt
+        descriptorSetLayoutBindings[7] = vkinit::descriptorSet_layout_bindings(7, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT);//前一帧indierctLgt_2
+        descriptorSetLayoutBindings[8] = vkinit::descriptorSet_layout_bindings(8, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT);//dierctLgt irrad
+        descriptorSetLayoutBindings[9] = vkinit::descriptorSet_layout_bindings(9, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT);//dierctLgt albedo
+        descriptorSetLayoutBindings[10] = vkinit::descriptorSet_layout_bindings(10, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT);//normal
+        descriptorSetLayoutBindings[11] = vkinit::descriptorSet_layout_bindings(11, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT);//world
+        descriptorSetLayoutBindings[12] = vkinit::descriptorSet_layout_bindings(12, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT);//Depth
+        descriptorSetLayoutBindings[13] = vkinit::descriptorSet_layout_bindings(13, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT); //Variance
+        descriptorSetLayoutBindings[14] = vkinit::descriptorSet_layout_bindings(14, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);//Texture
 
         VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
         descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -2733,22 +2655,7 @@ void VkRayTracingApplication::copyBufferToImage(VkBuffer buffer, VkImage image, 
 {
     VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
-    VkBufferImageCopy region{};
-    region.bufferOffset = 0;
-    region.bufferRowLength = 0;
-    region.bufferImageHeight = 0;
-
-    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    region.imageSubresource.mipLevel = 0;
-    region.imageSubresource.baseArrayLayer = 0;
-    region.imageSubresource.layerCount = 1;
-
-    region.imageOffset = { 0, 0, 0 };
-    region.imageExtent = {
-        width,
-        height,
-        1
-    };
+    VkBufferImageCopy region = vkinit::imageCopy_region(width,height);
 
     vkCmdCopyBufferToImage(
         commandBuffer,
@@ -2785,24 +2692,7 @@ VkImageView VkRayTracingApplication::createImageView(VkImage image, VkFormat for
 
 void VkRayTracingApplication::createTextureSampler()
 {
-    VkSamplerCreateInfo samplerInfo{};
-    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    samplerInfo.magFilter = VK_FILTER_LINEAR;
-    samplerInfo.minFilter = VK_FILTER_LINEAR;
-    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    samplerInfo.anisotropyEnable = VK_FALSE;
-    samplerInfo.maxAnisotropy = 1.0f;
-    samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-    samplerInfo.unnormalizedCoordinates = VK_FALSE;
-    samplerInfo.compareEnable = VK_FALSE;
-    samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    samplerInfo.mipLodBias = 0.0f;
-    samplerInfo.minLod = 0.0f;
-    samplerInfo.maxLod = 0.0f;
-
+    VkSamplerCreateInfo samplerInfo = vkinit::sampler_create_info();
     if (vkCreateSampler(logicalDevice, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
         throw std::runtime_error("failed to create texture sampler!");
     }
@@ -3167,14 +3057,7 @@ void VkRayTracingApplication::createFramebuffers(VkRayTracingApplication* app)
           app->depthImageView
         };
 
-        VkFramebufferCreateInfo framebufferCreateInfo = {};
-        framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        framebufferCreateInfo.renderPass = app->renderPass;
-        framebufferCreateInfo.attachmentCount = app->colorAttachCount+1;
-        framebufferCreateInfo.pAttachments = attachments;
-        framebufferCreateInfo.width = app->swapchainExtent.width;
-        framebufferCreateInfo.height = app->swapchainExtent.height;
-        framebufferCreateInfo.layers = 1;
+        VkFramebufferCreateInfo framebufferCreateInfo = vkinit::framebuffer_create_info(app->renderPass, app->colorAttachCount + 1, attachments, app->swapchainExtent.width, app->swapchainExtent.height);
 
         if (vkCreateFramebuffer(app->logicalDevice, &framebufferCreateInfo, NULL, &app->swapchainFramebuffers[x]) == VK_SUCCESS) {
             printf("created swapchain framebuffer #%d\n", x);
@@ -3893,7 +3776,12 @@ Material_pipeline* VkRayTracingApplication::create_material(VkPipeline pipeline,
     return &_materials[name];
 }
 
-void VkRayTracingApplication::createTextureImage(std::string texPath)
+void VkRayTracingApplication::createTextureImageView(VkImage& texImage, VkImageView & ImgView)
+{
+    ImgView = createImageView(texImage, VK_FORMAT_R8G8B8A8_SRGB);
+}
+
+void VkRayTracingApplication::createTextureImage(std::string texPath, VkImage & texImage, VkDeviceMemory & texImageMemory)
 {
     int texWidth, texHeight, texChannels;
     stbi_uc* pixels = stbi_load(texPath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);  //channels now is 3
@@ -3911,10 +3799,10 @@ void VkRayTracingApplication::createTextureImage(std::string texPath)
     vkUnmapMemory(this->logicalDevice, stagingBufferMemory);
     stbi_image_free(pixels);
 
-    createImage(this, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &textureImage, &textureImageMemory);
-    transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-    transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    createImage(this, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &texImage, &texImageMemory);
+    transitionImageLayout(texImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    copyBufferToImage(stagingBuffer, texImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+    transitionImageLayout(texImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     vkDestroyBuffer(logicalDevice, stagingBuffer, nullptr);
     vkFreeMemory(logicalDevice, stagingBufferMemory, nullptr);
@@ -3932,6 +3820,14 @@ Material_pipeline* VkRayTracingApplication::get_material(const std::string& name
     }
 }
 
+void VkRayTracingApplication::createTextureSampler(VkSampler & sampler)
+{
+    VkSamplerCreateInfo samplerInfo = vkinit::sampler_create_info();
+    if (vkCreateSampler(logicalDevice, &samplerInfo, nullptr, &sampler) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create texture sampler!");
+    }
+}
+
 Mesh* VkRayTracingApplication::get_mesh(const std::string& name) {
     auto it = _meshes.find(name);
     if (it == _meshes.end()) {
@@ -3940,6 +3836,13 @@ Mesh* VkRayTracingApplication::get_mesh(const std::string& name) {
     else {
         return &(*it).second;
     }
+}
+
+void VkRayTracingApplication::createTexture(std::string texPath, Texture tex)
+{
+    createTextureImage(texPath, tex.textureImage, tex.textureImageMemory);
+    createTextureImageView(tex.textureImage, tex.textureImageView);
+    createTextureSampler(tex.textureSampler);
 }
 
 void VkRayTracingApplication::draw_objects(VkCommandBuffer cmd, RenderObject* first, int count) {
