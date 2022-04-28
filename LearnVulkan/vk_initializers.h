@@ -36,4 +36,13 @@ namespace vkinit {
 						VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL,VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE,VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT, uint32_t mipLevels = 1, VkImageType imageType= VK_IMAGE_TYPE_2D);
 	VkMemoryAllocateInfo memoryAllocate_info(VkDeviceSize allocationSize,uint32_t memoryTypeIndex);
 	//******************************************end**************************************************************
+	//******************************************Texture**********************************************************
+	VkImageMemoryBarrier barrier_des(VkImage image,VkImageLayout oldLayout,VkImageLayout newLayout);
+	VkBufferCreateInfo buffer_create_info(VkDeviceSize size,VkBufferUsageFlags usage,VkSharingMode sharingMode= VK_SHARING_MODE_EXCLUSIVE);
+	//******************************************end**************************************************************
+	//******************************************commandBuffer****************************************************
+	VkCommandBufferAllocateInfo alloc_info(VkCommandPool commandPool, uint32_t commandBufferCount=1,VkCommandBufferLevel level= VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	VkCommandBufferBeginInfo cmdbuf_begin_info(VkCommandBufferUsageFlags flags= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+	VkSubmitInfo submit_info(const VkCommandBuffer* pCommandBuffers, uint32_t commandBufferCount=1);
+	//******************************************end**************************************************************
 }

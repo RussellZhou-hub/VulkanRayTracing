@@ -41,6 +41,7 @@ const uint32_t HEIGHT = 2160/2;
 #include<vma/vk_mem_alloc.h>
 #include <functional>
 #include "Mesh.h"
+#include"vk_types.h"
 
 #define MAX_FRAMES_IN_FLIGHT      1
 #define ENABLE_VALIDATION         1
@@ -213,6 +214,7 @@ private:
 	void createMaterialsBuffer(VkRayTracingApplication* app, Scene* scene);
 	void createTextures(VkRayTracingApplication* app);
 	void createTextureImage(VkRayTracingApplication* app);
+	void createTextureImage(std::string texPath);
 	void createTextureImageView();
 	void createTextureSampler();
 	void createBottomLevelAccelerationStructure(VkRayTracingApplication* app, Scene* scene);
@@ -301,6 +303,8 @@ private:
 	VkDeviceMemory textureImageMemory;
 	VkImageView textureImageView;
 	VkSampler textureSampler;
+
+	Texture tex;
 
 	//output attachment in shader
 	uint32_t colorAttachCount;

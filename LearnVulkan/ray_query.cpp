@@ -496,11 +496,7 @@ void readFile(const char* fileName, char** buffer, uint64_t* length)
 
 void VkRayTracingApplication::createBuffer(VkRayTracingApplication* app, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags propertyFlags, VkBuffer* buffer, VkDeviceMemory* bufferMemory)
 {
-    VkBufferCreateInfo bufferCreateInfo = {};
-    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferCreateInfo.size = size;
-    bufferCreateInfo.usage = usageFlags;
-    bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    VkBufferCreateInfo bufferCreateInfo = vkinit::buffer_create_info(size,usageFlags);
 
     if (vkCreateBuffer(app->logicalDevice, &bufferCreateInfo, NULL, buffer) == VK_SUCCESS) {
         printf("created buffer with size %ld\n", size);
@@ -509,10 +505,6 @@ void VkRayTracingApplication::createBuffer(VkRayTracingApplication* app, VkDevic
     VkMemoryRequirements memoryRequirements;
     vkGetBufferMemoryRequirements(app->logicalDevice, *buffer, &memoryRequirements);
 
-    VkMemoryAllocateInfo memoryAllocateInfo = {};
-    memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memoryAllocateInfo.allocationSize = memoryRequirements.size;
-
     uint32_t memoryTypeIndex = -1;
     for (int x = 0; x < app->memoryProperties.memoryTypeCount; x++) {
         if ((memoryRequirements.memoryTypeBits & (1 << x)) && (app->memoryProperties.memoryTypes[x].propertyFlags & propertyFlags) == propertyFlags) {
@@ -520,7 +512,8 @@ void VkRayTracingApplication::createBuffer(VkRayTracingApplication* app, VkDevic
             break;
         }
     }
-    memoryAllocateInfo.memoryTypeIndex = memoryTypeIndex;
+
+    VkMemoryAllocateInfo memoryAllocateInfo = vkinit::memoryAllocate_info(memoryRequirements.size, memoryTypeIndex);
 
     if (vkAllocateMemory(app->logicalDevice, &memoryAllocateInfo, NULL, bufferMemory) == VK_SUCCESS) {
         printf("allocated buffer memory\n");
@@ -2704,20 +2697,7 @@ void VkRayTracingApplication::transitionImageLayout(VkImage image, VkFormat form
     VkPipelineStageFlags sourceStage;
     VkPipelineStageFlags destinationStage;
 
-    VkImageMemoryBarrier barrier{};
-    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.oldLayout = oldLayout;
-    barrier.newLayout = newLayout;
-
-    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-
-    barrier.image = image;
-    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    barrier.subresourceRange.baseMipLevel = 0;
-    barrier.subresourceRange.levelCount = 1;
-    barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
+    VkImageMemoryBarrier barrier = vkinit::barrier_des(image, oldLayout, newLayout);
 
     if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
         barrier.srcAccessMask = 0;
@@ -3817,7 +3797,7 @@ void VkRayTracingApplication::createTextureImage(VkRayTracingApplication* app)
     int texWidth, texHeight, texChannels;
     std::string str = GetExePath();
     str += "\\data\\viking_room.png";
-    stbi_uc* pixels = stbi_load(str.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    stbi_uc* pixels = stbi_load(str.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);  //channels now is 3
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 
     if (!pixels) {
@@ -3848,18 +3828,12 @@ void VkRayTracingApplication::createTextureImageView()
 
 VkCommandBuffer VkRayTracingApplication::beginSingleTimeCommands()
 {
-    VkCommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandPool = commandPool;
-    allocInfo.commandBufferCount = 1;
+    VkCommandBufferAllocateInfo allocInfo = vkinit::alloc_info(commandPool);
 
     VkCommandBuffer commandBuffer;
     vkAllocateCommandBuffers(logicalDevice, &allocInfo, &commandBuffer);
 
-    VkCommandBufferBeginInfo beginInfo{};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    VkCommandBufferBeginInfo beginInfo = vkinit::cmdbuf_begin_info();
 
     vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
@@ -3869,11 +3843,7 @@ VkCommandBuffer VkRayTracingApplication::beginSingleTimeCommands()
 void VkRayTracingApplication::endSingleTimeCommands(VkCommandBuffer commandBuffer)
 {
     vkEndCommandBuffer(commandBuffer);
-
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffer;
+    VkSubmitInfo submitInfo = vkinit::submit_info(&commandBuffer);
 
     vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
     vkQueueWaitIdle(graphicsQueue);
@@ -3921,6 +3891,33 @@ Material_pipeline* VkRayTracingApplication::create_material(VkPipeline pipeline,
     mat.pipelineLayout = layout;
     _materials[name] = mat;
     return &_materials[name];
+}
+
+void VkRayTracingApplication::createTextureImage(std::string texPath)
+{
+    int texWidth, texHeight, texChannels;
+    stbi_uc* pixels = stbi_load(texPath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);  //channels now is 3
+    VkDeviceSize imageSize = texWidth * texHeight * 4;
+
+    if (!pixels) {
+        throw std::runtime_error("failed to load texture image!");
+    }
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    createBuffer(this, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory);
+    void* data;
+    vkMapMemory(this->logicalDevice, stagingBufferMemory, 0, imageSize, 0, &data);
+    memcpy(data, pixels, static_cast<size_t>(imageSize));
+    vkUnmapMemory(this->logicalDevice, stagingBufferMemory);
+    stbi_image_free(pixels);
+
+    createImage(this, texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &textureImage, &textureImageMemory);
+    transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+    transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    vkDestroyBuffer(logicalDevice, stagingBuffer, nullptr);
+    vkFreeMemory(logicalDevice, stagingBufferMemory, nullptr);
 }
 
 Material_pipeline* VkRayTracingApplication::get_material(const std::string& name)

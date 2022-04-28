@@ -252,3 +252,59 @@ VkMemoryAllocateInfo vkinit::memoryAllocate_info(VkDeviceSize allocationSize, ui
 	memoryAllocateInfo.memoryTypeIndex = memoryTypeIndex;
 	return memoryAllocateInfo;
 }
+
+VkImageMemoryBarrier vkinit::barrier_des(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout)
+{
+	VkImageMemoryBarrier barrier{};
+	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	barrier.oldLayout = oldLayout;
+	barrier.newLayout = newLayout;
+
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+	barrier.image = image;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+	return barrier;
+}
+
+VkBufferCreateInfo vkinit::buffer_create_info(VkDeviceSize size, VkBufferUsageFlags usage, VkSharingMode sharingMode)
+{
+	VkBufferCreateInfo bufferCreateInfo = {};
+	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferCreateInfo.size = size;
+	bufferCreateInfo.usage = usage;
+	bufferCreateInfo.sharingMode = sharingMode;
+	return bufferCreateInfo;
+}
+
+VkCommandBufferAllocateInfo vkinit::alloc_info(VkCommandPool commandPool, uint32_t commandBufferCount, VkCommandBufferLevel level)
+{
+	VkCommandBufferAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.level = level;
+	allocInfo.commandPool = commandPool;
+	allocInfo.commandBufferCount = commandBufferCount;
+	return allocInfo;
+}
+
+VkCommandBufferBeginInfo vkinit::cmdbuf_begin_info(VkCommandBufferUsageFlags flags)
+{
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = flags;
+	return beginInfo;
+}
+
+VkSubmitInfo vkinit::submit_info(const VkCommandBuffer* pCommandBuffers, uint32_t commandBufferCount)
+{
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = commandBufferCount;
+	submitInfo.pCommandBuffers = pCommandBuffers;
+	return submitInfo;
+}

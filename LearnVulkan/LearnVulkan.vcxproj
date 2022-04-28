@@ -190,8 +190,8 @@
     <ClInclude Include="tinyobj_loader_c.h" />
     <ClInclude Include="tiny_obj_loader.h" />
     <ClInclude Include="Utils.h" />
-    <ClInclude Include="vkTypes.h" />
     <ClInclude Include="vk_initializers.h" />
+    <ClInclude Include="vk_types.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\basic.frag" />

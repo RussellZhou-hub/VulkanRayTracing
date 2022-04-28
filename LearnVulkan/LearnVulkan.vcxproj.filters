@@ -83,7 +83,7 @@
     <ClInclude Include="vk_initializers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="vkTypes.h">
+    <ClInclude Include="vk_types.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -16,4 +16,11 @@ struct AllocatedImage {
     VmaAllocation _allocation;
 };
 
+struct Texture {
+    VkImage textureImage;
+    VkDeviceMemory textureImageMemory;
+    VkImageView textureImageView;
+    VkSampler textureSampler;
+};
+
 //we will add our main reusable types here
