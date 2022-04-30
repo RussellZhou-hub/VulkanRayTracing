@@ -63,4 +63,11 @@ namespace vkinit {
 	VkDescriptorBufferInfo buffer_info(VkBuffer buffer,VkDeviceSize offset=0,VkDeviceSize range= VK_WHOLE_SIZE);
 	VkDescriptorImageInfo image_info(VkImageView imageView, VkSampler sampler= (VkSampler)VK_DESCRIPTOR_TYPE_SAMPLER,VkImageLayout imageLayout= VK_IMAGE_LAYOUT_GENERAL);
 	//******************************************end********************************************************
+	//******************************************Pipeline***************************************************
+	VkVertexInputBindingDescription vertexBinding_des(uint32_t binding,uint32_t stride,VkVertexInputRate inputRate);
+	VkVertexInputAttributeDescription vertexAttribute_des(uint32_t location,uint32_t binding,uint32_t offset,VkFormat format);
+	VkPipelineVertexInputStateCreateInfo vertexInputState_create_info(const VkVertexInputBindingDescription* pVertexBindingDescriptions,const VkVertexInputAttributeDescription* pVertexAttributeDescriptions,
+																uint32_t vertexBindingDescriptionCount = 1,uint32_t vertexAttributeDescriptionCount=1);
+	VkPipelineInputAssemblyStateCreateInfo inputAssembly_create_info(VkPrimitiveTopology topology,VkBool32 primitiveRestartEnable);
+	//******************************************end********************************************************
 }

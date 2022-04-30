@@ -3143,27 +3143,14 @@ void VkRayTracingApplication::createGraphicsPipeline_indirectLgt_2(VkRayTracingA
     VkPipelineShaderStageCreateInfo shaderStages[2] = { vertex_shader->ShaderStageInfo, frag_shader->ShaderStageInfo };
 
     app->vertexBindingDescriptions = (VkVertexInputBindingDescription*)malloc(sizeof(VkVertexInputBindingDescription) * 1);
-    app->vertexBindingDescriptions[0].binding = 0;
-    app->vertexBindingDescriptions[0].stride = sizeof(float) * 3;
-    app->vertexBindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    app->vertexBindingDescriptions[0] = vkinit::vertexBinding_des(0, sizeof(float) * 3, VK_VERTEX_INPUT_RATE_VERTEX);
 
     app->vertexAttributeDescriptions = (VkVertexInputAttributeDescription*)malloc(sizeof(VkVertexInputAttributeDescription) * 1);
-    app->vertexAttributeDescriptions[0].binding = 0;
-    app->vertexAttributeDescriptions[0].location = 0;
-    app->vertexAttributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-    app->vertexAttributeDescriptions[0].offset = 0;
+    app->vertexAttributeDescriptions[0] = vkinit::vertexAttribute_des(0,0,0, VK_FORMAT_R32G32B32_SFLOAT);
 
-    VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = {};
-    vertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
-    vertexInputStateCreateInfo.vertexAttributeDescriptionCount = 1;
-    vertexInputStateCreateInfo.pVertexBindingDescriptions = app->vertexBindingDescriptions;
-    vertexInputStateCreateInfo.pVertexAttributeDescriptions = app->vertexAttributeDescriptions;
+    VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = vkinit::vertexInputState_create_info(app->vertexBindingDescriptions, app->vertexAttributeDescriptions);
 
-    VkPipelineInputAssemblyStateCreateInfo inputAssemblyCreateInfo = {};
-    inputAssemblyCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssemblyCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    inputAssemblyCreateInfo.primitiveRestartEnable = VK_FALSE;
+    VkPipelineInputAssemblyStateCreateInfo inputAssemblyCreateInfo = vkinit::inputAssembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
 
     VkViewport viewport = {};
     viewport.x = 0.0f;

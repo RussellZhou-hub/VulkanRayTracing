@@ -448,3 +448,42 @@ VkDescriptorImageInfo vkinit::image_info(VkImageView imageView, VkSampler sample
 	imageInfo.imageLayout = imageLayout;
 	return imageInfo;
 }
+
+VkVertexInputBindingDescription vkinit::vertexBinding_des(uint32_t binding, uint32_t stride, VkVertexInputRate inputRate)
+{
+	VkVertexInputBindingDescription des{};
+	des.binding = binding;
+	des.stride = stride;
+	des.inputRate = inputRate;
+	return des;
+}
+
+VkVertexInputAttributeDescription vkinit::vertexAttribute_des(uint32_t location, uint32_t binding, uint32_t offset, VkFormat format)
+{
+	VkVertexInputAttributeDescription des{};
+	des.location = location;
+	des.binding = binding;
+	des.format = format;
+	des.offset = offset;
+	return des;
+}
+
+VkPipelineVertexInputStateCreateInfo vkinit::vertexInputState_create_info(const VkVertexInputBindingDescription* pVertexBindingDescriptions, const VkVertexInputAttributeDescription* pVertexAttributeDescriptions, uint32_t vertexBindingDescriptionCount, uint32_t vertexAttributeDescriptionCount)
+{
+	VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = {};
+	vertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputStateCreateInfo.vertexBindingDescriptionCount = vertexBindingDescriptionCount;
+	vertexInputStateCreateInfo.vertexAttributeDescriptionCount = vertexAttributeDescriptionCount;
+	vertexInputStateCreateInfo.pVertexBindingDescriptions = pVertexBindingDescriptions;
+	vertexInputStateCreateInfo.pVertexAttributeDescriptions = pVertexAttributeDescriptions;
+	return vertexInputStateCreateInfo;
+}
+
+VkPipelineInputAssemblyStateCreateInfo vkinit::inputAssembly_create_info(VkPrimitiveTopology topology, VkBool32 primitiveRestartEnable)
+{
+	VkPipelineInputAssemblyStateCreateInfo info{};
+	info.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	info.topology = topology;
+	info.primitiveRestartEnable = primitiveRestartEnable;
+	return info;
+}
