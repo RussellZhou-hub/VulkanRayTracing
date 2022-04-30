@@ -54,5 +54,13 @@ namespace vkinit {
 	//******************************************descriptorSet**********************************************
 	VkDescriptorPoolCreateInfo descriptorPool_create_info(uint32_t maxSets,uint32_t poolSizeCount,const VkDescriptorPoolSize* pPoolSizes);
 	VkDescriptorSetLayoutBinding descriptorSet_layout_bindings(uint32_t binding, uint32_t descriptorCount, VkDescriptorType descriptorType,VkShaderStageFlags stageFlags,const VkSampler* pImmutableSamplers=nullptr);
+	VkDescriptorSetLayoutCreateInfo descriptorSetLayout_create_info(uint32_t bindingCount,const VkDescriptorSetLayoutBinding* pBindings);
+	VkDescriptorSetAllocateInfo descriptorSet_allocate_info(VkDescriptorPool descriptorPool,uint32_t descriptorSetCount,const VkDescriptorSetLayout* pSetLayouts);
+	VkWriteDescriptorSet writeDescriptorSets_info(const void* pNext,VkDescriptorSet dstSet,uint32_t dstBinding,VkDescriptorType  descriptorType,
+												const VkDescriptorImageInfo* pImageInfo=nullptr,const VkDescriptorBufferInfo* pBufferInfo = nullptr,
+												const VkBufferView* pTexelBufferView = nullptr, uint32_t descriptorCount = 1, uint32_t dstArrayElement = 0);
+	VkWriteDescriptorSetAccelerationStructureKHR descriptorSetAS_info(const VkAccelerationStructureKHR* pAccelerationStructures, uint32_t accelerationStructureCount=1);
+	VkDescriptorBufferInfo buffer_info(VkBuffer buffer,VkDeviceSize offset=0,VkDeviceSize range= VK_WHOLE_SIZE);
+	VkDescriptorImageInfo image_info(VkImageView imageView, VkSampler sampler= (VkSampler)VK_DESCRIPTOR_TYPE_SAMPLER,VkImageLayout imageLayout= VK_IMAGE_LAYOUT_GENERAL);
 	//******************************************end********************************************************
 }

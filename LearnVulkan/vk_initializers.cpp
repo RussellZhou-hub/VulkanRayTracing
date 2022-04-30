@@ -385,3 +385,66 @@ VkDescriptorSetLayoutBinding vkinit::descriptorSet_layout_bindings(uint32_t bind
 	descriptorSetLayoutBinding.stageFlags = stageFlags;
 	return descriptorSetLayoutBinding;
 }
+
+VkDescriptorSetLayoutCreateInfo vkinit::descriptorSetLayout_create_info(uint32_t bindingCount, const VkDescriptorSetLayoutBinding* pBindings)
+{
+	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
+	descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	descriptorSetLayoutCreateInfo.bindingCount = bindingCount;
+	descriptorSetLayoutCreateInfo.pBindings = pBindings;
+	return descriptorSetLayoutCreateInfo;
+}
+
+VkDescriptorSetAllocateInfo vkinit::descriptorSet_allocate_info(VkDescriptorPool descriptorPool, uint32_t descriptorSetCount, const VkDescriptorSetLayout* pSetLayouts)
+{
+	VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
+	descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	descriptorSetAllocateInfo.descriptorPool = descriptorPool;
+	descriptorSetAllocateInfo.descriptorSetCount = descriptorSetCount;
+	descriptorSetAllocateInfo.pSetLayouts = pSetLayouts;
+	return descriptorSetAllocateInfo;
+}
+
+VkWriteDescriptorSet vkinit::writeDescriptorSets_info(const void* pNext, VkDescriptorSet dstSet, uint32_t dstBinding, VkDescriptorType descriptorType, const VkDescriptorImageInfo* pImageInfo, const VkDescriptorBufferInfo* pBufferInfo, const VkBufferView* pTexelBufferView, uint32_t descriptorCount, uint32_t dstArrayElement)
+{
+	VkWriteDescriptorSet writeDescriptorSet;
+	writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writeDescriptorSet.pNext = pNext;
+	writeDescriptorSet.dstSet = dstSet;
+	writeDescriptorSet.dstBinding = dstBinding;
+	writeDescriptorSet.dstArrayElement = dstArrayElement;
+	writeDescriptorSet.descriptorCount = descriptorCount;
+	writeDescriptorSet.descriptorType = descriptorType;
+	writeDescriptorSet.pImageInfo = pImageInfo;
+	writeDescriptorSet.pBufferInfo = pBufferInfo;
+	writeDescriptorSet.pTexelBufferView = pTexelBufferView;
+	return writeDescriptorSet;
+}
+
+VkWriteDescriptorSetAccelerationStructureKHR vkinit::descriptorSetAS_info(const VkAccelerationStructureKHR* pAccelerationStructures, uint32_t accelerationStructureCount)
+{
+	VkWriteDescriptorSetAccelerationStructureKHR descriptorSetAccelerationStructure = {};
+	descriptorSetAccelerationStructure.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+	descriptorSetAccelerationStructure.pNext = NULL;
+	descriptorSetAccelerationStructure.accelerationStructureCount = accelerationStructureCount;
+	descriptorSetAccelerationStructure.pAccelerationStructures = pAccelerationStructures;
+	return descriptorSetAccelerationStructure;
+}
+
+VkDescriptorBufferInfo vkinit::buffer_info(VkBuffer buffer, VkDeviceSize offset, VkDeviceSize range)
+{
+	VkDescriptorBufferInfo bufferInfo = {};
+	bufferInfo.buffer = buffer;
+	bufferInfo.offset = offset;
+	bufferInfo.range = range;
+	return bufferInfo;
+}
+
+VkDescriptorImageInfo vkinit::image_info(VkImageView imageView, VkSampler sampler, VkImageLayout imageLayout)
+{
+	VkDescriptorImageInfo imageInfo = {};
+	imageInfo.sampler = sampler;
+	imageInfo.imageView = imageView;
+	imageInfo.imageLayout = imageLayout;
+	return imageInfo;
+}

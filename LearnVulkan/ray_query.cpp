@@ -1629,255 +1629,48 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
         descriptorSetLayoutBindings[13] = vkinit::descriptorSet_layout_bindings(13, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT); //Variance
         descriptorSetLayoutBindings[14] = vkinit::descriptorSet_layout_bindings(14, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);//Texture
 
-        VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
-        descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        descriptorSetLayoutCreateInfo.bindingCount = 15;
-        descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings;
-
+        VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = vkinit::descriptorSetLayout_create_info(15, descriptorSetLayoutBindings);
         if (vkCreateDescriptorSetLayout(app->logicalDevice, &descriptorSetLayoutCreateInfo, NULL, &app->rayTraceDescriptorSetLayouts[0]) == VK_SUCCESS) {
             printf("\033[22;32m%s\033[0m\n", "created descriptor set layout");
         }
 
-        VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
-        descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        descriptorSetAllocateInfo.descriptorPool = app->descriptorPool;
-        descriptorSetAllocateInfo.descriptorSetCount = 1;
-        descriptorSetAllocateInfo.pSetLayouts = &app->rayTraceDescriptorSetLayouts[0];
-
+        VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = vkinit::descriptorSet_allocate_info(app->descriptorPool,1, &app->rayTraceDescriptorSetLayouts[0]);
         if (vkAllocateDescriptorSets(app->logicalDevice, &descriptorSetAllocateInfo, &app->rayTraceDescriptorSet) == VK_SUCCESS) {
             printf("\033[22;32m%s\033[0m\n", "allocated descriptor sets");
         }
 
         VkWriteDescriptorSet writeDescriptorSets[15];
 
-        VkWriteDescriptorSetAccelerationStructureKHR descriptorSetAccelerationStructure = {};
-        descriptorSetAccelerationStructure.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
-        descriptorSetAccelerationStructure.pNext = NULL;
-        descriptorSetAccelerationStructure.accelerationStructureCount = 1;
-        descriptorSetAccelerationStructure.pAccelerationStructures = &app->topLevelAccelerationStructure;
-
-        writeDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSets[0].pNext = &descriptorSetAccelerationStructure;
-        writeDescriptorSets[0].dstSet = app->rayTraceDescriptorSet;
-        writeDescriptorSets[0].dstBinding = 0;
-        writeDescriptorSets[0].dstArrayElement = 0;
-        writeDescriptorSets[0].descriptorCount = 1;
-        writeDescriptorSets[0].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-        writeDescriptorSets[0].pImageInfo = NULL;
-        writeDescriptorSets[0].pBufferInfo = NULL;
-        writeDescriptorSets[0].pTexelBufferView = NULL;
-
-        VkDescriptorBufferInfo bufferInfo = {};
-        bufferInfo.buffer = app->uniformBuffer;
-        bufferInfo.offset = 0;
-        bufferInfo.range = VK_WHOLE_SIZE;
-
-        writeDescriptorSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSets[1].pNext = NULL;
-        writeDescriptorSets[1].dstSet = app->rayTraceDescriptorSet;
-        writeDescriptorSets[1].dstBinding = 1;
-        writeDescriptorSets[1].dstArrayElement = 0;
-        writeDescriptorSets[1].descriptorCount = 1;
-        writeDescriptorSets[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        writeDescriptorSets[1].pImageInfo = NULL;
-        writeDescriptorSets[1].pBufferInfo = &bufferInfo;
-        writeDescriptorSets[1].pTexelBufferView = NULL;
-
-        VkDescriptorBufferInfo indexBufferInfo = {};
-        indexBufferInfo.buffer = app->indexBuffer;
-        indexBufferInfo.offset = 0;
-        indexBufferInfo.range = VK_WHOLE_SIZE;
-
-        writeDescriptorSets[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSets[2].pNext = NULL;
-        writeDescriptorSets[2].dstSet = app->rayTraceDescriptorSet;
-        writeDescriptorSets[2].dstBinding = 2;
-        writeDescriptorSets[2].dstArrayElement = 0;
-        writeDescriptorSets[2].descriptorCount = 1;
-        writeDescriptorSets[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        writeDescriptorSets[2].pImageInfo = NULL;
-        writeDescriptorSets[2].pBufferInfo = &indexBufferInfo;
-        writeDescriptorSets[2].pTexelBufferView = NULL;
-
-        VkDescriptorBufferInfo vertexBufferInfo = {};
-        vertexBufferInfo.buffer = app->vertexPositionBuffer;
-        vertexBufferInfo.offset = 0;
-        vertexBufferInfo.range = VK_WHOLE_SIZE;
-
-        writeDescriptorSets[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSets[3].pNext = NULL;
-        writeDescriptorSets[3].dstSet = app->rayTraceDescriptorSet;
-        writeDescriptorSets[3].dstBinding = 3;
-        writeDescriptorSets[3].dstArrayElement = 0;
-        writeDescriptorSets[3].descriptorCount = 1;
-        writeDescriptorSets[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        writeDescriptorSets[3].pImageInfo = NULL;
-        writeDescriptorSets[3].pBufferInfo = &vertexBufferInfo;
-        writeDescriptorSets[3].pTexelBufferView = NULL;
-
-        VkDescriptorImageInfo imageInfo = {};
-        imageInfo.sampler = (VkSampler)VK_DESCRIPTOR_TYPE_SAMPLER;
-        imageInfo.imageView = app->rayTraceImageView;
-        imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-
-        writeDescriptorSets[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSets[4].pNext = NULL;
-        writeDescriptorSets[4].dstSet = app->rayTraceDescriptorSet;
-        writeDescriptorSets[4].dstBinding = 4;
-        writeDescriptorSets[4].dstArrayElement = 0;
-        writeDescriptorSets[4].descriptorCount = 1;
-        writeDescriptorSets[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        writeDescriptorSets[4].pImageInfo = &imageInfo;
-        writeDescriptorSets[4].pBufferInfo = NULL;
-        writeDescriptorSets[4].pTexelBufferView = NULL;
-
-        VkDescriptorBufferInfo bufferInfo_shadingMode = {};
-        bufferInfo_shadingMode.buffer = app->uniformBuffer_shadingMode;
-        bufferInfo_shadingMode.offset = 0;
-        bufferInfo_shadingMode.range = VK_WHOLE_SIZE;
-
-        writeDescriptorSets[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSets[5].pNext = NULL;
-        writeDescriptorSets[5].dstSet = app->rayTraceDescriptorSet;
-        writeDescriptorSets[5].dstBinding = 5;
-        writeDescriptorSets[5].dstArrayElement = 0;
-        writeDescriptorSets[5].descriptorCount = 1;
-        writeDescriptorSets[5].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        writeDescriptorSets[5].pImageInfo = NULL;
-        writeDescriptorSets[5].pBufferInfo = &bufferInfo_shadingMode;
-        writeDescriptorSets[5].pTexelBufferView = NULL;
-
-        VkDescriptorImageInfo imageInfo_indirectLgt = {};
-        imageInfo_indirectLgt.sampler = (VkSampler)VK_DESCRIPTOR_TYPE_SAMPLER;
-        imageInfo_indirectLgt.imageView = app->ImageView_indirectLgt;
-        imageInfo_indirectLgt.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-
-        writeDescriptorSets[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSets[6].pNext = NULL;
-        writeDescriptorSets[6].dstSet = app->rayTraceDescriptorSet;
-        writeDescriptorSets[6].dstBinding = 6;
-        writeDescriptorSets[6].dstArrayElement = 0;
-        writeDescriptorSets[6].descriptorCount = 1;
-        writeDescriptorSets[6].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        writeDescriptorSets[6].pImageInfo = &imageInfo_indirectLgt;
-        writeDescriptorSets[6].pBufferInfo = NULL;
-        writeDescriptorSets[6].pTexelBufferView = NULL;
-
-        VkDescriptorImageInfo imageInfo_indirectLgt_2 = {};
-        imageInfo_indirectLgt_2.sampler = (VkSampler)VK_DESCRIPTOR_TYPE_SAMPLER;
-        imageInfo_indirectLgt_2.imageView = app->ImageView_indirectLgt_2;
-        imageInfo_indirectLgt_2.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-
-        writeDescriptorSets[7].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSets[7].pNext = NULL;
-        writeDescriptorSets[7].dstSet = app->rayTraceDescriptorSet;
-        writeDescriptorSets[7].dstBinding = 7;
-        writeDescriptorSets[7].dstArrayElement = 0;
-        writeDescriptorSets[7].descriptorCount = 1;
-        writeDescriptorSets[7].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        writeDescriptorSets[7].pImageInfo = &imageInfo_indirectLgt_2;
-        writeDescriptorSets[7].pBufferInfo = NULL;
-        writeDescriptorSets[7].pTexelBufferView = NULL;
-
-        VkDescriptorImageInfo imageInfo_directLgt = imageInfo_indirectLgt_2;
-        imageInfo_directLgt.imageView = app->HDirectIrradImageView;
-
-        writeDescriptorSets[8].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSets[8].pNext = NULL;
-        writeDescriptorSets[8].dstSet = app->rayTraceDescriptorSet;
-        writeDescriptorSets[8].dstBinding = 8;
-        writeDescriptorSets[8].dstArrayElement = 0;
-        writeDescriptorSets[8].descriptorCount = 1;
-        writeDescriptorSets[8].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        writeDescriptorSets[8].pImageInfo = &imageInfo_directLgt;
-        writeDescriptorSets[8].pBufferInfo = NULL;
-        writeDescriptorSets[8].pTexelBufferView = NULL;
-
-        VkDescriptorImageInfo imageInfo_directLgt_albedo = imageInfo_indirectLgt_2;
-        imageInfo_directLgt_albedo.imageView = app->HDirectAlbedoImageView;
-
-        writeDescriptorSets[9].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSets[9].pNext = NULL;
-        writeDescriptorSets[9].dstSet = app->rayTraceDescriptorSet;
-        writeDescriptorSets[9].dstBinding = 9;
-        writeDescriptorSets[9].dstArrayElement = 0;
-        writeDescriptorSets[9].descriptorCount = 1;
-        writeDescriptorSets[9].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        writeDescriptorSets[9].pImageInfo = &imageInfo_directLgt_albedo;
-        writeDescriptorSets[9].pBufferInfo = NULL;
-        writeDescriptorSets[9].pTexelBufferView = NULL;
-
-        VkDescriptorImageInfo imageInfo_normal = imageInfo_indirectLgt_2;
-        imageInfo_normal.imageView = app->HNormalImageView;
-
-        writeDescriptorSets[10].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSets[10].pNext = NULL;
-        writeDescriptorSets[10].dstSet = app->rayTraceDescriptorSet;
-        writeDescriptorSets[10].dstBinding = 10;
-        writeDescriptorSets[10].dstArrayElement = 0;
-        writeDescriptorSets[10].descriptorCount = 1;
-        writeDescriptorSets[10].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        writeDescriptorSets[10].pImageInfo = &imageInfo_normal;
-        writeDescriptorSets[10].pBufferInfo = NULL;
-        writeDescriptorSets[10].pTexelBufferView = NULL;
-
-        VkDescriptorImageInfo imageInfo_world = imageInfo_indirectLgt_2;
-        imageInfo_world.imageView = app->HWorldPosImageView;
-
-        writeDescriptorSets[11].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSets[11].pNext = NULL;
-        writeDescriptorSets[11].dstSet = app->rayTraceDescriptorSet;
-        writeDescriptorSets[11].dstBinding = 11;
-        writeDescriptorSets[11].dstArrayElement = 0;
-        writeDescriptorSets[11].descriptorCount = 1;
-        writeDescriptorSets[11].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        writeDescriptorSets[11].pImageInfo = &imageInfo_world;
-        writeDescriptorSets[11].pBufferInfo = NULL;
-        writeDescriptorSets[11].pTexelBufferView = NULL;
-
-        VkDescriptorImageInfo imageInfo_depth = imageInfo_indirectLgt_2;
-        imageInfo_depth.imageView = app->HDepthImageView;
-
-        writeDescriptorSets[12].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSets[12].pNext = NULL;
-        writeDescriptorSets[12].dstSet = app->rayTraceDescriptorSet;
-        writeDescriptorSets[12].dstBinding = 12;
-        writeDescriptorSets[12].dstArrayElement = 0;
-        writeDescriptorSets[12].descriptorCount = 1;
-        writeDescriptorSets[12].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        writeDescriptorSets[12].pImageInfo = &imageInfo_depth;
-        writeDescriptorSets[12].pBufferInfo = NULL;
-        writeDescriptorSets[12].pTexelBufferView = NULL;
-
-        VkDescriptorImageInfo imageInfo_var = imageInfo_indirectLgt_2;
-        imageInfo_var.imageView = app->HVarImageView;
-
-        writeDescriptorSets[13].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSets[13].pNext = NULL;
-        writeDescriptorSets[13].dstSet = app->rayTraceDescriptorSet;
-        writeDescriptorSets[13].dstBinding = 13;
-        writeDescriptorSets[13].dstArrayElement = 0;
-        writeDescriptorSets[13].descriptorCount = 1;
-        writeDescriptorSets[13].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        writeDescriptorSets[13].pImageInfo = &imageInfo_var;
-        writeDescriptorSets[13].pBufferInfo = NULL;
-        writeDescriptorSets[13].pTexelBufferView = NULL;
-
-        VkDescriptorImageInfo imageInfo_tex{};
-        imageInfo_tex.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imageInfo_tex.imageView = textureImageView;
-        imageInfo_tex.sampler = textureSampler;
-
-        writeDescriptorSets[14].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSets[14].pNext = NULL;
-        writeDescriptorSets[14].dstSet = app->rayTraceDescriptorSet;
-        writeDescriptorSets[14].dstBinding = 14;
-        writeDescriptorSets[14].dstArrayElement = 0;
-        writeDescriptorSets[14].descriptorCount = 1;
-        writeDescriptorSets[14].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        writeDescriptorSets[14].pImageInfo = &imageInfo_tex;
-        writeDescriptorSets[14].pBufferInfo = NULL;
-        writeDescriptorSets[14].pTexelBufferView = NULL;
+        VkWriteDescriptorSetAccelerationStructureKHR descriptorSetAccelerationStructure = vkinit::descriptorSetAS_info(&app->topLevelAccelerationStructure);
+        writeDescriptorSets[0]=vkinit::writeDescriptorSets_info(&descriptorSetAccelerationStructure, app->rayTraceDescriptorSet,0, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
+        VkDescriptorBufferInfo bufferInfo = vkinit::buffer_info(app->uniformBuffer);
+        writeDescriptorSets[1] = vkinit::writeDescriptorSets_info(nullptr, app->rayTraceDescriptorSet,1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,nullptr, &bufferInfo);
+        VkDescriptorBufferInfo indexBufferInfo = vkinit::buffer_info(app->indexBuffer);
+        writeDescriptorSets[2] = vkinit::writeDescriptorSets_info(nullptr, app->rayTraceDescriptorSet, 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &indexBufferInfo);
+        VkDescriptorBufferInfo vertexBufferInfo = vkinit::buffer_info(app->vertexPositionBuffer);
+        writeDescriptorSets[3] = vkinit::writeDescriptorSets_info(nullptr, app->rayTraceDescriptorSet, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &vertexBufferInfo);
+        VkDescriptorImageInfo imageInfo = vkinit::image_info(app->rayTraceImageView);
+        writeDescriptorSets[4] = vkinit::writeDescriptorSets_info(nullptr, app->rayTraceDescriptorSet, 4, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, &imageInfo);
+        VkDescriptorBufferInfo bufferInfo_shadingMode = vkinit::buffer_info(app->uniformBuffer_shadingMode);
+        writeDescriptorSets[5] = vkinit::writeDescriptorSets_info(nullptr, app->rayTraceDescriptorSet, 5, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, nullptr, &bufferInfo_shadingMode);
+        VkDescriptorImageInfo imageInfo_indirectLgt = vkinit::image_info(app->ImageView_indirectLgt);
+        writeDescriptorSets[6] = vkinit::writeDescriptorSets_info(nullptr, app->rayTraceDescriptorSet, 6, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, &imageInfo_indirectLgt);
+        VkDescriptorImageInfo imageInfo_indirectLgt_2 = vkinit::image_info(app->ImageView_indirectLgt_2);
+        writeDescriptorSets[7] = vkinit::writeDescriptorSets_info(nullptr, app->rayTraceDescriptorSet, 7, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, &imageInfo_indirectLgt_2);
+        VkDescriptorImageInfo imageInfo_directLgt = vkinit::image_info(app->HDirectIrradImageView);
+        writeDescriptorSets[8] = vkinit::writeDescriptorSets_info(nullptr, app->rayTraceDescriptorSet, 8, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, &imageInfo_directLgt);
+        VkDescriptorImageInfo imageInfo_directLgt_albedo = vkinit::image_info(app->HDirectAlbedoImageView);
+        writeDescriptorSets[9] = vkinit::writeDescriptorSets_info(nullptr, app->rayTraceDescriptorSet, 9, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, &imageInfo_directLgt_albedo);
+        VkDescriptorImageInfo imageInfo_normal = vkinit::image_info(app->HNormalImageView);
+        writeDescriptorSets[10] = vkinit::writeDescriptorSets_info(nullptr, app->rayTraceDescriptorSet, 10, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, &imageInfo_normal);
+        VkDescriptorImageInfo imageInfo_world = vkinit::image_info(app->HWorldPosImageView);
+        writeDescriptorSets[11] = vkinit::writeDescriptorSets_info(nullptr, app->rayTraceDescriptorSet, 11, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, &imageInfo_world);
+        VkDescriptorImageInfo imageInfo_depth = vkinit::image_info(app->HDepthImageView);
+        writeDescriptorSets[12] = vkinit::writeDescriptorSets_info(nullptr, app->rayTraceDescriptorSet, 12, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, &imageInfo_depth);
+        VkDescriptorImageInfo imageInfo_var = vkinit::image_info(app->HVarImageView);
+        writeDescriptorSets[13] = vkinit::writeDescriptorSets_info(nullptr, app->rayTraceDescriptorSet, 13, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, &imageInfo_var);
+        VkDescriptorImageInfo imageInfo_tex=vkinit::image_info(textureImageView,textureSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        writeDescriptorSets[14] = vkinit::writeDescriptorSets_info(nullptr, app->rayTraceDescriptorSet, 14, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &imageInfo_tex);
 
         vkUpdateDescriptorSets(app->logicalDevice, 15, writeDescriptorSets, 0, NULL);
     }
