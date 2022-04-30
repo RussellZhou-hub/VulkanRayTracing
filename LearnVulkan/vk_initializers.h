@@ -25,6 +25,7 @@ namespace vkinit {
 	VkSubpassDependency dependency_des(uint32_t dstSubpass, uint32_t srcSubpass = VK_SUBPASS_EXTERNAL);
 	VkRenderPassCreateInfo renderPass_create_info(uint32_t attachmentCount,const VkAttachmentDescription* pAttachments,uint32_t subpassCount,const VkSubpassDescription* pSubpasses,
 							uint32_t dependencyCount,const VkSubpassDependency* pDependencies);
+	VkRenderPassBeginInfo renderPass_begin_info(VkRenderPass renderPass,VkFramebuffer framebuffer, VkExtent2D extent,uint32_t clearValueCount,const VkClearValue* pClearValues=nullptr, VkOffset2D renderAreaOffset = { 0, 0 });
 	//******************************************end*******render pass stuff **************************************
 	//******************************************command pool*****************************************************
 	VkCommandPoolCreateInfo commandPool_create_info(uint32_t queueFamilyIndex);

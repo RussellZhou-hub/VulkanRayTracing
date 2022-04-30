@@ -1,4 +1,5 @@
 #include"vk_initializers.h"
+#include <iostream>
 
 VkCommandPoolCreateInfo vkinit::command_pool_create_info(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags flags)
 {
@@ -200,6 +201,33 @@ VkRenderPassCreateInfo vkinit::renderPass_create_info(uint32_t attachmentCount, 
 	renderPassInfo.dependencyCount = dependencyCount;
 	renderPassInfo.pDependencies = pDependencies;
 	return renderPassInfo;
+}
+
+VkRenderPassBeginInfo vkinit::renderPass_begin_info(VkRenderPass renderPass, VkFramebuffer framebuffer, VkExtent2D extent, uint32_t clearValueCount, const VkClearValue* pClearValues, VkOffset2D renderAreaOffset)
+{
+	VkRenderPassBeginInfo renderPassBeginInfo = {};
+	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassBeginInfo.renderPass = renderPass;
+	renderPassBeginInfo.framebuffer = framebuffer;    //指定渲染结果保存到这里
+	renderPassBeginInfo.renderArea.offset = renderAreaOffset;
+	renderPassBeginInfo.renderArea.extent = extent;
+	renderPassBeginInfo.clearValueCount = clearValueCount;
+	if ((clearValueCount - 1) < 1) {
+		std::cout << "clearValueCount must bigger than 1" << std::endl;
+		abort();
+	}
+	VkClearValue* clearValues = (VkClearValue*)malloc(clearValueCount*sizeof(VkClearValue));
+	if (pClearValues != nullptr) {
+		renderPassBeginInfo.pClearValues = pClearValues;
+	}
+	else {
+		for (auto i = 0; i < (clearValueCount - 1); i++) {
+			clearValues[i].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+		}
+		clearValues[clearValueCount - 1].depthStencil = { 1.0f, 0 };
+		renderPassBeginInfo.pClearValues = clearValues;
+	}
+	return renderPassBeginInfo;
 }
 
 VkCommandPoolCreateInfo vkinit::commandPool_create_info(uint32_t queueFamilyIndex)

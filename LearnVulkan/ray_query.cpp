@@ -2451,12 +2451,7 @@ void VkRayTracingApplication::createCommandBuffers_3pass(VkRayTracingApplication
 {
     app->commandBuffers = (VkCommandBuffer*)malloc(sizeof(VkCommandBuffer) * app->imageCount);
 
-    VkCommandBufferAllocateInfo commandBufferAllocateInfo = {};
-    commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    commandBufferAllocateInfo.commandPool = app->commandPool;
-    commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    commandBufferAllocateInfo.commandBufferCount = app->imageCount;
-
+    VkCommandBufferAllocateInfo commandBufferAllocateInfo = vkinit::alloc_info(app->commandPool, app->imageCount, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
     if (vkAllocateCommandBuffers(app->logicalDevice, &commandBufferAllocateInfo, app->commandBuffers) == VK_SUCCESS) {
         printf("allocated command buffers\n");
     }
@@ -2465,13 +2460,8 @@ void VkRayTracingApplication::createCommandBuffers_3pass(VkRayTracingApplication
         VkCommandBufferBeginInfo commandBufferBeginCreateInfo = {};
         commandBufferBeginCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-        VkRenderPassBeginInfo renderPassBeginInfo = {};
-        renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassBeginInfo.renderPass = app->renderPass;
-        renderPassBeginInfo.framebuffer = app->swapchainFramebuffers[x];    //指定渲染结果保存到这里
-        VkOffset2D renderAreaOffset = { 0, 0 };
-        renderPassBeginInfo.renderArea.offset = renderAreaOffset;
-        renderPassBeginInfo.renderArea.extent = app->swapchainExtent;
+        VkRenderPassBeginInfo renderPassBeginInfo = vkinit::renderPass_begin_info(app->renderPass, app->swapchainFramebuffers[x], app->swapchainExtent, app->colorAttachCount + 1);
+        
 
         VkRenderPassBeginInfo renderPassBeginInfo_indirectLgt = renderPassBeginInfo;
         renderPassBeginInfo_indirectLgt.renderPass = app->renderPass_indierctLgt;
@@ -2479,25 +2469,6 @@ void VkRayTracingApplication::createCommandBuffers_3pass(VkRayTracingApplication
 
         VkRenderPassBeginInfo renderPassBeginInfo_indirectLgt_2 = renderPassBeginInfo;
         renderPassBeginInfo_indirectLgt.renderPass = app->renderPass_indierctLgt_2;
-
-        VkClearValue clearValues[7] = {
-          {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
-          {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
-          {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
-          {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
-          {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
-          {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
-          {.depthStencil = {1.0f, 0}}
-        };
-
-        renderPassBeginInfo.clearValueCount = app->colorAttachCount + 1;
-        renderPassBeginInfo.pClearValues = clearValues;
-
-        renderPassBeginInfo_indirectLgt.clearValueCount = app->colorAttachCount + 1;
-        renderPassBeginInfo_indirectLgt.pClearValues = clearValues;
-
-        renderPassBeginInfo_indirectLgt_2.clearValueCount = app->colorAttachCount + 1;
-        renderPassBeginInfo_indirectLgt_2.pClearValues = clearValues;
 
         VkBuffer vertexBuffers[1] = { app->vertexPositionBuffer };
         VkDeviceSize offsets[1] = { 0 };
