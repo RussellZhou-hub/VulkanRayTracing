@@ -1677,70 +1677,26 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
 
     {
         VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[2];
-        descriptorSetLayoutBindings[0].binding = 0;
-        descriptorSetLayoutBindings[0].descriptorCount = 1;
-        descriptorSetLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptorSetLayoutBindings[0].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
-        descriptorSetLayoutBindings[1].binding = 1;
-        descriptorSetLayoutBindings[1].descriptorCount = 1;
-        descriptorSetLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptorSetLayoutBindings[1].pImmutableSamplers = NULL;
-        descriptorSetLayoutBindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        descriptorSetLayoutBindings[0]=vkinit::descriptorSet_layout_bindings(0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+        descriptorSetLayoutBindings[1]= vkinit::descriptorSet_layout_bindings(1, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
-        VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {};
-        descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        descriptorSetLayoutCreateInfo.bindingCount = 2;
-        descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings;
-
+        VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = vkinit::descriptorSetLayout_create_info(2, descriptorSetLayoutBindings);
         if (vkCreateDescriptorSetLayout(app->logicalDevice, &descriptorSetLayoutCreateInfo, NULL, &app->rayTraceDescriptorSetLayouts[1]) == VK_SUCCESS) {
             printf("\033[22;32m%s\033[0m\n", "created descriptor set layout");
         }
 
-        VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {};
-        descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        descriptorSetAllocateInfo.descriptorPool = app->descriptorPool;
-        descriptorSetAllocateInfo.descriptorSetCount = 1;
-        descriptorSetAllocateInfo.pSetLayouts = &app->rayTraceDescriptorSetLayouts[1];
-
+        VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = vkinit::descriptorSet_allocate_info(app->descriptorPool, 1, &app->rayTraceDescriptorSetLayouts[1]);
         if (vkAllocateDescriptorSets(app->logicalDevice, &descriptorSetAllocateInfo, &app->materialDescriptorSet) == VK_SUCCESS) {
             printf("\033[22;32m%s\033[0m\n", "allocated descriptor sets");
         }
 
         VkWriteDescriptorSet writeDescriptorSets[2];
 
-        VkDescriptorBufferInfo materialIndexBufferInfo = {};
-        materialIndexBufferInfo.buffer = app->materialIndexBuffer;
-        materialIndexBufferInfo.offset = 0;
-        materialIndexBufferInfo.range = VK_WHOLE_SIZE;
-
-        writeDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSets[0].pNext = NULL;
-        writeDescriptorSets[0].dstSet = app->materialDescriptorSet;
-        writeDescriptorSets[0].dstBinding = 0;
-        writeDescriptorSets[0].dstArrayElement = 0;
-        writeDescriptorSets[0].descriptorCount = 1;
-        writeDescriptorSets[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        writeDescriptorSets[0].pImageInfo = NULL;
-        writeDescriptorSets[0].pBufferInfo = &materialIndexBufferInfo;
-        writeDescriptorSets[0].pTexelBufferView = NULL;
-
-        VkDescriptorBufferInfo materialBufferInfo = {};
-        materialBufferInfo.buffer = app->materialBuffer;
-        materialBufferInfo.offset = 0;
-        materialBufferInfo.range = VK_WHOLE_SIZE;
-
-        writeDescriptorSets[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writeDescriptorSets[1].pNext = NULL;
-        writeDescriptorSets[1].dstSet = app->materialDescriptorSet;
-        writeDescriptorSets[1].dstBinding = 1;
-        writeDescriptorSets[1].dstArrayElement = 0;
-        writeDescriptorSets[1].descriptorCount = 1;
-        writeDescriptorSets[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        writeDescriptorSets[1].pImageInfo = NULL;
-        writeDescriptorSets[1].pBufferInfo = &materialBufferInfo;
-        writeDescriptorSets[1].pTexelBufferView = NULL;
+        VkDescriptorBufferInfo materialIndexBufferInfo = vkinit::buffer_info(app->materialIndexBuffer);
+        writeDescriptorSets[0]=vkinit::writeDescriptorSets_info(nullptr, app->materialDescriptorSet, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &materialIndexBufferInfo);
+        VkDescriptorBufferInfo materialBufferInfo = vkinit::buffer_info(app->materialBuffer);
+        writeDescriptorSets[1] = vkinit::writeDescriptorSets_info(nullptr, app->materialDescriptorSet, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &materialBufferInfo);
 
         vkUpdateDescriptorSets(app->logicalDevice, 2, writeDescriptorSets, 0, NULL);
     }
