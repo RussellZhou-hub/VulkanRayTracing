@@ -3152,48 +3152,16 @@ void VkRayTracingApplication::createGraphicsPipeline_indirectLgt_2(VkRayTracingA
 
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyCreateInfo = vkinit::inputAssembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
 
-    VkViewport viewport = {};
-    viewport.x = 0.0f;
-    viewport.y = (float)app->swapchainExtent.height;
-    viewport.width = (float)app->swapchainExtent.width;
-    viewport.height = -(float)app->swapchainExtent.height;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
+    VkViewport viewport = vkinit::viewport_des(0.0f, (float)app->swapchainExtent.height, (float)app->swapchainExtent.width, -(float)app->swapchainExtent.height, 0.0f,1.0f);  //Todo
 
-    VkRect2D scissor = {};
+    
     VkOffset2D scissorOffset = { 0, 0 };
-    scissor.offset = scissorOffset;
-    scissor.extent = app->swapchainExtent;
+    VkRect2D scissor = vkinit::scissor(scissorOffset, app->swapchainExtent);
 
-    VkPipelineViewportStateCreateInfo viewportStateCreateInfo = {};
-    viewportStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    viewportStateCreateInfo.viewportCount = 1;
-    viewportStateCreateInfo.pViewports = &viewport;
-    viewportStateCreateInfo.scissorCount = 1;
-    viewportStateCreateInfo.pScissors = &scissor;
-
-    VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = {};
-    rasterizationStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterizationStateCreateInfo.depthClampEnable = VK_FALSE;
-    rasterizationStateCreateInfo.rasterizerDiscardEnable = VK_FALSE;
-    rasterizationStateCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
-    rasterizationStateCreateInfo.lineWidth = 1.0f;
-    rasterizationStateCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    rasterizationStateCreateInfo.depthBiasEnable = VK_FALSE;
-
-    VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo = {};
-    multisampleStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisampleStateCreateInfo.sampleShadingEnable = VK_FALSE;
-    multisampleStateCreateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-    VkPipelineDepthStencilStateCreateInfo depthStencil = {};
-    depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depthStencil.depthTestEnable = VK_TRUE;
-    depthStencil.depthWriteEnable = VK_TRUE;
-    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
-    depthStencil.depthBoundsTestEnable = VK_FALSE;
-    depthStencil.stencilTestEnable = VK_FALSE;
+    VkPipelineViewportStateCreateInfo viewportStateCreateInfo = vkinit::viewportState_create_info(&viewport, &scissor);
+    VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = vkinit::rasterizationState_create_info();
+    VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo = vkinit::multisampleState_create_info();
+    VkPipelineDepthStencilStateCreateInfo depthStencil = vkinit::depthStencil_create_info();
 
     VkPipelineColorBlendAttachmentState* pColorBlendAttachmentState = (VkPipelineColorBlendAttachmentState*)malloc(app->colorAttachCount * sizeof(VkPipelineColorBlendAttachmentState));
     for (auto i = 0; i < app->colorAttachCount; i++) {
@@ -3201,53 +3169,21 @@ void VkRayTracingApplication::createGraphicsPipeline_indirectLgt_2(VkRayTracingA
         pColorBlendAttachmentState[i].blendEnable = VK_FALSE;
     }
 
-    VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo = {};
-    colorBlendStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    colorBlendStateCreateInfo.logicOpEnable = VK_FALSE;
-    colorBlendStateCreateInfo.logicOp = VK_LOGIC_OP_COPY;
-    colorBlendStateCreateInfo.attachmentCount = app->colorAttachCount;
-    colorBlendStateCreateInfo.pAttachments = pColorBlendAttachmentState;
-    colorBlendStateCreateInfo.blendConstants[0] = 0.0f;
-    colorBlendStateCreateInfo.blendConstants[1] = 0.0f;
-    colorBlendStateCreateInfo.blendConstants[2] = 0.0f;
-    colorBlendStateCreateInfo.blendConstants[3] = 0.0f;
+    VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo = vkinit::colorBlendState_create_info(app->colorAttachCount, pColorBlendAttachmentState);
 
-    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {};
-    pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutCreateInfo.setLayoutCount = 2;
-    pipelineLayoutCreateInfo.pSetLayouts = app->rayTraceDescriptorSetLayouts;
+    //bind descriptorset
+    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vkinit::pipelineLayout_create_info(2, app->rayTraceDescriptorSetLayouts);
 
     if (vkCreatePipelineLayout(app->logicalDevice, &pipelineLayoutCreateInfo, NULL, &app->pipelineLayout_indierctLgt) == VK_SUCCESS) {
         printf("created pipeline layout\n");
     }
 
-    VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo = {};
-    graphicsPipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    graphicsPipelineCreateInfo.stageCount = 2;
-    graphicsPipelineCreateInfo.pStages = shaderStages;
-    graphicsPipelineCreateInfo.pVertexInputState = &vertexInputStateCreateInfo;
-    graphicsPipelineCreateInfo.pInputAssemblyState = &inputAssemblyCreateInfo;
-    graphicsPipelineCreateInfo.pViewportState = &viewportStateCreateInfo;
-    graphicsPipelineCreateInfo.pRasterizationState = &rasterizationStateCreateInfo;
-    graphicsPipelineCreateInfo.pMultisampleState = &multisampleStateCreateInfo;
-    graphicsPipelineCreateInfo.pDepthStencilState = &depthStencil;
-    graphicsPipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
-    graphicsPipelineCreateInfo.layout = app->pipelineLayout_indierctLgt;
-    graphicsPipelineCreateInfo.renderPass = app->renderPass_indierctLgt;
-    graphicsPipelineCreateInfo.subpass = 0;
-    graphicsPipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE;
+    VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo = vkinit::graphicsPipeline_create_info(2, shaderStages, &vertexInputStateCreateInfo, &inputAssemblyCreateInfo,
+                                                            &viewportStateCreateInfo, &rasterizationStateCreateInfo, &multisampleStateCreateInfo, &depthStencil, &colorBlendStateCreateInfo, 
+                                                            app->pipelineLayout_indierctLgt, app->renderPass_indierctLgt,0);
 
-    VkResult errorCode;
-    try {
-        errorCode = vkCreateGraphicsPipelines(app->logicalDevice, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, NULL, &app->graphicsPipeline_indierctLgt_2);
-    }
-    catch (...) {
-        cout << "unknow e";
-    }
-
-    if (errorCode == VK_SUCCESS) {
-        printf("created graphics pipeline_indirectLgt_2\n");
-    }
+    VK_CHECK(vkCreateGraphicsPipelines(app->logicalDevice, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, NULL, &app->graphicsPipeline_indierctLgt_2));
+    printf("created graphics pipeline_indirectLgt_2\n");
 
 
     delete vertex_shader;

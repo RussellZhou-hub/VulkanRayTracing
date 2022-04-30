@@ -69,5 +69,29 @@ namespace vkinit {
 	VkPipelineVertexInputStateCreateInfo vertexInputState_create_info(const VkVertexInputBindingDescription* pVertexBindingDescriptions,const VkVertexInputAttributeDescription* pVertexAttributeDescriptions,
 																uint32_t vertexBindingDescriptionCount = 1,uint32_t vertexAttributeDescriptionCount=1);
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly_create_info(VkPrimitiveTopology topology,VkBool32 primitiveRestartEnable);
+	VkViewport viewport_des(float x,float y,float width,float height,float minDepth,float maxDepth);
+	VkRect2D scissor(VkOffset2D offset, VkExtent2D extent);
+	VkPipelineViewportStateCreateInfo viewportState_create_info(const VkViewport* pViewports,const VkRect2D* pScissors, uint32_t viewportCount=1, uint32_t scissorCount=1);
+	VkPipelineRasterizationStateCreateInfo rasterizationState_create_info(VkBool32  depthBiasEnable = VK_FALSE,float lineWidth=1.0f, VkBool32 depthClampEnable = VK_FALSE,
+											VkCullModeFlags  cullMode = VK_CULL_MODE_BACK_BIT, VkBool32 rasterizerDiscardEnable = VK_FALSE, 
+											VkFrontFace frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL);
+	VkPipelineMultisampleStateCreateInfo multisampleState_create_info(VkSampleCountFlagBits rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,VkBool32 sampleShadingEnable = VK_FALSE);
+	VkPipelineDepthStencilStateCreateInfo depthStencil_create_info(VkBool32 stencilTestEnable = VK_FALSE, VkBool32 depthBoundsTestEnable = VK_FALSE, VkBool32 depthWriteEnable = VK_TRUE,
+											VkBool32 depthTestEnable = VK_TRUE,VkCompareOp depthCompareOp= VK_COMPARE_OP_LESS);
+	VkPipelineColorBlendStateCreateInfo colorBlendState_create_info(uint32_t attachmentCount,const VkPipelineColorBlendAttachmentState* pAttachments,
+	float* blendConstants = nullptr ,VkBool32 logicOpEnable = VK_FALSE, VkLogicOp logicOp = VK_LOGIC_OP_COPY);
+	VkPipelineLayoutCreateInfo pipelineLayout_create_info(uint32_t setLayoutCount,const VkDescriptorSetLayout* pSetLayouts);
+	VkGraphicsPipelineCreateInfo graphicsPipeline_create_info(uint32_t stageCount,const VkPipelineShaderStageCreateInfo* pStages,
+	const VkPipelineVertexInputStateCreateInfo* pVertexInputState,
+	const VkPipelineInputAssemblyStateCreateInfo* pInputAssemblyState,
+	const VkPipelineViewportStateCreateInfo* pViewportState,
+	const VkPipelineRasterizationStateCreateInfo* pRasterizationState,
+	const VkPipelineMultisampleStateCreateInfo* pMultisampleState,
+	const VkPipelineDepthStencilStateCreateInfo* pDepthStencilState,
+	const VkPipelineColorBlendStateCreateInfo* pColorBlendState,
+	VkPipelineLayout layout,
+	VkRenderPass renderPass,
+	uint32_t subpass,
+	VkPipeline basePipelineHandle= VK_NULL_HANDLE);
 	//******************************************end********************************************************
 }
