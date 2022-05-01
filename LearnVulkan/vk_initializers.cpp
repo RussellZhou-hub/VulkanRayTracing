@@ -281,6 +281,27 @@ VkMemoryAllocateInfo vkinit::memoryAllocate_info(VkDeviceSize allocationSize, ui
 	return memoryAllocateInfo;
 }
 
+VkImageSubresourceRange vkinit::subresource_range(uint32_t baseMipLevel, uint32_t levelCount, uint32_t baseArrayLayer, uint32_t layerCount, VkImageAspectFlags aspectMask)
+{
+	VkImageSubresourceRange subresourceRange = {};
+	subresourceRange.aspectMask = aspectMask;
+	subresourceRange.baseMipLevel = baseMipLevel;
+	subresourceRange.levelCount = levelCount;
+	subresourceRange.baseArrayLayer = baseArrayLayer;
+	subresourceRange.layerCount = layerCount;
+	return subresourceRange;
+}
+
+VkImageSubresourceLayers vkinit::subresource_layers(uint32_t mipLevel, uint32_t baseArrayLayer, uint32_t layerCount, VkImageAspectFlags aspectMask)
+{
+	VkImageSubresourceLayers subresourceLayers = {};
+	subresourceLayers.aspectMask = aspectMask;
+	subresourceLayers.mipLevel = mipLevel;
+	subresourceLayers.baseArrayLayer = baseArrayLayer;
+	subresourceLayers.layerCount = layerCount;
+	return subresourceLayers;
+}
+
 VkImageMemoryBarrier vkinit::barrier_des(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout)
 {
 	VkImageMemoryBarrier barrier{};
@@ -351,6 +372,35 @@ VkSamplerCreateInfo vkinit::sampler_create_info(VkSamplerAddressMode addressMode
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = 0.0f;
 	return samplerInfo;
+}
+
+VkOffset3D vkinit::offset(int32_t x, int32_t y, int32_t z)
+{
+	VkOffset3D offset = {};
+	offset.x = x;
+	offset.y = y;
+	offset.z = z;
+	return offset;
+}
+
+VkExtent3D vkinit::extent(uint32_t width, uint32_t height, uint32_t depth)
+{
+	VkExtent3D extent = {};
+	extent.width = width;
+	extent.height = height;
+	extent.depth = depth;
+	return extent;
+}
+
+VkImageCopy vkinit::imageCopy(VkImageSubresourceLayers srcSubresource, VkOffset3D srcOffset, VkImageSubresourceLayers dstSubresource, VkOffset3D dstOffset, VkExtent3D extent)
+{
+	VkImageCopy imageCopy = {};
+	imageCopy.srcSubresource = srcSubresource;
+	imageCopy.srcOffset = srcOffset;
+	imageCopy.dstSubresource = dstSubresource;
+	imageCopy.dstOffset = dstOffset;
+	imageCopy.extent = extent;
+	return imageCopy;
 }
 
 VkCommandBufferAllocateInfo vkinit::alloc_info(VkCommandPool commandPool, uint32_t commandBufferCount, VkCommandBufferLevel level)

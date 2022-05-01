@@ -36,6 +36,11 @@ namespace vkinit {
 	VkImageCreateInfo image_create_info(VkFormat format, uint32_t width, uint32_t height,VkImageUsageFlags usage,
 						VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL,VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE,VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT, uint32_t mipLevels = 1, VkImageType imageType= VK_IMAGE_TYPE_2D);
 	VkMemoryAllocateInfo memoryAllocate_info(VkDeviceSize allocationSize,uint32_t memoryTypeIndex);
+	VkImageSubresourceRange subresource_range(uint32_t baseMipLevel=0,uint32_t levelCount=1,uint32_t baseArrayLayer=0,uint32_t layerCount=1, VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT);
+	VkImageSubresourceLayers subresource_layers(uint32_t mipLevel=0,uint32_t baseArrayLayer=0,uint32_t layerCount=1, VkImageAspectFlags  aspectMask = VK_IMAGE_ASPECT_COLOR_BIT);
+	VkOffset3D offset(int32_t x = 0, int32_t y = 0, int32_t z = 0);
+	VkExtent3D extent(uint32_t width, uint32_t height, uint32_t depth = 1);
+	VkImageCopy imageCopy(VkImageSubresourceLayers srcSubresource, VkOffset3D srcOffset, VkImageSubresourceLayers dstSubresource, VkOffset3D dstOffset, VkExtent3D extent);
 	//******************************************end**************************************************************
 	//******************************************Texture**********************************************************
 	VkImageMemoryBarrier barrier_des(VkImage image,VkImageLayout oldLayout,VkImageLayout newLayout);

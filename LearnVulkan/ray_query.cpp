@@ -2473,12 +2473,7 @@ void VkRayTracingApplication::createCommandBuffers_3pass(VkRayTracingApplication
         VkBuffer vertexBuffers[1] = { app->vertexPositionBuffer };
         VkDeviceSize offsets[1] = { 0 };
 
-        VkImageSubresourceRange subresourceRange = {};
-        subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        subresourceRange.baseMipLevel = 0;
-        subresourceRange.levelCount = 1;
-        subresourceRange.baseArrayLayer = 0;
-        subresourceRange.layerCount = 1;
+        VkImageSubresourceRange subresourceRange = vkinit::subresource_range();
 
         if (vkBeginCommandBuffer(app->commandBuffers[x], &commandBufferBeginCreateInfo) == VK_SUCCESS) {
             printf("begin recording command buffer for image #%d\n", x);
@@ -2496,28 +2491,10 @@ void VkRayTracingApplication::createCommandBuffers_3pass(VkRayTracingApplication
         vkCmdEndRenderPass(app->commandBuffers[x]);
 
         {
-            VkImageSubresourceLayers subresourceLayers = {};
-            subresourceLayers.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            subresourceLayers.mipLevel = 0;
-            subresourceLayers.baseArrayLayer = 0;
-            subresourceLayers.layerCount = 1;
-
-            VkOffset3D offset = {};
-            offset.x = 0;
-            offset.y = 0;
-            offset.z = 0;
-
-            VkExtent3D extent = {};
-            extent.width = WIDTH;
-            extent.height = HEIGHT;
-            extent.depth = 1;
-
-            VkImageCopy imageCopy = {};
-            imageCopy.srcSubresource = subresourceLayers;
-            imageCopy.srcOffset = offset;
-            imageCopy.dstSubresource = subresourceLayers;
-            imageCopy.dstOffset = offset;
-            imageCopy.extent = extent;
+            VkImageSubresourceLayers subresourceLayers = vkinit::subresource_layers();
+            VkOffset3D offset = vkinit::offset();
+            VkExtent3D extent = vkinit::extent(WIDTH, HEIGHT);
+            VkImageCopy imageCopy = vkinit::imageCopy(subresourceLayers, offset, subresourceLayers, offset, extent);
 
             //copy 当前帧 渲染结果 到 Image_indirectLgt
             vkCmdCopyImage(app->commandBuffers[x], app->swapchainImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->HDirectAlbedoImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
@@ -2544,28 +2521,11 @@ void VkRayTracingApplication::createCommandBuffers_3pass(VkRayTracingApplication
         vkCmdEndRenderPass(app->commandBuffers[x]);
 
         {
-            VkImageSubresourceLayers subresourceLayers = {};
-            subresourceLayers.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            subresourceLayers.mipLevel = 0;
-            subresourceLayers.baseArrayLayer = 0;
-            subresourceLayers.layerCount = 1;
+            VkImageSubresourceLayers subresourceLayers = vkinit::subresource_layers();
 
-            VkOffset3D offset = {};
-            offset.x = 0;
-            offset.y = 0;
-            offset.z = 0;
-
-            VkExtent3D extent = {};
-            extent.width = WIDTH;
-            extent.height = HEIGHT;
-            extent.depth = 1;
-
-            VkImageCopy imageCopy = {};
-            imageCopy.srcSubresource = subresourceLayers;
-            imageCopy.srcOffset = offset;
-            imageCopy.dstSubresource = subresourceLayers;
-            imageCopy.dstOffset = offset;
-            imageCopy.extent = extent;
+            VkOffset3D offset = vkinit::offset();
+            VkExtent3D extent = vkinit::extent(WIDTH, HEIGHT);
+            VkImageCopy imageCopy = vkinit::imageCopy(subresourceLayers, offset, subresourceLayers, offset, extent);
 
             //copy 当前帧 渲染结果 到 Image_indirectLgt
             vkCmdCopyImage(app->commandBuffers[x], app->swapchainImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->HVarImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
@@ -2588,28 +2548,11 @@ void VkRayTracingApplication::createCommandBuffers_3pass(VkRayTracingApplication
 
 
         {
-            VkImageSubresourceLayers subresourceLayers = {};
-            subresourceLayers.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            subresourceLayers.mipLevel = 0;
-            subresourceLayers.baseArrayLayer = 0;
-            subresourceLayers.layerCount = 1;
+            VkImageSubresourceLayers subresourceLayers = vkinit::subresource_layers();
 
-            VkOffset3D offset = {};
-            offset.x = 0;
-            offset.y = 0;
-            offset.z = 0;
-
-            VkExtent3D extent = {};
-            extent.width = WIDTH;
-            extent.height = HEIGHT;
-            extent.depth = 1;
-
-            VkImageCopy imageCopy = {};
-            imageCopy.srcSubresource = subresourceLayers;
-            imageCopy.srcOffset = offset;
-            imageCopy.dstSubresource = subresourceLayers;
-            imageCopy.dstOffset = offset;
-            imageCopy.extent = extent;
+            VkOffset3D offset = vkinit::offset();
+            VkExtent3D extent = vkinit::extent(WIDTH,HEIGHT);
+            VkImageCopy imageCopy = vkinit::imageCopy(subresourceLayers, offset, subresourceLayers, offset, extent);
 
             //copy 当前帧 渲染结果 到 rayTraceImage
             vkCmdCopyImage(app->commandBuffers[x], app->swapchainImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->rayTraceImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
