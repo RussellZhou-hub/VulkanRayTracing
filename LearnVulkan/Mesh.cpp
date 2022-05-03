@@ -158,3 +158,15 @@ bool Mesh::load_from_obj(std::string filename)
 
 	return true;
 }
+
+void VulkanObjModel::draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout)
+{
+	// All vertices and indices are stored in single buffers, so we only need to bind once
+	VkDeviceSize offsets[1] = { 0 };
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertices.buffer, offsets);
+	vkCmdBindIndexBuffer(commandBuffer, indices.buffer, 0, VK_INDEX_TYPE_UINT32);
+	// Render all nodes at top-level
+	for (auto& node : nodes) {
+		//drawNode(commandBuffer, pipelineLayout, node);
+	}
+}

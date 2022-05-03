@@ -119,6 +119,7 @@ public:
 	uint32_t enableSVGF;
 	uint32_t enable2thRMotion;
 	uint32_t enableSVGF_withIndAlbedo;
+	uint32_t groundTruth;
 };
 
 struct Material {

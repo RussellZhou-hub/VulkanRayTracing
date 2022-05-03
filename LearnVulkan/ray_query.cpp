@@ -281,6 +281,7 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
             shadingMode->enableSVGF = 0;
             shadingMode->enable2thRMotion = 0;
             shadingMode->enableSVGF_withIndAlbedo = 0;
+            shadingMode->groundTruth = 0;
         }
         if (keyDownIndex[GLFW_KEY_2]) {    //2th Ray without denoising
             shadingMode->enable2thRay = 1;
@@ -288,6 +289,7 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
             shadingMode->enableSVGF = 0;
             shadingMode->enable2thRMotion = 0;
             shadingMode->enableSVGF_withIndAlbedo = 0;
+            shadingMode->groundTruth = 0;
         }
         if (keyDownIndex[GLFW_KEY_3]) {   //shadow method:motion vector along
             shadingMode->enable2thRay = 1;
@@ -295,6 +297,7 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
             shadingMode->enableSVGF = 0;
             shadingMode->enable2thRMotion = 1;
             shadingMode->enableSVGF_withIndAlbedo = 0;
+            shadingMode->groundTruth = 0;
         }
         if (keyDownIndex[GLFW_KEY_4]) {   //enable SVGF
             shadingMode->enable2thRay = 1;
@@ -302,6 +305,7 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
             shadingMode->enableSVGF = 1;
             shadingMode->enable2thRMotion = 0;
             shadingMode->enableSVGF_withIndAlbedo = 0;
+            shadingMode->groundTruth = 0;
         }
         if (keyDownIndex[GLFW_KEY_5]) {     //my method
             shadingMode->enable2thRay = 1;
@@ -309,6 +313,15 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
             shadingMode->enableSVGF = 1;
             shadingMode->enable2thRMotion = 0;
             shadingMode->enableSVGF_withIndAlbedo = 1;
+            shadingMode->groundTruth = 0;
+        }
+        if (keyDownIndex[GLFW_KEY_6]) {    //ground truth
+            shadingMode->enable2thRay = 1;
+            shadingMode->enableShadowMotion = 0;
+            shadingMode->enableSVGF = 0;
+            shadingMode->enable2thRMotion = 0;
+            shadingMode->enableSVGF_withIndAlbedo = 0;
+            shadingMode->groundTruth = 1;
         }
 
         static double previousMousePositionX;
@@ -3485,4 +3498,5 @@ ShadingMode::ShadingMode()
     enableSVGF_withIndAlbedo = 0;
     enableShadowMotion = 0;
     enable2thRMotion = 0;
+    groundTruth = 0;
 }

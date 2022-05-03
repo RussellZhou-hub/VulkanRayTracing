@@ -72,6 +72,7 @@ layout(binding = 5, set = 0) uniform ShadingMode {
   uint enableSVGF;
   uint enable2thRMotion;
   uint enableSVGF_withIndAlbedo;
+  uint groundTruth;
 } shadingMode;
 
 layout(binding = 0, set = 1) buffer MaterialIndexBuffer { uint data[]; } materialIndexBuffer;

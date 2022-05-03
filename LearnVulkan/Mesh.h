@@ -59,3 +59,31 @@ public:
 
     bool load_from_obj(std::string filename);
 };
+
+class VulkanObjModel {
+public:
+    // Single vertex buffer for all primitives
+    struct {
+        VkBuffer buffer;
+        VkDeviceMemory memory;
+    } vertices;
+
+    // Single index buffer for all primitives
+    struct {
+        int count;
+        VkBuffer buffer;
+        VkDeviceMemory memory;
+    } indices;
+
+    // A node represents an object in the obj scene graph
+    struct Node {
+        Node* parent;
+        std::vector<Node> children;
+        Mesh mesh;
+        glm::mat4 matrix;
+    };
+
+    std::vector<Node> nodes;
+
+    void draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
+};

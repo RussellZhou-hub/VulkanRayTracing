@@ -74,6 +74,7 @@ layout(binding = 5, set = 0) uniform ShadingMode {
   uint enableSVGF;
   uint enable2thRMotion;
   uint enableSVGF_withIndAlbedo;
+  uint groundTruth;
 } shadingMode;
 
 layout(binding = 0, set = 1) buffer MaterialIndexBuffer { uint data[]; } materialIndexBuffer;
@@ -277,26 +278,12 @@ void main() {
       if (isLight(materialBuffer.data[materialIndexBuffer.data[extensionPrimitiveIndex]].emission) ||materialIndexBuffer.data[gl_PrimitiveID]==-1) {
         indirectColor += (1.0 / (rayDepth + 1)) * materialBuffer.data[materialIndexBuffer.data[extensionPrimitiveIndex]].emission * dot(previousNormal, rayDirection);
         indirectIrrad+=(1.0 / (rayDepth + 1)) *  dot(previousNormal, rayDirection);
+        indirectalbedo+=(1.0 / (rayDepth + 1)) * materialBuffer.data[materialIndexBuffer.data[extensionPrimitiveIndex]].emission * dot(previousNormal, rayDirection);
         outIndIr=vec4(indirectColor,1.0);
+        outIndAlbedo==vec4(indirectColor,1.0);
       }
       else {
-
-      /*
-      float level=8;
-        vec4 preIndirectDirection_00 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y-level));
-        vec4 preIndirectDirection_01 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y-level));
-        vec4 preIndirectDirection_02 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y-level));
-        vec4 preIndirectDirection_10 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y));
-        vec4 preIndirectDirection_11 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.xy));
-        vec4 preIndirectDirection_12 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y));
-        vec4 preIndirectDirection_20 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x-level,gl_FragCoord.y+level));
-        vec4 preIndirectDirection_21 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x,gl_FragCoord.y+level));
-        vec4 preIndirectDirection_22 = imageLoad(image_indirectLgt, ivec2(gl_FragCoord.x+level,gl_FragCoord.y+level));
-        vec4 preIndirectDirection=(1/4.0)*preIndirectDirection_11+(1/8.0)*(preIndirectDirection_01+preIndirectDirection_10+preIndirectDirection_12+preIndirectDirection_21)+(1/16.0)*(preIndirectDirection_00+preIndirectDirection_02+preIndirectDirection_20+preIndirectDirection_22);
-
-        outColor=vec4(beta_indirect*preIndirectDirection.xyz+(1-beta_indirect)*rayDirection,1.0); //direction of the 2thRay
-      */
-      float beta_indirect=0;
+        float beta_indirect=0;
 
         
 
@@ -516,12 +503,15 @@ vec3 getReflectedDierction(vec3 inRay,vec3 normal ){     //反射角度
 
 vec3 getSampledReflectedDirection(vec3 inRay,vec3 normal,vec2 uv,float seed){
     inRay=inRay-camera.position.xyz;
-    vec3 Ray=getReflectedDierction(inRay,normal);
-    float theta=0.5*M_PI*random(uv);  //[0,pi/2]
+    //vec3 Ray=getReflectedDierction(inRay,normal);
+    vec3 Ray=reflect(inRay,normal);
+    //float theta=0.5*M_PI*random(uv);  //[0,pi/2]
+    float theta=acos(1-random(uv));  //[0,pi/2]
     float phi=2*M_PI*random(vec2(uv.y,uv.x));
-    theta*=sin(theta);
+    //theta*=sin(theta);
     vec3 RandomRay=vec3(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta));
-    float weight=0.7;  //reflection rate
+    //vec3 RandomRay=uniformSampleHemisphere(uv);
+    float weight=0.5;  //reflection rate
     return normalize(weight*Ray+(1-weight)*normalize(RandomRay));
 }
 

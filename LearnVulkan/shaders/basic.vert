@@ -38,6 +38,7 @@ layout(binding = 5, set = 0) uniform ShadingMode {
   uint enableSVGF;
   uint enable2thRMotion;
   uint enableSVGF_withIndAlbedo;
+  uint groundTruth;
 } shadingMode;
 
 void main() {
