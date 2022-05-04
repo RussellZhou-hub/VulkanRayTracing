@@ -3,6 +3,9 @@
 #extension GL_EXT_ray_tracing : enable
 #extension GL_EXT_ray_query : enable
 #extension GL_EXT_debug_printf : enable
+#extension GL_GOOGLE_include_directive : require
+
+#include "includes/random.glsl"
 
 #define M_PI 3.1415926535897932384626433832795
 
@@ -81,16 +84,19 @@ layout(binding = 1, set = 1) buffer MaterialBuffer { Material data[]; } material
 float random(vec2 uv, float seed);
 float random(vec2 p);
 float random_1(vec2 uv, float seed);
+float RadicalInverse( uint bits );
+vec2 Hammersley(uint i,uint N);
 float avgBrightness(vec3 color);
 vec2 getFragCoord(vec3 pos);
 vec4 getWorldPos(vec3 fragPos);
 bool isLight(vec3 emission);
 vec3 getRadomLightPosition(int randomIndex);
 vec3 getRadomLightPosition(int s,uint spp);
-vec3 getReflectedDierction(vec3 inRay,vec3 normal );
+vec3 hemisphereSample_uniform(float u, float v);
 vec3 getSampledReflectedDirection(vec3 inRay,vec3 normal,vec2 uv,float seed);
+vec3 getSampledReflectedDirection(vec3 inRay,vec3 normal,vec2 uv,float seed,float weight);
+vec3 getSampledReflectedDirection(vec3 inRay,vec3 normal,vec2 uv);
 vec3 getSampledReflectedDirection(vec3 inRay,vec3 normal,int s,uint spp);
-vec3 getSpatial_SampledReflectedDirection(vec3 inPos,vec3 normal,vec2 uv,float seed);
 vec3 uniformSampleHemisphere(vec2 uv);
 vec3 alignHemisphereWithCoordinateSystem(vec3 hemisphere, vec3 up);
 
@@ -104,7 +110,21 @@ vec4 aTrous_indirectAlbedo(vec2 p);
 vec4 aTrous_directIr(vec2 p);
 
 
+float rnd_u[]=float[](0.87050859, 0.65887909, 0.50998436, 0.04706056, 0.0250238 ,
+       0.35520682, 0.93559268, 0.33315659, 0.11616664, 0.46845143,
+       0.39816741, 0.41482966, 0.1113819 , 0.96744516, 0.90354695,
+       0.30402464, 0.80380884, 0.53584141, 0.84709235, 0.03205009,
+       0.22299771, 0.36836497, 0.96587254, 0.43905046, 0.26734713,
+       0.79844709, 0.34995202, 0.46420867, 0.31857676, 0.88773413,
+       0.06912972, 0.83351042);
 
+float rnd_v[]=float[](0.83314584, 0.52289031, 0.22159702, 0.12324216, 0.02464647,
+       0.57879189, 0.52145669, 0.85120605, 0.8775576 , 0.04062712,
+       0.46126648, 0.04087822, 0.14637176, 0.47903489, 0.66058832,
+       0.38018214, 0.39996683, 0.53600527, 0.14927974, 0.9110001 ,
+       0.36960888, 0.20964537, 0.15014734, 0.85172292, 0.00310738,
+       0.75449387, 0.55919298, 0.94139996, 0.73645219, 0.80790656,
+       0.47011077, 0.67963723);
 
 void main() {
   vec3 directColor = vec3(0.0, 0.0, 0.0);
@@ -220,7 +240,7 @@ void main() {
   //not enable2thray motion vector
  //*********************************************************groundTruth******************************************************//
  else if(shadingMode.groundTruth==1){
-        uint spp=64;
+        uint spp=1024;
         float w_spp=1.0f/spp;
       // 40 & 41 == light
   if (isLight(materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission) ||materialIndexBuffer.data[gl_PrimitiveID]==-1) {
@@ -279,12 +299,26 @@ void main() {
   vec3 rayOrigin = interpolatedPosition;
   
   vec3 rayDirection;
+  vec3 reflectRay;
   vec3 indColor_sum=vec3(0.0,0.0,0.0);
   float ind_w_spp=0.3/(spp-1);
   for(int i=0;i<spp;i++){
     indirectColor=vec3(0.0,0.0,0.0);
-    //rayDirection = getSampledReflectedDirection(interpolatedPosition.xyz,geometricNormal,vec2(gl_FragCoord.x+floor(i/sqrt(spp)),gl_FragCoord.y+mod(i,sqrt(spp))),camera.frameCount);
-    rayDirection = getSampledReflectedDirection(interpolatedPosition.xyz,geometricNormal,i,spp);
+    //rayDirection = getSampledReflectedDirection(interpolatedPosition.xyz,geometricNormal,vec2(gl_FragCoord.x,gl_FragCoord.y),camera.frameCount,0);
+    rayDirection = getSampledReflectedDirection(interpolatedPosition.xyz,geometricNormal,vec2(rnd_u[int(mod(i+random(gl_FragCoord.xy, camera.frameCount)*spp,32))],rnd_v[int(mod(i+random(gl_FragCoord.xy, camera.frameCount)*spp,32))]),camera.frameCount,0.0f);
+    //rayDirection =reflect(interpolatedPosition.xyz,geometricNormal);
+    vec2 hammersleyVec = Hammersley(i,spp);
+    float doSpecular = (rnd_u[int(mod(i+random(gl_FragCoord.xy, camera.frameCount)*spp,32))] < 0.5f) ? 1.0f : 0.0f;
+    //rayDirection = getSampledReflectedDirection(interpolatedPosition.xyz,geometricNormal,hammersleyVec.xy,camera.frameCount);
+    //用vec3的结果直接在球面上实现均匀采样
+    //vec3 hemisphereVec = hemisphereSample_uniform(hammersleyVec.x ,hammersleyVec.y);
+    //vec3 diffuseDir=normalize(geometricNormal+hemisphereVec);
+    reflectRay=normalize(reflect(interpolatedPosition.xyz,geometricNormal));
+    //vec3 specularRayDir=normalize(mix(reflectRay,diffuseDir,0.5f));
+    rayDirection=mix(rayDirection+geometricNormal, reflectRay, doSpecular);
+    //rayDirection=normalize(rayDirection+hemisphereVec);
+    //rayDirection = getSampledReflectedDirection(interpolatedPosition.xyz,geometricNormal,i,spp);
+    
     vec3 previousNormal = geometricNormal;
     bool rayActive = true;
     int maxRayDepth = 1;
@@ -319,8 +353,12 @@ void main() {
             RayHitPointFragCoord=getFragCoord(extensionPosition.xyz);
             int randomIndex = int(random(gl_FragCoord.xy, camera.frameCount + rayDepth) * 2 + 40);
             vec3 lightColor = vec3(0.6, 0.6, 0.6);
-            {
-                vec3 lightPosition = getRadomLightPosition(randomIndex);
+            vec3 secondDirectColorSum=vec3(0.0,0.0,0.0);
+            vec3 secondDirectColor=vec3(0.0,0.0,0.0);
+            uint innerSpp=spp>16?16:spp;
+            float w_inner_spp=1.0f/innerSpp;
+            for(int j=0;j<innerSpp;j++){
+                vec3 lightPosition = getRadomLightPosition(j,innerSpp);
                 vec3 positionToLightDirection = normalize(lightPosition - extensionPosition);
                 vec3 shadowRayOrigin = extensionPosition;
                 vec3 shadowRayDirection = positionToLightDirection;
@@ -330,13 +368,16 @@ void main() {
                 while (rayQueryProceedEXT(rayQuery));
                 //secondary shadow ray
                 if (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
-                    indirectColor += (1.0 / (rayDepth + 1)) * extensionSurfaceColor * lightColor  * dot(previousNormal, rayDirection) * dot(extensionNormal, positionToLightDirection);
+                    //indirectColor += (1.0 / (rayDepth + 1)) * extensionSurfaceColor * lightColor  * dot(previousNormal, rayDirection) * dot(extensionNormal, positionToLightDirection);
+                    secondDirectColor= (1.0 / (rayDepth + 1)) * extensionSurfaceColor * lightColor  * dot(previousNormal, rayDirection) * dot(extensionNormal, positionToLightDirection);
                 }
                 else {
                     rayActive = false;
+                    secondDirectColor=vec3(0.0,0.0,0.0);
                 }
+                secondDirectColorSum+=secondDirectColor*w_inner_spp;
             }
-            
+            indirectColor +=secondDirectColorSum;
         
 
         }
@@ -358,7 +399,7 @@ void main() {
       }
       
     }
-    indColor_sum+=(indirectColor*(2*M_PI/spp));
+    indColor_sum+=indirectColor*(5*2*M_PI/(sqrt(spp)+0.01f));
     
   }
   indirectColor=indColor_sum;
@@ -644,6 +685,23 @@ float random_1(vec2 uv, float seed) {     // -1到1的随机数
   return pow(-1,mod(seed,1))*fract(sin(mod(dot(uv, vec2(12.9898, 78.233)) + 1113.1 * seed, M_PI)) * 43758.5453);
 }
 
+float RadicalInverse( uint bits ){
+          //reverse bit
+          //高低16位换位置
+          bits = (bits << 16u) | (bits >> 16u); 
+          //A是5的按位取反
+          bits = ((bits & 0x55555555) << 1u) | ((bits & 0xAAAAAAAA) >> 1u);
+          //C是3的按位取反
+          bits = ((bits & 0x33333333) << 2u) | ((bits & 0xCCCCCCCC) >> 2u);
+          bits = ((bits & 0x0F0F0F0F) << 4u) | ((bits & 0xF0F0F0F0) >> 4u);
+          bits = ((bits & 0x00FF00FF) << 8u) | ((bits & 0xFF00FF00) >> 8u);
+          return  float(bits) * 2.3283064365386963e-10;
+}
+
+vec2 Hammersley(uint i,uint N){
+          return vec2(float(i) / float(N), RadicalInverse(i));
+}
+
 float avgBrightness(vec3 color){
     float avg=color.x+color.y+color.z;
     return avg/3;
@@ -712,12 +770,12 @@ bool isLight(vec3 emission){
     else return false;
 }
 
-vec3 getReflectedDierction(vec3 inRay,vec3 normal ){     //反射角度
-    inRay=normalize(inRay);
-    normal=normalize(normal);
-    vec3 outRay = inRay - 2*dot(inRay,normal)*normal;
-    return normalize(outRay);
-}
+vec3 hemisphereSample_uniform(float u, float v) {
+     float phi = v * 2.0 * M_PI;
+     float cosTheta = 1.0 - u;
+     float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+     return normalize(vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta));
+ }
 
 vec3 getSampledReflectedDirection(vec3 inRay,vec3 normal,vec2 uv,float seed){
     inRay=inRay-camera.position.xyz;
@@ -729,7 +787,35 @@ vec3 getSampledReflectedDirection(vec3 inRay,vec3 normal,vec2 uv,float seed){
     //theta*=sin(theta);
     vec3 RandomRay=vec3(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta));
     //vec3 RandomRay=uniformSampleHemisphere(uv);
-    float weight=0.7;  //reflection rate
+    float weight=0.5;  //reflection rate
+    return normalize(weight*Ray+(1-weight)*normalize(RandomRay));
+}
+
+vec3 getSampledReflectedDirection(vec3 inRay,vec3 normal,vec2 uv,float seed,float weight){
+    inRay=inRay-camera.position.xyz;
+    //vec3 Ray=getReflectedDierction(inRay,normal);
+    vec3 Ray=reflect(inRay,normal);
+    //float theta=0.5*M_PI*random(uv);  //[0,pi/2]
+    float theta=acos(1-random(uv));  //[0,pi/2]
+    float phi=2*M_PI*random(vec2(uv.y,uv.x));
+    //theta*=sin(theta);
+    vec3 RandomRay=vec3(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta));
+    //vec3 RandomRay=uniformSampleHemisphere(uv);
+    //float weight=0.5;  //reflection rate
+    return normalize(weight*Ray+(1-weight)*normalize(RandomRay));
+}
+
+vec3 getSampledReflectedDirection(vec3 inRay,vec3 normal,vec2 uv){
+    inRay=inRay-camera.position.xyz;
+    //vec3 Ray=getReflectedDierction(inRay,normal);
+    vec3 Ray=reflect(inRay,normal);
+    //float theta=0.5*M_PI*random(uv);  //[0,pi/2]
+    float theta=acos(1-uv.x);  //[0,pi/2]
+    float phi=2*M_PI*uv.y;
+    //theta*=sin(theta);
+    vec3 RandomRay=vec3(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta));
+    //vec3 RandomRay=uniformSampleHemisphere(uv);
+    float weight=0.2;  //reflection rate
     return normalize(weight*Ray+(1-weight)*normalize(RandomRay));
 }
 
@@ -738,59 +824,12 @@ vec3 getSampledReflectedDirection(vec3 inRay,vec3 normal,int s,uint spp){
     float u=mod(s,sqrt(spp))*stride;
     float v=floor(s/(sqrt(spp)+0.01f))*stride;
     inRay=inRay-camera.position.xyz;
-    vec3 Ray=getReflectedDierction(inRay,normal);
+    vec3 Ray=reflect(inRay,normal);
     float theta=acos(1-v);  //[0,pi/2]
     float phi=2*M_PI*u;
     vec3 RandomRay=vec3(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta));
-    float weight=0.7;  //reflection rate
+    float weight=0.5;  //reflection rate
     return normalize(weight*Ray+(1-weight)*normalize(RandomRay));
-}
-
-vec3 getSpatial_SampledReflectedDirection(vec3 inPos,vec3 normal,vec2 uv,float seed){
-    vec3 cameraPos=camera.position.xyz;
-    vec3 inRay=inPos-camera.position.xyz;
-    vec3 right=cross(inRay,normal);
-    vec3 front=cross(right,normal);
-    right=normalize(right);
-    front=normalize(front);
-    float step=2;
-    vec3 rPos=inPos+step*right;
-    vec3 fPos=inPos+step*front;
-    vec3 bPos=inPos-step*front;
-    vec3 lPos=inPos-step*right;
-
-    float weight=0.2;  //reflection rate
-
-    vec3 rRay=getReflectedDierction(rPos-camera.position.xyz,normal);
-    float theta_r=M_PI*random(vec2(rRay.xy));
-    float phi_r=2*M_PI*random(vec2(rRay.y,rRay.x+0.2));
-    vec3 RandomRay_r=vec3(sin(theta_r)*cos(phi_r),sin(theta_r)*sin(phi_r),cos(theta_r));
-    rRay=normalize(weight*rRay+(1-weight)*normalize(RandomRay_r));
-
-    vec3 lRay=getReflectedDierction(lPos-camera.position.xyz,normal);
-    float theta_l=M_PI*random(vec2(lRay.xy));
-    float phi_l=2*M_PI*random(vec2(lRay.y,lRay.x));
-    vec3 RandomRay_l=vec3(sin(theta_l)*cos(phi_l),sin(theta_l)*sin(phi_l),cos(theta_l));
-    lRay=normalize(weight*lRay+(1-weight)*normalize(RandomRay_l));
-
-    vec3 bRay=getReflectedDierction(bPos-camera.position.xyz,normal);
-    float theta_b=M_PI*random(vec2(bRay.xy));
-    float phi_b=2*M_PI*random(vec2(bRay.y,bRay.x));
-    vec3 RandomRay_b=vec3(sin(theta_b)*cos(phi_b),sin(theta_b)*sin(phi_b),cos(theta_b));
-    bRay=normalize(weight*bRay+(1-weight)*normalize(RandomRay_b));
-
-    vec3 fRay=getReflectedDierction(fPos-camera.position.xyz,normal);
-    float theta_f=M_PI*random(vec2(fRay.xy));
-    float phi_f=2*M_PI*random(vec2(fRay.y,fRay.x));
-    vec3 RandomRay_f=vec3(sin(theta_f)*cos(phi_f),sin(theta_f)*sin(phi_f),cos(theta_f));
-    bRay=normalize(weight*bRay+(1-weight)*normalize(RandomRay_b));
-
-
-    vec3 Ray=getSampledReflectedDirection(inPos,normal,uv,seed);
-    Ray+=rRay+lRay+bRay+fRay;
-    Ray/=5;
-    
-    return normalize(Ray);
 }
 
 vec3 uniformSampleHemisphere(vec2 uv) {

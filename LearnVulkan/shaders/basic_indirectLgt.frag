@@ -278,9 +278,9 @@ void main() {
       if (isLight(materialBuffer.data[materialIndexBuffer.data[extensionPrimitiveIndex]].emission) ||materialIndexBuffer.data[gl_PrimitiveID]==-1) {
         indirectColor += (1.0 / (rayDepth + 1)) * materialBuffer.data[materialIndexBuffer.data[extensionPrimitiveIndex]].emission * dot(previousNormal, rayDirection);
         indirectIrrad+=(1.0 / (rayDepth + 1)) *  dot(previousNormal, rayDirection);
-        indirectalbedo+=(1.0 / (rayDepth + 1)) * materialBuffer.data[materialIndexBuffer.data[extensionPrimitiveIndex]].emission * dot(previousNormal, rayDirection);
+        indirectalbedo+=(1.0 / (rayDepth + 1)) * materialBuffer.data[materialIndexBuffer.data[extensionPrimitiveIndex]].emission;
         outIndIr=vec4(indirectColor,1.0);
-        outIndAlbedo==vec4(indirectColor,1.0);
+        outIndAlbedo==vec4(indirectalbedo,1.0);
       }
       else {
         float beta_indirect=0;

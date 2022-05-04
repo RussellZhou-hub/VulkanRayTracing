@@ -22,6 +22,9 @@
     <Filter Include="shaders\ray_query">
       <UniqueIdentifier>{98ae010e-e6d4-43d3-9392-f8d9bd066956}</UniqueIdentifier>
     </Filter>
+    <Filter Include="shaders\ray_query\Includes">
+      <UniqueIdentifier>{96a6337b-5aff-4b11-83d5-c15aaac2fc15}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="glad.c">
@@ -117,6 +120,9 @@
     </None>
     <None Include="shaders\basic_filterIndirect.frag">
       <Filter>shaders\ray_query</Filter>
+    </None>
+    <None Include="shaders\includes\random.glsl">
+      <Filter>shaders\ray_query\Includes</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
