@@ -124,6 +124,9 @@
     <None Include="shaders\includes\random.glsl">
       <Filter>shaders\ray_query\Includes</Filter>
     </None>
+    <None Include="shaders\includes\utils.glsl">
+      <Filter>shaders\ray_query\Includes</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="BasicVulkan.rc">

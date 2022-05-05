@@ -107,6 +107,8 @@ void main() {
   outIndIr=vec4(directColor,0.0);
   vec4 curClipPos;
 
+  vec4 preShadow=imageLoad(image_directLgtIr,ivec2(gl_FragCoord.xy));   //pre shadow
+
   ivec3 indices = ivec3(indexBuffer.data[3 * gl_PrimitiveID + 0], indexBuffer.data[3 * gl_PrimitiveID + 1], indexBuffer.data[3 * gl_PrimitiveID + 2]);
 
   vec3 vertexA = vec3(vertexBuffer.data[3 * indices.x + 0], vertexBuffer.data[3 * indices.x + 1], vertexBuffer.data[3 * indices.x + 2]);
@@ -156,15 +158,46 @@ void main() {
     while (rayQueryProceedEXT(rayQuery));
 
     if (rayQueryGetIntersectionTypeEXT(rayQuery, true) == gl_RayQueryCommittedIntersectionNoneEXT) {
-      directColor = surfaceColor * lightColor * dot(geometricNormal, positionToLightDirection);    //not in shadow
-      outDirectIr.xyz=lightColor * dot(geometricNormal, positionToLightDirection);  //irradiance of the direct light
-      outDirectIr.w=1.0;
+      
+      directColor = surfaceColor * lightColor * dot(geometricNormal, positionToLightDirection);
+      vec4 irrad=imageLoad(image_directLgtIr,ivec2(gl_FragCoord.xy));
+      float weight=length(irrad);
+      if(shadingMode.enableShadowMotion==1){
+        if(preShadow.w==0.0){  //pre in shadow
+            directColor=preShadow.xyz;
+            outDirectIr=preShadow;
+        }
+        else{//pre not in shadow
+            outDirectIr.xyz=lightColor * dot(geometricNormal, positionToLightDirection);
+            outDirectIr.w=1.0;
+        }
+      }
+      else{  //unenable shadowmotion
+        //directColor=surfaceColor * lightColor * dot(geometricNormal, positionToLightDirection); 
+        directColor = surfaceColor * lightColor * dot(geometricNormal, positionToLightDirection);    //not in shadow
+        outDirectIr.xyz=lightColor * dot(geometricNormal, positionToLightDirection);  //irradiance of the direct light
+        outDirectIr.w=1.0;
+      }
       
     }
     else {
       directColor = vec3(0.0, 0.0, 0.0);                     //in shadow
       outDirectIr=vec4(directColor,0.0);
       isShadow=true;
+
+        if(shadingMode.enableShadowMotion==1 && preShadow.w==0.0){   //must in shadow
+            vec3 irrad=imageLoad(image_directLgtIr,ivec2(gl_FragCoord.xy)).xyz;
+            outDirectIr.xyz=directColor;
+            outDirectIr.w=0.0;
+        }
+        if(shadingMode.enableShadowMotion==1 && preShadow.w==1.0){  //contrast , believe pre ,so not in shadow
+            directColor = surfaceColor * preShadow.xyz;
+            outDirectIr.xyz=lightColor * dot(geometricNormal, positionToLightDirection);
+            outDirectIr.w=1.0;
+        }
+        else{
+            directColor=vec3(0.0,0.0,0.0);
+        }
     }
     fragPos.xy=getFragCoord(interpolatedPosition.xyz);
     //if( fragPos.y>1079){

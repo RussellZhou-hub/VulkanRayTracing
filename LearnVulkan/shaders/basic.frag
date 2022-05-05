@@ -152,7 +152,7 @@ void main() {
   vec3 geometricNormal = normalize(cross(vertexB - vertexA, vertexC - vertexA));
 
   vec3 surfaceColor = materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].diffuse;
-
+  //********************************************************mvec**********************************************************//
   if(shadingMode.enable2thRMotion ==1){
   if (isLight(materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission)||materialIndexBuffer.data[gl_PrimitiveID]==-1) {
     directColor = materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission;
@@ -200,6 +200,7 @@ void main() {
      }
      outColor = color;
  }
+  /*********************************************************svgf**********************************************************/
   else if(shadingMode.enableSVGF==1){
               // 40 & 41 == light
   if (isLight(materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission)||materialIndexBuffer.data[gl_PrimitiveID]==-1) {
@@ -240,8 +241,11 @@ void main() {
   //not enable2thray motion vector
  //*********************************************************groundTruth******************************************************//
  else if(shadingMode.groundTruth==1){
-        uint spp=1024;
+ // Initialize a random number state based on current fragment position and sample count
+        uint rngState = uint(uint(gl_FragCoord.x) * uint(1973) + uint(gl_FragCoord.y) * uint(9277) + uint(camera.frameCount) * uint(26699)) | uint(1); 
+        uint spp=32;
         float w_spp=1.0f/spp;
+        float w_shadow=0.0;
       // 40 & 41 == light
   if (isLight(materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission) ||materialIndexBuffer.data[gl_PrimitiveID]==-1) {
     directColor = materialBuffer.data[materialIndexBuffer.data[gl_PrimitiveID]].emission;
@@ -258,9 +262,12 @@ void main() {
     vec3 lightColor = vec3(0.6, 0.6, 0.6);
     //vec3 lightPosition = lightVertexA * lightBarycentric.x + lightVertexB * lightBarycentric.y + lightVertexC * lightBarycentric.z;
     vec3 directColorSum=vec3(0.0,0.0,0.0);
-    for(int i=0;i<spp;i++){
+    int directSpp=256;
+    float w_directSpp=1.0f/(directSpp+0.01f);
+    w_shadow=0.0;
+    for(int i=0;i<directSpp;i++){
         directColor=vec3(0.0,0.0,0.0);
-        vec3 lightPosition=getRadomLightPosition(i,spp);
+        vec3 lightPosition=getRadomLightPosition(i,directSpp);
 
         vec3 positionToLightDirection = normalize(lightPosition - interpolatedPosition);
 
@@ -281,14 +288,17 @@ void main() {
         vec4 irrad=imageLoad(image_directLgtIr,ivec2(gl_FragCoord.xy));
         float weight=length(irrad);
         directColor=surfaceColor * lightColor * dot(geometricNormal, positionToLightDirection); 
+        isShadow=false;
         }
         else {  //now in shadow
             directColor=vec3(0.0,0.0,0.0);
             isShadow=true;
+            w_shadow+=1.0;
         }
-        directColorSum+=(directColor*w_spp);
+        directColorSum+=(directColor*w_directSpp);
     }
     directColor=directColorSum;
+    w_shadow/=directSpp;
     
     fragPos.xy=getFragCoord(interpolatedPosition.xyz);
   }
@@ -298,14 +308,16 @@ void main() {
 
   vec3 rayOrigin = interpolatedPosition;
   
+  
+  
   vec3 rayDirection;
   vec3 reflectRay;
   vec3 indColor_sum=vec3(0.0,0.0,0.0);
   float ind_w_spp=0.3/(spp-1);
   for(int i=0;i<spp;i++){
     indirectColor=vec3(0.0,0.0,0.0);
-    //rayDirection = getSampledReflectedDirection(interpolatedPosition.xyz,geometricNormal,vec2(gl_FragCoord.x,gl_FragCoord.y),camera.frameCount,0);
-    rayDirection = getSampledReflectedDirection(interpolatedPosition.xyz,geometricNormal,vec2(rnd_u[int(mod(i+random(gl_FragCoord.xy, camera.frameCount)*spp,32))],rnd_v[int(mod(i+random(gl_FragCoord.xy, camera.frameCount)*spp,32))]),camera.frameCount,0.0f);
+    //rayDirection = getSampledReflectedDirection(interpolatedPosition.xyz+vec3(rnd_u[int(mod(i+random(gl_FragCoord.xy, camera.frameCount)*spp,32))]-0.5,rnd_v[int(mod(i+random(gl_FragCoord.xy, camera.frameCount)*spp,32))]-0.5,0.0),geometricNormal,vec2(gl_FragCoord.x,gl_FragCoord.y),rngState,0.5f);
+    rayDirection = getSampledReflectedDirection(interpolatedPosition.xyz,geometricNormal,vec2(rnd_u[int(mod(i+random(gl_FragCoord.xy, camera.frameCount)*spp,32))],rnd_v[int(mod(i+random(gl_FragCoord.xy, camera.frameCount)*spp,32))]),rngState,0.5f);
     //rayDirection =reflect(interpolatedPosition.xyz,geometricNormal);
     vec2 hammersleyVec = Hammersley(i,spp);
     float doSpecular = (rnd_u[int(mod(i+random(gl_FragCoord.xy, camera.frameCount)*spp,32))] < 0.5f) ? 1.0f : 0.0f;
@@ -315,7 +327,7 @@ void main() {
     //vec3 diffuseDir=normalize(geometricNormal+hemisphereVec);
     reflectRay=normalize(reflect(interpolatedPosition.xyz,geometricNormal));
     //vec3 specularRayDir=normalize(mix(reflectRay,diffuseDir,0.5f));
-    rayDirection=mix(rayDirection+geometricNormal, reflectRay, doSpecular);
+    rayDirection=mix(rayDirection, reflectRay, 0.0);
     //rayDirection=normalize(rayDirection+hemisphereVec);
     //rayDirection = getSampledReflectedDirection(interpolatedPosition.xyz,geometricNormal,i,spp);
     
@@ -399,13 +411,14 @@ void main() {
       }
       
     }
-    indColor_sum+=indirectColor*(5*2*M_PI/(sqrt(spp)+0.01f));
+    indColor_sum+=indirectColor;
     
   }
-  indirectColor=indColor_sum;
+  indirectColor=indColor_sum*(1.5*M_PI/(sqrt(spp)+0.01f));
   
-
-  vec4 color = vec4(directColor + indirectColor + surfaceColor*0.1, 1.0);
+  vec4 color;
+  color = vec4(directColor + (1-w_shadow+0.1<1.0?1-w_shadow:1.0)*indirectColor + surfaceColor*0.1, 1.0);
+  
   outColor = color;
   }
 //**********************************************************raw render******************************************************//

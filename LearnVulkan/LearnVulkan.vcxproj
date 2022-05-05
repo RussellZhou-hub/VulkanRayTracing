@@ -199,6 +199,7 @@
     <None Include="shaders\basic_filterIndirect.frag" />
     <None Include="shaders\basic_indirectLgt.frag" />
     <None Include="shaders\includes\random.glsl" />
+    <None Include="shaders\includes\utils.glsl" />
     <None Include="shaders\raytrace.rchit" />
     <None Include="shaders\raytrace.rgen" />
     <None Include="shaders\raytrace.rmiss" />

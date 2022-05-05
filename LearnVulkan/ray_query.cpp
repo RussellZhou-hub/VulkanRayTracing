@@ -309,7 +309,7 @@ void VkRayTracingApplication::mainLoop(VkRayTracingApplication* app, Camera* cam
         }
         if (keyDownIndex[GLFW_KEY_5]) {     //my method
             shadingMode->enable2thRay = 1;
-            shadingMode->enableShadowMotion = 0;
+            shadingMode->enableShadowMotion = 1;
             shadingMode->enableSVGF = 1;
             shadingMode->enable2thRMotion = 0;
             shadingMode->enableSVGF_withIndAlbedo = 1;
