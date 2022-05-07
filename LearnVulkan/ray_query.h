@@ -225,10 +225,7 @@ private:
 	//Descriptor Setup
 	void createUniformBuffer(VkRayTracingApplication* app);
 	void createDescriptorSets(VkRayTracingApplication* app);
-	void createGraphicsPipeline(VkRayTracingApplication* app);//Rasterization pipeline
-	void createGraphicsPipeline_indirectLgt(VkRayTracingApplication* app);//Rasterization pipeline_indirectLgt
-	void createGraphicsPipeline_indirectLgt_2(VkRayTracingApplication* app);//Rasterization pipeline_indirectLgt_2
-	void createGraphicsPipeline(Pipeline& pipeline,std::string vsPath,std::string fsPath);
+	void createGraphicsPipeline(Pipeline& pipeline,std::string vsPath,std::string fsPath);//Rasterization pipeline
 	void createRayTracePipeline(VkRayTracingApplication* app);
 	void createShaderBindingTable(VkRayTracingApplication* app);
 	void createCommandBuffers(VkRayTracingApplication* app, Scene* scene);
