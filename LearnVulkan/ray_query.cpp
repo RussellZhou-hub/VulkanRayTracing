@@ -28,6 +28,7 @@
 #include<vma/vk_mem_alloc.h>
 #include "Shader.h"
 #include"vk_initializers.h"
+#include"Mesh.h"
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/matrix_clip_space.hpp>
 
@@ -156,6 +157,14 @@ void VkRayTracingApplication::initVulkan(Scene* scene)
     createGraphicsPipeline(this);
     createGraphicsPipeline_indirectLgt(this);
     createGraphicsPipeline_indirectLgt_2(this);
+
+    //test
+    Pipeline pip_tmp;
+    pip_tmp.renderPass = renderPass_indierctLgt;
+    createGraphicsPipeline(pip_tmp, "basic.vert.spv", "basic_filterIndirect.frag.spv");
+    pipelineLayout_indierctLgt = pip_tmp.pipelineLayout;
+    graphicsPipeline_indierctLgt_2 = pip_tmp.graphicsPipeline;
+
     //createCommandBuffers(this,scene);
     //createCommandBuffers_2pass(this, scene);
     createCommandBuffers_3pass(this, scene);
@@ -1625,7 +1634,7 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
     }
 
     {
-        VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[15];
+        VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[16];
         descriptorSetLayoutBindings[0]=vkinit::descriptorSet_layout_bindings(0,1, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_FRAGMENT_BIT);
         descriptorSetLayoutBindings[1] = vkinit::descriptorSet_layout_bindings(1, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
         descriptorSetLayoutBindings[2] = vkinit::descriptorSet_layout_bindings(2, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -1641,8 +1650,10 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
         descriptorSetLayoutBindings[12] = vkinit::descriptorSet_layout_bindings(12, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT);//Depth
         descriptorSetLayoutBindings[13] = vkinit::descriptorSet_layout_bindings(13, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT); //Variance
         descriptorSetLayoutBindings[14] = vkinit::descriptorSet_layout_bindings(14, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);//Texture
+        if(_mesh._textures.size()>0) descriptorSetLayoutBindings[15] = vkinit::descriptorSet_layout_bindings(15, _mesh._textures.size(), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);//Texture array
+        else descriptorSetLayoutBindings[15] = vkinit::descriptorSet_layout_bindings(15, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);//Texture array
 
-        VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = vkinit::descriptorSetLayout_create_info(15, descriptorSetLayoutBindings);
+        VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = vkinit::descriptorSetLayout_create_info(16, descriptorSetLayoutBindings);
         if (vkCreateDescriptorSetLayout(app->logicalDevice, &descriptorSetLayoutCreateInfo, NULL, &app->rayTraceDescriptorSetLayouts[0]) == VK_SUCCESS) {
             printf("\033[22;32m%s\033[0m\n", "created descriptor set layout");
         }
@@ -1652,7 +1663,7 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
             printf("\033[22;32m%s\033[0m\n", "allocated descriptor sets");
         }
 
-        VkWriteDescriptorSet writeDescriptorSets[15];
+        VkWriteDescriptorSet writeDescriptorSets[16];
 
         VkWriteDescriptorSetAccelerationStructureKHR descriptorSetAccelerationStructure = vkinit::descriptorSetAS_info(&app->topLevelAccelerationStructure);
         writeDescriptorSets[0]=vkinit::writeDescriptorSets_info(&descriptorSetAccelerationStructure, app->rayTraceDescriptorSet,0, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
@@ -1684,8 +1695,16 @@ void VkRayTracingApplication::createDescriptorSets(VkRayTracingApplication* app)
         writeDescriptorSets[13] = vkinit::writeDescriptorSets_info(nullptr, app->rayTraceDescriptorSet, 13, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, &imageInfo_var);
         VkDescriptorImageInfo imageInfo_tex=vkinit::image_info(textureImageView,textureSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         writeDescriptorSets[14] = vkinit::writeDescriptorSets_info(nullptr, app->rayTraceDescriptorSet, 14, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &imageInfo_tex);
+        if (_mesh._textures.size() > 0) {
+            VkDescriptorImageInfo* imageInfo_tex_array = vkinit::get_textures_descriptor_ImageInfos(_mesh._textures.size(), _mesh._textures);
+            writeDescriptorSets[15] = vkinit::writeDescriptorSets_info(nullptr, app->rayTraceDescriptorSet, 15, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, imageInfo_tex_array);
+        }
+        else {
+            VkDescriptorImageInfo imageInfo_tex_array = vkinit::image_info(textureImageView, textureSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            writeDescriptorSets[15] = vkinit::writeDescriptorSets_info(nullptr, app->rayTraceDescriptorSet, 15, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &imageInfo_tex_array);
+        }
 
-        vkUpdateDescriptorSets(app->logicalDevice, 15, writeDescriptorSets, 0, NULL);
+        vkUpdateDescriptorSets(app->logicalDevice, 16, writeDescriptorSets, 0, NULL);
     }
 
     {
@@ -2500,6 +2519,7 @@ void VkRayTracingApplication::createCommandBuffers_3pass(VkRayTracingApplication
         vkCmdBindDescriptorSets(app->commandBuffers[x], VK_PIPELINE_BIND_POINT_GRAPHICS, app->pipelineLayout, 0, 1, &app->rayTraceDescriptorSet, 0, 0);
         vkCmdBindDescriptorSets(app->commandBuffers[x], VK_PIPELINE_BIND_POINT_GRAPHICS, app->pipelineLayout, 1, 1, &app->materialDescriptorSet, 0, 0);
 
+        //draw_objects();
         vkCmdDrawIndexed(app->commandBuffers[x], scene->attributes.num_faces, 1, 0, 0, 0);
         vkCmdEndRenderPass(app->commandBuffers[x]);
 
@@ -2768,7 +2788,7 @@ void VkRayTracingApplication::createGraphicsPipeline(VkRayTracingApplication* ap
 
     app->vertexBindingDescriptions = (VkVertexInputBindingDescription*)malloc(sizeof(VkVertexInputBindingDescription) * 1);
     app->vertexBindingDescriptions[0].binding = 0;
-    app->vertexBindingDescriptions[0].stride = sizeof(float) * 3;
+    app->vertexBindingDescriptions[0].stride = sizeof(float) * 3;     //Todo: dont hardcoded
     app->vertexBindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
     app->vertexAttributeDescriptions = (VkVertexInputAttributeDescription*)malloc(sizeof(VkVertexInputAttributeDescription) * 1);
@@ -3117,6 +3137,75 @@ void VkRayTracingApplication::createGraphicsPipeline_indirectLgt_2(VkRayTracingA
     delete frag_shader;
 }
 
+void VkRayTracingApplication::createGraphicsPipeline(Pipeline& pipeline, std::string vsPath, std::string fsPath) {
+    Shader* vertex_shader = new Shader();
+#ifdef _DEBUG
+    vertex_shader->load(this, "C:/Users/Vincent/source/repos/VulkanRayTracing/LearnVulkan/shaders/" + vsPath);
+#else
+    vertex_shader->load(this, "shaders/"+ vsPath);
+#endif // DEBUG
+
+
+    Shader* frag_shader = new Shader();
+#ifdef _DEBUG
+    frag_shader->load(this, "C:/Users/Vincent/source/repos/VulkanRayTracing/LearnVulkan/shaders/" + fsPath);
+#else
+    frag_shader->load(this, "shaders/"+fsPath);
+#endif // DEBUG
+    VkPipelineShaderStageCreateInfo shaderStages[2] = { vertex_shader->ShaderStageInfo, frag_shader->ShaderStageInfo };
+
+    VertexInputDescription vertexInputDescription;
+    if (isRenderCornellBox) {
+        this->vertexBindingDescriptions = (VkVertexInputBindingDescription*)malloc(sizeof(VkVertexInputBindingDescription) * 1);
+        this->vertexBindingDescriptions[0] = vkinit::vertexBinding_des(0, sizeof(float) * 3, VK_VERTEX_INPUT_RATE_VERTEX);
+
+        this->vertexAttributeDescriptions = (VkVertexInputAttributeDescription*)malloc(sizeof(VkVertexInputAttributeDescription) * 1);
+        this->vertexAttributeDescriptions[0] = vkinit::vertexAttribute_des(0, 0, 0, VK_FORMAT_R32G32B32_SFLOAT);
+
+        vertexInputDescription.bindings.push_back(this->vertexBindingDescriptions[0]);
+        vertexInputDescription.attributes.push_back(this->vertexAttributeDescriptions[0]);
+    }
+    else {
+        vertexInputDescription = Vertex::get_vertex_description();
+    }
+    VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = vkinit::vertexInputState_create_info(vertexInputDescription.bindings.data(), vertexInputDescription.attributes.data(), vertexInputDescription.bindings.size(), vertexInputDescription.attributes.size());
+    VkPipelineInputAssemblyStateCreateInfo inputAssemblyCreateInfo = vkinit::inputAssembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE);
+    VkViewport viewport = vkinit::viewport_des(0.0f, (float)this->swapchainExtent.height, (float)this->swapchainExtent.width, -(float)this->swapchainExtent.height, 0.0f, 1.0f);  //Todo
+    VkOffset2D scissorOffset = { 0, 0 };
+    VkRect2D scissor = vkinit::scissor(scissorOffset, this->swapchainExtent);
+
+    VkPipelineViewportStateCreateInfo viewportStateCreateInfo = vkinit::viewportState_create_info(&viewport, &scissor);
+    VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = vkinit::rasterizationState_create_info();
+    VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo = vkinit::multisampleState_create_info();
+    VkPipelineDepthStencilStateCreateInfo depthStencil = vkinit::depthStencil_create_info();
+
+    VkPipelineColorBlendAttachmentState* pColorBlendAttachmentState = (VkPipelineColorBlendAttachmentState*)malloc(this->colorAttachCount * sizeof(VkPipelineColorBlendAttachmentState));
+    for (auto i = 0; i < this->colorAttachCount; i++) {
+        pColorBlendAttachmentState[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        pColorBlendAttachmentState[i].blendEnable = VK_FALSE;
+    }
+
+    VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo = vkinit::colorBlendState_create_info(this->colorAttachCount, pColorBlendAttachmentState);
+
+    //bind descriptorset
+    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vkinit::pipelineLayout_create_info(2, this->rayTraceDescriptorSetLayouts);
+
+    if (vkCreatePipelineLayout(this->logicalDevice, &pipelineLayoutCreateInfo, NULL, &pipeline.pipelineLayout) == VK_SUCCESS) {
+        printf("created pipeline layout\n");
+    }
+
+    VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo = vkinit::graphicsPipeline_create_info(2, shaderStages, &vertexInputStateCreateInfo, &inputAssemblyCreateInfo,
+        &viewportStateCreateInfo, &rasterizationStateCreateInfo, &multisampleStateCreateInfo, &depthStencil, &colorBlendStateCreateInfo,
+        pipeline.pipelineLayout, pipeline.renderPass, 0);
+
+    VK_CHECK(vkCreateGraphicsPipelines(this->logicalDevice, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, NULL, &pipeline.graphicsPipeline));
+    printf("created graphics pipeline\n");
+
+
+    delete vertex_shader;
+    delete frag_shader;
+}
+
 VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass)
 {
     //make viewport state from our stored viewport and scissor.
@@ -3177,24 +3266,24 @@ VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass)
 void VkRayTracingApplication::load_meshes(Scene* scene, std::string fileName) {
 
     //load the monkey
-    //_monkeyMesh.load_from_obj("../../assets/monkey_smooth.obj");
-    _monkeyMesh.load_from_obj(fileName);
+    //_mesh.load_from_obj("../../assets/monkey_smooth.obj");
+    _mesh.load_from_obj(fileName);
 
 //**********************trans***************************************************************
 {
-    scene->attributes.num_vertices = _monkeyMesh.attrib.vertices.size() / 3;
-    scene->attributes.vertices = _monkeyMesh.attrib.vertices.data();
-    scene->attributes.num_normals = _monkeyMesh.attrib.normals.size() / 3;
-    scene->attributes.normals = _monkeyMesh.attrib.normals.data();
-    scene->attributes.num_texcoords = _monkeyMesh.attrib.texcoords.size() / 2;
-    scene->attributes.texcoords = _monkeyMesh.attrib.texcoords.data();
+    scene->attributes.num_vertices = _mesh.attrib.vertices.size() / 3;
+    scene->attributes.vertices = _mesh.attrib.vertices.data();
+    scene->attributes.num_normals = _mesh.attrib.normals.size() / 3;
+    scene->attributes.normals = _mesh.attrib.normals.data();
+    scene->attributes.num_texcoords = _mesh.attrib.texcoords.size() / 2;
+    scene->attributes.texcoords = _mesh.attrib.texcoords.data();
 
     scene->attributes.num_faces = 0;               //calculate total indices £¨not real face ,shit c-version api)
     scene->attributes.num_face_num_verts = 0;
     vector<unsigned int> indices;
     vector<unsigned int> face_num_verts;
     vector<unsigned int> materialId;
-    for (auto i = _monkeyMesh.shapes.begin(); i != _monkeyMesh.shapes.end(); i++) {
+    for (auto i = _mesh.shapes.begin(); i != _mesh.shapes.end(); i++) {
         scene->attributes.num_faces += (*i).mesh.indices.size();
         scene->attributes.num_face_num_verts += (*i).mesh.num_face_vertices.size();
         for (auto j = 0; j < (*i).mesh.indices.size(); j++) {
@@ -3216,39 +3305,39 @@ void VkRayTracingApplication::load_meshes(Scene* scene, std::string fileName) {
         scene->attributes.material_ids[i] = materialId[i];
     }
     //for materials
-    scene->numMaterials = _monkeyMesh.materials.size();
+    scene->numMaterials = _mesh.materials.size();
     scene->materials = (tinyobj_material_t*)malloc(scene->numMaterials*sizeof(tinyobj_material_t));
     for (auto i = 0; i < scene->numMaterials; i++) {
-        memcpy(scene->materials[i].ambient, _monkeyMesh.materials[i].ambient, sizeof(float) * 3);
-        memcpy(scene->materials[i].diffuse, _monkeyMesh.materials[i].diffuse, sizeof(float) * 3);
-        memcpy(scene->materials[i].specular, _monkeyMesh.materials[i].specular, sizeof(float) * 3);
-        memcpy(scene->materials[i].emission, _monkeyMesh.materials[i].emission, sizeof(float) * 3);
+        memcpy(scene->materials[i].ambient, _mesh.materials[i].ambient, sizeof(float) * 3);
+        memcpy(scene->materials[i].diffuse, _mesh.materials[i].diffuse, sizeof(float) * 3);
+        memcpy(scene->materials[i].specular, _mesh.materials[i].specular, sizeof(float) * 3);
+        memcpy(scene->materials[i].emission, _mesh.materials[i].emission, sizeof(float) * 3);
     }
 
 }
 //**********************trans***************************************************************
 
     //make sure both meshes are sent to the GPU
-   upload_mesh(_monkeyMesh);
+   upload_mesh(_mesh);
 
    std::unordered_map<Vertex, uint32_t> uniqueVertices{};
-   for (const auto& shape : _monkeyMesh.shapes) {
+   for (const auto& shape : _mesh.shapes) {
        for (const auto& index : shape.mesh.indices) {
            Vertex vertex{};
 
            vertex.position = {
-                _monkeyMesh.attrib.vertices[3 * index.vertex_index + 0],
-                _monkeyMesh.attrib.vertices[3 * index.vertex_index + 1],
-                _monkeyMesh.attrib.vertices[3 * index.vertex_index + 2]
+                _mesh.attrib.vertices[3 * index.vertex_index + 0],
+                _mesh.attrib.vertices[3 * index.vertex_index + 1],
+                _mesh.attrib.vertices[3 * index.vertex_index + 2]
            };
            vertex.normal = {
-               _monkeyMesh.attrib.normals[3 * index.normal_index + 0],
-               _monkeyMesh.attrib.normals[3 * index.normal_index + 1],
-               _monkeyMesh.attrib.normals[3 * index.normal_index + 2]
+               _mesh.attrib.normals[3 * index.normal_index + 0],
+               _mesh.attrib.normals[3 * index.normal_index + 1],
+               _mesh.attrib.normals[3 * index.normal_index + 2]
            };
            vertex.texCoord = {   //·­×ª
-               _monkeyMesh.attrib.texcoords[2 * index.texcoord_index + 0],
-               1.0f - _monkeyMesh.attrib.texcoords[2 * index.texcoord_index + 1]
+               _mesh.attrib.texcoords[2 * index.texcoord_index + 0],
+               1.0f - _mesh.attrib.texcoords[2 * index.texcoord_index + 1]
            };
 
            vertex.color = { 1.0f, 1.0f, 1.0f };
@@ -3262,7 +3351,7 @@ void VkRayTracingApplication::load_meshes(Scene* scene, std::string fileName) {
        }
    }
 
-   for (const auto& mat : _monkeyMesh.materials) {
+   for (const auto& mat : _mesh.materials) {
        Material m;
        memcpy(m.ambient, mat.ambient, sizeof(float) * 3);
        memcpy(m.diffuse, mat.diffuse, sizeof(float) * 3);
@@ -3270,8 +3359,14 @@ void VkRayTracingApplication::load_meshes(Scene* scene, std::string fileName) {
        memcpy(m.emission, mat.emission, sizeof(float) * 3);
        materials.push_back(m);
    }
+
+   //create textures
+   for (auto i = 0; i < _mesh._textures.size(); i++) {
+       createTexture(_mesh._textures[i].fileName, _mesh._textures[i]);
+   }
+
     //note that we are copying them. Eventually we will delete the hardcoded _monkey and _triangle meshes, so it's no problem now.
-    _meshes["monkey"] = _monkeyMesh;
+    _meshes["monkey"] = _mesh;
 }
 
 void VkRayTracingApplication::createTextureImage(VkRayTracingApplication* app)
@@ -3380,9 +3475,11 @@ void VkRayTracingApplication::createTextureImageView(VkImage& texImage, VkImageV
     ImgView = createImageView(texImage, VK_FORMAT_R8G8B8A8_SRGB);
 }
 
-void VkRayTracingApplication::createTextureImage(std::string texPath, VkImage & texImage, VkDeviceMemory & texImageMemory)
+void VkRayTracingApplication::createTextureImage(std::string texPath,VkImage & texImage, VkDeviceMemory & texImageMemory)
 {
     int texWidth, texHeight, texChannels;
+    std::string str = GetExePath();
+    str += "\\"+ texPath;
     stbi_uc* pixels = stbi_load(texPath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);  //channels now is 3
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 

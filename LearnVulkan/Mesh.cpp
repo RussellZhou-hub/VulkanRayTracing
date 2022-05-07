@@ -38,9 +38,17 @@ VertexInputDescription Vertex::get_vertex_description()
 	colorAttribute.format = VK_FORMAT_R32G32B32_SFLOAT;
 	colorAttribute.offset = offsetof(Vertex, color);
 
+	//TexCoord will be stored at Location 3
+	VkVertexInputAttributeDescription texAttribute = {};
+	texAttribute.binding = 0;
+	texAttribute.location = 3;
+	texAttribute.format = VK_FORMAT_R32G32_SFLOAT;
+	texAttribute.offset = offsetof(Vertex, texCoord);
+
 	description.attributes.push_back(positionAttribute);
 	description.attributes.push_back(normalAttribute);
 	description.attributes.push_back(colorAttribute);
+	description.attributes.push_back(texAttribute);
 	return description;
 }
 
@@ -114,11 +122,14 @@ bool Mesh::load_from_obj(std::string filename)
 	for (size_t s = 0; s < shapes.size(); s++) {
 		// Loop over faces(polygon)
 		size_t index_offset = 0;
-		for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
+		for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {  //遍历每一个面
 
 			//hardcode loading to triangles
 			int fv = 3;
 
+			Primitive p;
+			p.material_id = shapes[s].mesh.material_ids[f];
+			_primitives.push_back(p);
 			// Loop over vertices in the face.
 			for (size_t v = 0; v < fv; v++) {
 				// access to vertex
@@ -132,6 +143,9 @@ bool Mesh::load_from_obj(std::string filename)
 				tinyobj::real_t nx = attrib.normals[3 * idx.normal_index + 0];
 				tinyobj::real_t ny = attrib.normals[3 * idx.normal_index + 1];
 				tinyobj::real_t nz = attrib.normals[3 * idx.normal_index + 2];
+				//vertex texCoord
+				tinyobj::real_t tx= attrib.texcoords[2 * idx.texcoord_index + 0];
+				tinyobj::real_t ty = attrib.texcoords[2 * idx.texcoord_index + 1];
 
 				//copy it into our vertex
 				Vertex new_vert;
@@ -142,6 +156,9 @@ bool Mesh::load_from_obj(std::string filename)
 				new_vert.normal.x = nx;
 				new_vert.normal.y = ny;
 				new_vert.normal.z = nz;
+
+				new_vert.texCoord.x = tx;
+				new_vert.texCoord.y = ty;
 
 				//we are setting the vertex color as the vertex normal. This is just for display purposes
 				new_vert.color = new_vert.normal;
@@ -155,6 +172,25 @@ bool Mesh::load_from_obj(std::string filename)
 	this->attrib = attrib;
 	this->shapes = shapes;
 	this->materials = materials;
+
+	//process textures stuff
+	for (unsigned int i = 0; i < materials.size(); ++i) {
+		if (!(materials[i].diffuse_texname.empty())) {
+			Texture tex;
+			tex.fileName = materials[i].diffuse_texname;
+			_textures.push_back(tex);
+		}
+		if (!(materials[i].normal_texname.empty())) {
+			Texture tex;
+			tex.fileName = materials[i].normal_texname;
+			_textures.push_back(tex);
+		}
+		if (!(materials[i].specular_texname.empty())) {
+			Texture tex;
+			tex.fileName = materials[i].specular_texname;
+			_textures.push_back(tex);
+		}
+	}
 
 	return true;
 }

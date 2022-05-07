@@ -228,6 +228,7 @@ private:
 	void createGraphicsPipeline(VkRayTracingApplication* app);//Rasterization pipeline
 	void createGraphicsPipeline_indirectLgt(VkRayTracingApplication* app);//Rasterization pipeline_indirectLgt
 	void createGraphicsPipeline_indirectLgt_2(VkRayTracingApplication* app);//Rasterization pipeline_indirectLgt_2
+	void createGraphicsPipeline(Pipeline& pipeline,std::string vsPath,std::string fsPath);
 	void createRayTracePipeline(VkRayTracingApplication* app);
 	void createShaderBindingTable(VkRayTracingApplication* app);
 	void createCommandBuffers(VkRayTracingApplication* app, Scene* scene);
@@ -289,7 +290,7 @@ private:
 	VmaAllocator _allocator; //vma lib allocator
 
 	//other code ....
-	Mesh _monkeyMesh;
+	Mesh _mesh;
 
 	//default array of renderable objects
 	std::vector<RenderObject> _renderables;
@@ -361,6 +362,8 @@ private:
 	VkDeviceMemory HVarImageMemory;
 
 	VkFramebuffer* GFramebuffersLv0;   //for geometry buffer
+
+	std::vector<Pipeline> pipelines;
 
 	VkRenderPass renderPass;
 	VkPipelineLayout pipelineLayout;

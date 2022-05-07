@@ -34,6 +34,11 @@ struct Vertex {
     }
 };
 
+struct Primitive {
+    int vertices_count = 3;//hardcorded 3
+    int material_id = 0;
+};
+
 namespace std {
     template<> struct hash<Vertex> {
         size_t operator()(Vertex const& vertex) const {
@@ -47,8 +52,9 @@ namespace std {
 class Mesh {
 public:
     std::vector<Vertex> _vertices;
-
+    std::vector<Primitive> _primitives;
     AllocatedBuffer _vertexBuffer;
+    std::vector<Texture> _textures;
 
     //attrib will contain the vertex arrays of the file
     tinyobj::attrib_t attrib;

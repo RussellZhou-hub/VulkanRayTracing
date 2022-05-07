@@ -527,6 +527,15 @@ VkDescriptorImageInfo vkinit::image_info(VkImageView imageView, VkSampler sample
 	return imageInfo;
 }
 
+VkDescriptorImageInfo* vkinit::get_textures_descriptor_ImageInfos(uint32_t texture_count, std::vector<Texture> tex)
+{
+	VkDescriptorImageInfo* texture_infos = (VkDescriptorImageInfo*)malloc(sizeof(VkDescriptorImageInfo) * texture_count);
+	for (uint32_t i = 0; i != texture_count; ++i) {
+		texture_infos[i]= vkinit::image_info(tex[i].textureImageView, tex[i].textureSampler, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	}
+	return texture_infos;
+}
+
 VkVertexInputBindingDescription vkinit::vertexBinding_des(uint32_t binding, uint32_t stride, VkVertexInputRate inputRate)
 {
 	VkVertexInputBindingDescription des{};

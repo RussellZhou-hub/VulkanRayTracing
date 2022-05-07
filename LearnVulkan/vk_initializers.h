@@ -68,6 +68,7 @@ namespace vkinit {
 	VkWriteDescriptorSetAccelerationStructureKHR descriptorSetAS_info(const VkAccelerationStructureKHR* pAccelerationStructures, uint32_t accelerationStructureCount=1);
 	VkDescriptorBufferInfo buffer_info(VkBuffer buffer,VkDeviceSize offset=0,VkDeviceSize range= VK_WHOLE_SIZE);
 	VkDescriptorImageInfo image_info(VkImageView imageView, VkSampler sampler= (VkSampler)VK_DESCRIPTOR_TYPE_SAMPLER,VkImageLayout imageLayout= VK_IMAGE_LAYOUT_GENERAL);
+	VkDescriptorImageInfo* get_textures_descriptor_ImageInfos(uint32_t texture_count, std::vector<Texture> tex);
 	//******************************************end********************************************************
 	//******************************************Pipeline***************************************************
 	VkVertexInputBindingDescription vertexBinding_des(uint32_t binding,uint32_t stride,VkVertexInputRate inputRate);
