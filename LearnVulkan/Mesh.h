@@ -20,10 +20,10 @@ struct VertexInputDescription {
 
 struct Vertex {
 
-    glm::vec3 position;
-    glm::vec3 normal;
-    glm::vec3 color;
-    glm::vec2 texCoord;
+    glm::vec3 position; int padA;
+    glm::vec3 normal; int padB;
+    glm::vec3 color; int padC;
+    glm::vec2 texCoord; int padD;int padE;
 
     static VertexInputDescription get_vertex_description();
     static VkVertexInputBindingDescription getBindingDescription();

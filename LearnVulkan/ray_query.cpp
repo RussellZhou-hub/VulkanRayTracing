@@ -128,9 +128,10 @@ void VkRayTracingApplication::initVulkan(Scene* scene)
     createDepthResources(this);
     
     std::string str = GetExePath();
-    str += "\\data\\cube_scene"; 
-    //str += "\\data\\CornellBox\\CornellBox-Glossy";
-    if (str == "\\data\\cube_scene") isRenderCornellBox = true;
+    std::string objName("cube_scene");
+    //std::string objName("CornellBox\\CornellBox-Glossy");
+    str += "\\data\\"+ objName;
+    if (objName == "cube_scene") isRenderCornellBox = false;
     else isRenderCornellBox = true;
     initializeScene(scene, str);
     //initializeScene(&scene, "D:/Data/Vulkan/Resources/cube_box/cube_scene.obj");
@@ -983,6 +984,10 @@ void VkRayTracingApplication::createVertexBuffer(VkRayTracingApplication* app, S
         positionBufferSize = vertices.size() * sizeof(Vertex);  //c++ version tinyobjloader
     }
 
+    int size_V = sizeof(Vertex);
+    int size_M = sizeof(Material);
+    int size_vec3 = sizeof(glm::vec3);
+
     VkBuffer positionStagingBuffer;
     VkDeviceMemory positionStagingBufferMemory;
     createBuffer(app, positionBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &positionStagingBuffer, &positionStagingBufferMemory);
@@ -1005,12 +1010,24 @@ void VkRayTracingApplication::createVertexBuffer(VkRayTracingApplication* app, S
 
 void VkRayTracingApplication::createIndexBuffer(VkRayTracingApplication* app, Scene* scene)
 {
-    VkDeviceSize bufferSize = sizeof(uint32_t) * scene->attributes.num_faces;
+    VkDeviceSize bufferSize;
+    if (isRenderCornellBox) bufferSize = sizeof(uint32_t) * scene->attributes.num_faces;
+    else {
+        bufferSize = sizeof(uint32_t) * indices.size();
+    }
 
     uint32_t* positionIndices = (uint32_t*)malloc(bufferSize);
-    for (int x = 0; x < scene->attributes.num_faces; x++) {
-        positionIndices[x] = scene->attributes.faces[x].v_idx;
+    if (isRenderCornellBox) {
+        for (int x = 0; x < scene->attributes.num_faces; x++) {
+            positionIndices[x] = scene->attributes.faces[x].v_idx;
+        }
     }
+    else {
+        for (int x = 0; x < indices.size(); x++) {
+            positionIndices[x] = indices[x];
+        }
+    }
+    
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -1033,7 +1050,14 @@ void VkRayTracingApplication::createIndexBuffer(VkRayTracingApplication* app, Sc
 
 void VkRayTracingApplication::createMaterialsBuffer(VkRayTracingApplication* app, Scene* scene)
 {
-    VkDeviceSize indexBufferSize = sizeof(uint32_t) * scene->attributes.num_face_num_verts;  //总三角形面数
+    VkDeviceSize indexBufferSize;
+    if(isRenderCornellBox) indexBufferSize = sizeof(uint32_t) * scene->attributes.num_face_num_verts;  //总三角形面数
+    else {
+        indexBufferSize = sizeof(uint32_t) * _mesh._primitives.size();  //总三角形面数
+        for (auto i = 0; i < _mesh._primitives.size();i++) {
+            material_idx.push_back(_mesh._primitives[i].material_id);
+        }
+    }
 
     VkBuffer indexStagingBuffer;
     VkDeviceMemory indexStagingBufferMemory;
@@ -1043,7 +1067,8 @@ void VkRayTracingApplication::createMaterialsBuffer(VkRayTracingApplication* app
 
     void* indexData;
     vkMapMemory(app->logicalDevice, indexStagingBufferMemory, 0, indexBufferSize, 0, &indexData);
-    memcpy(indexData, scene->attributes.material_ids, indexBufferSize);
+    if(isRenderCornellBox) memcpy(indexData, scene->attributes.material_ids, indexBufferSize);
+    else memcpy(indexData, material_idx.data(), indexBufferSize);
     vkUnmapMemory(app->logicalDevice, indexStagingBufferMemory);
 
     createBuffer(app, indexBufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->materialIndexBuffer, &app->materialIndexBufferMemory);
@@ -1053,18 +1078,27 @@ void VkRayTracingApplication::createMaterialsBuffer(VkRayTracingApplication* app
     vkDestroyBuffer(app->logicalDevice, indexStagingBuffer, NULL);
     vkFreeMemory(app->logicalDevice, indexStagingBufferMemory, NULL);
 
-    VkDeviceSize materialBufferSize = sizeof(struct Material) * scene->numMaterials;
-
+    VkDeviceSize materialBufferSize;
+    if(isRenderCornellBox) materialBufferSize = sizeof(struct Material) * scene->numMaterials;
+    else materialBufferSize = sizeof(struct Material) * materials.size();
     
     struct Material* materials = (struct Material*)malloc(materialBufferSize);
-    for (int x = 0; x < scene->numMaterials; x++) {
-        memcpy(materials[x].ambient, scene->materials[x].ambient, sizeof(float) * 3);
-        memcpy(materials[x].diffuse, scene->materials[x].diffuse, sizeof(float) * 3);
-        memcpy(materials[x].specular, scene->materials[x].specular, sizeof(float) * 3);
-        memcpy(materials[x].emission, scene->materials[x].emission, sizeof(float) * 3);
+    if (isRenderCornellBox) {
+        for (int x = 0; x < scene->numMaterials; x++) {
+            memcpy(materials[x].ambient, scene->materials[x].ambient, sizeof(float) * 3);
+            memcpy(materials[x].diffuse, scene->materials[x].diffuse, sizeof(float) * 3);
+            memcpy(materials[x].specular, scene->materials[x].specular, sizeof(float) * 3);
+            memcpy(materials[x].emission, scene->materials[x].emission, sizeof(float) * 3);
+        }
     }
-
-    
+    else {
+        for (int x = 0; x < this->materials.size(); x++) {
+            memcpy(materials[x].ambient, this->materials[x].ambient, sizeof(float) * 3);
+            memcpy(materials[x].diffuse, this->materials[x].diffuse, sizeof(float) * 3);
+            memcpy(materials[x].specular, this->materials[x].specular, sizeof(float) * 3);
+            memcpy(materials[x].emission, this->materials[x].emission, sizeof(float) * 3);
+        }
+    }
 
     VkBuffer materialStagingBuffer;
     VkDeviceMemory materialStagingBufferMemory;
@@ -1287,17 +1321,17 @@ void VkRayTracingApplication::createBottomLevelAccelerationStructure(VkRayTracin
     transformDeviceOrHostAddressConst.deviceAddress = NULL;
 
 
-    VkAccelerationStructureGeometryTrianglesDataKHR accelerationStructureGeometryTrianglesData = {
-      .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
-      .pNext = NULL,
-      .vertexFormat = VK_FORMAT_R32G32B32_SFLOAT,
-      .vertexData = vertexDeviceOrHostAddressConst,
-      .vertexStride = sizeof(float) * 3,
-      .maxVertex = scene->attributes.num_vertices,
-      .indexType = VK_INDEX_TYPE_UINT32,
-      .indexData = indexDeviceOrHostAddressConst,
-      .transformData = transformDeviceOrHostAddressConst
-    };
+    VkAccelerationStructureGeometryTrianglesDataKHR accelerationStructureGeometryTrianglesData = {};
+    if (isRenderCornellBox) {
+        accelerationStructureGeometryTrianglesData = vkinit::AS_GeometryTriangles_data(vertexDeviceOrHostAddressConst, sizeof(float) * 3, scene->attributes.num_vertices,
+            indexDeviceOrHostAddressConst, transformDeviceOrHostAddressConst);
+    }
+    else {
+        accelerationStructureGeometryTrianglesData = vkinit::AS_GeometryTriangles_data(vertexDeviceOrHostAddressConst, sizeof(Vertex), vertices.size(),
+            indexDeviceOrHostAddressConst, transformDeviceOrHostAddressConst);
+    }
+    
+    
 
     VkAccelerationStructureGeometryDataKHR accelerationStructureGeometryData = {
       .triangles = accelerationStructureGeometryTrianglesData
@@ -1377,39 +1411,24 @@ void VkRayTracingApplication::createBottomLevelAccelerationStructure(VkRayTracin
 
     accelerationStructureBuildGeometryInfo.dstAccelerationStructure = app->accelerationStructure;
 
-    VkAccelerationStructureBuildRangeInfoKHR accelerationStructureBuildRangeInfoKHR = {
-        .primitiveCount = scene->attributes.num_face_num_verts,   //三角形面数
-            .primitiveOffset = 0,
-            .firstVertex = 0,
-            .transformOffset = 0
-    };
+    VkAccelerationStructureBuildRangeInfoKHR accelerationStructureBuildRangeInfoKHR;
+    if(isRenderCornellBox) accelerationStructureBuildRangeInfoKHR = vkinit::AS_BuildRangeInfoKHR(scene->attributes.num_face_num_verts);//三角形面数
+    else accelerationStructureBuildRangeInfoKHR = vkinit::AS_BuildRangeInfoKHR(_mesh._primitives.size());//三角形面数
     const VkAccelerationStructureBuildRangeInfoKHR* accelerationStructureBuildRangeInfo = &accelerationStructureBuildRangeInfoKHR;
     
 
     const VkAccelerationStructureBuildRangeInfoKHR** accelerationStructureBuildRangeInfos = &accelerationStructureBuildRangeInfo;
 
-    VkCommandBufferAllocateInfo bufferAllocateInfo = {};
-    bufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    bufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    bufferAllocateInfo.commandPool = app->commandPool;
-    bufferAllocateInfo.commandBufferCount = 1;
-
+    VkCommandBufferAllocateInfo bufferAllocateInfo = vkinit::alloc_info(app->commandPool);
     VkCommandBuffer commandBuffer;
     vkAllocateCommandBuffers(app->logicalDevice, &bufferAllocateInfo, &commandBuffer);
 
-    VkCommandBufferBeginInfo commandBufferBeginInfo = {};
-    commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
+    VkCommandBufferBeginInfo commandBufferBeginInfo = vkinit::cmdbuf_begin_info();
     vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
     pvkCmdBuildAccelerationStructuresKHR(commandBuffer, 1, &accelerationStructureBuildGeometryInfo, accelerationStructureBuildRangeInfos);
     vkEndCommandBuffer(commandBuffer);
 
-    VkSubmitInfo submitInfo = {};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffer;
-
+    VkSubmitInfo submitInfo = vkinit::submit_info(&commandBuffer);
     vkQueueSubmit(app->computeQueue, 1, &submitInfo, VK_NULL_HANDLE);
     vkQueueWaitIdle(app->computeQueue);
 
@@ -2102,290 +2121,6 @@ void VkRayTracingApplication::createCommandBuffers(VkRayTracingApplication* app,
     }
 }
 
-void VkRayTracingApplication::createCommandBuffers_2pass(VkRayTracingApplication* app, Scene* scene)
-{
-    app->commandBuffers = (VkCommandBuffer*)malloc(sizeof(VkCommandBuffer) * app->imageCount);
-
-    VkCommandBufferAllocateInfo commandBufferAllocateInfo = {};
-    commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    commandBufferAllocateInfo.commandPool = app->commandPool;
-    commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    commandBufferAllocateInfo.commandBufferCount = app->imageCount;
-
-    if (vkAllocateCommandBuffers(app->logicalDevice, &commandBufferAllocateInfo, app->commandBuffers) == VK_SUCCESS) {
-        printf("allocated command buffers\n");
-    }
-
-    for (int x = 0; x < app->imageCount; x++) {
-        VkCommandBufferBeginInfo commandBufferBeginCreateInfo = {};
-        commandBufferBeginCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-        VkRenderPassBeginInfo renderPassBeginInfo = {};
-        renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassBeginInfo.renderPass = app->renderPass;
-        renderPassBeginInfo.framebuffer = app->swapchainFramebuffers[x];    //指定渲染结果保存到这里
-        VkOffset2D renderAreaOffset = { 0, 0 };
-        renderPassBeginInfo.renderArea.offset = renderAreaOffset;
-        renderPassBeginInfo.renderArea.extent = app->swapchainExtent;
-
-        VkRenderPassBeginInfo renderPassBeginInfo_indirectLgt = renderPassBeginInfo;
-        renderPassBeginInfo_indirectLgt.renderPass = app->renderPass_indierctLgt;
-
-        VkClearValue clearValues[7] = {
-          {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
-          {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
-          {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
-          {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
-          {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
-          {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
-          {.depthStencil = {1.0f, 0}}
-        };
-
-        renderPassBeginInfo.clearValueCount = app->colorAttachCount + 1;
-        renderPassBeginInfo.pClearValues = clearValues;
-
-        renderPassBeginInfo_indirectLgt.clearValueCount = 2;
-        renderPassBeginInfo_indirectLgt.pClearValues = clearValues;
-
-        VkBuffer vertexBuffers[1] = { app->vertexPositionBuffer };
-        VkDeviceSize offsets[1] = { 0 };
-
-        VkImageSubresourceRange subresourceRange = {};
-        subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        subresourceRange.baseMipLevel = 0;
-        subresourceRange.levelCount = 1;
-        subresourceRange.baseArrayLayer = 0;
-        subresourceRange.layerCount = 1;
-
-        if (vkBeginCommandBuffer(app->commandBuffers[x], &commandBufferBeginCreateInfo) == VK_SUCCESS) {
-            printf("begin recording command buffer for image #%d\n", x);
-        }
-
-        vkCmdBeginRenderPass(app->commandBuffers[x], &renderPassBeginInfo_indirectLgt, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(app->commandBuffers[x], VK_PIPELINE_BIND_POINT_GRAPHICS, app->graphicsPipeline_indierctLgt);
-
-        vkCmdBindVertexBuffers(app->commandBuffers[x], 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(app->commandBuffers[x], app->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-        vkCmdBindDescriptorSets(app->commandBuffers[x], VK_PIPELINE_BIND_POINT_GRAPHICS, app->pipelineLayout, 0, 1, &app->rayTraceDescriptorSet, 0, 0);
-        vkCmdBindDescriptorSets(app->commandBuffers[x], VK_PIPELINE_BIND_POINT_GRAPHICS, app->pipelineLayout, 1, 1, &app->materialDescriptorSet, 0, 0);
-
-        vkCmdDrawIndexed(app->commandBuffers[x], scene->attributes.num_faces, 1, 0, 0, 0);
-        vkCmdEndRenderPass(app->commandBuffers[x]);
-
-        {
-            VkImageMemoryBarrier imageMemoryBarrier = {};
-            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            imageMemoryBarrier.pNext = NULL;
-            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-            imageMemoryBarrier.image = app->swapchainImages[x];
-            imageMemoryBarrier.subresourceRange = subresourceRange;
-            imageMemoryBarrier.srcAccessMask = 0;
-            imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
-        }
-
-        {
-            VkImageMemoryBarrier imageMemoryBarrier = {};
-            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            imageMemoryBarrier.pNext = NULL;
-            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            imageMemoryBarrier.image = app->rayTraceImage;
-            imageMemoryBarrier.subresourceRange = subresourceRange;
-            imageMemoryBarrier.srcAccessMask = 0;
-            imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
-        }
-
-        {
-            VkImageSubresourceLayers subresourceLayers = {};
-            subresourceLayers.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            subresourceLayers.mipLevel = 0;
-            subresourceLayers.baseArrayLayer = 0;
-            subresourceLayers.layerCount = 1;
-
-            VkOffset3D offset = {};
-            offset.x = 0;
-            offset.y = 0;
-            offset.z = 0;
-
-            VkExtent3D extent = {};
-            extent.width = WIDTH;
-            extent.height = HEIGHT;
-            extent.depth = 1;
-
-            VkImageCopy imageCopy = {};
-            imageCopy.srcSubresource = subresourceLayers;
-            imageCopy.srcOffset = offset;
-            imageCopy.dstSubresource = subresourceLayers;
-            imageCopy.dstOffset = offset;
-            imageCopy.extent = extent;
-
-            //copy 当前帧 渲染结果 到 Image_indirectLgt
-            vkCmdCopyImage(app->commandBuffers[x], app->swapchainImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->Image_indirectLgt, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
-        }
-
-        {
-            VkImageSubresourceRange subresourceRange = {};
-            subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            subresourceRange.baseMipLevel = 0;
-            subresourceRange.levelCount = 1;
-            subresourceRange.baseArrayLayer = 0;
-            subresourceRange.layerCount = 1;
-
-            VkImageMemoryBarrier imageMemoryBarrier = {};
-            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            imageMemoryBarrier.pNext = NULL;
-            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-            imageMemoryBarrier.image = app->swapchainImages[x];
-            imageMemoryBarrier.subresourceRange = subresourceRange;
-            imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-            imageMemoryBarrier.dstAccessMask = 0;
-
-            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
-        }
-
-        {
-            VkImageSubresourceRange subresourceRange = {};
-            subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            subresourceRange.baseMipLevel = 0;
-            subresourceRange.levelCount = 1;
-            subresourceRange.baseArrayLayer = 0;
-            subresourceRange.layerCount = 1;
-
-            VkImageMemoryBarrier imageMemoryBarrier = {};
-            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            imageMemoryBarrier.pNext = NULL;
-            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-            imageMemoryBarrier.image = app->rayTraceImage;
-            imageMemoryBarrier.subresourceRange = subresourceRange;
-            imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-            imageMemoryBarrier.dstAccessMask = 0;
-
-            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
-        }
-
-        // 2th renderpass
-        vkCmdBeginRenderPass(app->commandBuffers[x], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(app->commandBuffers[x], VK_PIPELINE_BIND_POINT_GRAPHICS, app->graphicsPipeline);
-
-        vkCmdBindVertexBuffers(app->commandBuffers[x], 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(app->commandBuffers[x], app->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-        vkCmdBindDescriptorSets(app->commandBuffers[x], VK_PIPELINE_BIND_POINT_GRAPHICS, app->pipelineLayout, 0, 1, &app->rayTraceDescriptorSet, 0, 0);
-        vkCmdBindDescriptorSets(app->commandBuffers[x], VK_PIPELINE_BIND_POINT_GRAPHICS, app->pipelineLayout, 1, 1, &app->materialDescriptorSet, 0, 0);
-
-        vkCmdDrawIndexed(app->commandBuffers[x], scene->attributes.num_faces, 1, 0, 0, 0);
-        vkCmdEndRenderPass(app->commandBuffers[x]);
-
-        {
-            VkImageMemoryBarrier imageMemoryBarrier = {};
-            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            imageMemoryBarrier.pNext = NULL;
-            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-            imageMemoryBarrier.image = app->swapchainImages[x];
-            imageMemoryBarrier.subresourceRange = subresourceRange;
-            imageMemoryBarrier.srcAccessMask = 0;
-            imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
-        }
-
-        {
-            VkImageMemoryBarrier imageMemoryBarrier = {};
-            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            imageMemoryBarrier.pNext = NULL;
-            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            imageMemoryBarrier.image = app->rayTraceImage;
-            imageMemoryBarrier.subresourceRange = subresourceRange;
-            imageMemoryBarrier.srcAccessMask = 0;
-            imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
-        }
-
-        {
-            VkImageSubresourceLayers subresourceLayers = {};
-            subresourceLayers.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            subresourceLayers.mipLevel = 0;
-            subresourceLayers.baseArrayLayer = 0;
-            subresourceLayers.layerCount = 1;
-
-            VkOffset3D offset = {};
-            offset.x = 0;
-            offset.y = 0;
-            offset.z = 0;
-
-            VkExtent3D extent = {};
-            extent.width = WIDTH;
-            extent.height = HEIGHT;
-            extent.depth = 1;
-
-            VkImageCopy imageCopy = {};
-            imageCopy.srcSubresource = subresourceLayers;
-            imageCopy.srcOffset = offset;
-            imageCopy.dstSubresource = subresourceLayers;
-            imageCopy.dstOffset = offset;
-            imageCopy.extent = extent;
-
-            //copy 当前帧 渲染结果 到 rayTraceImage
-            vkCmdCopyImage(app->commandBuffers[x], app->swapchainImages[x], VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, app->rayTraceImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
-        }
-
-        {
-            VkImageSubresourceRange subresourceRange = {};
-            subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            subresourceRange.baseMipLevel = 0;
-            subresourceRange.levelCount = 1;
-            subresourceRange.baseArrayLayer = 0;
-            subresourceRange.layerCount = 1;
-
-            VkImageMemoryBarrier imageMemoryBarrier = {};
-            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            imageMemoryBarrier.pNext = NULL;
-            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-            imageMemoryBarrier.image = app->swapchainImages[x];
-            imageMemoryBarrier.subresourceRange = subresourceRange;
-            imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-            imageMemoryBarrier.dstAccessMask = 0;
-
-            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
-        }
-
-        {
-            VkImageSubresourceRange subresourceRange = {};
-            subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            subresourceRange.baseMipLevel = 0;
-            subresourceRange.levelCount = 1;
-            subresourceRange.baseArrayLayer = 0;
-            subresourceRange.layerCount = 1;
-
-            VkImageMemoryBarrier imageMemoryBarrier = {};
-            imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            imageMemoryBarrier.pNext = NULL;
-            imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-            imageMemoryBarrier.image = app->rayTraceImage;
-            imageMemoryBarrier.subresourceRange = subresourceRange;
-            imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-            imageMemoryBarrier.dstAccessMask = 0;
-
-            vkCmdPipelineBarrier(app->commandBuffers[x], VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &imageMemoryBarrier);
-        }
-
-        if (vkEndCommandBuffer(app->commandBuffers[x]) == VK_SUCCESS) {
-            printf("end recording command buffer for image #%d\n", x);
-        }
-    }
-}
-
 void VkRayTracingApplication::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 {
     VkCommandBuffer commandBuffer = beginSingleTimeCommands();
@@ -2456,22 +2191,11 @@ void VkRayTracingApplication::copyBufferToImage(VkBuffer buffer, VkImage image, 
 
 VkImageView VkRayTracingApplication::createImageView(VkImage image, VkFormat format)
 {
-    VkImageViewCreateInfo viewInfo{};
-    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image = image;
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format = format;
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = 1;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = 1;
-
+    VkImageViewCreateInfo viewInfo=vkinit::imageView_create_info(image, format, 0);
     VkImageView imageView;
     if (vkCreateImageView(logicalDevice, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
         throw std::runtime_error("failed to create texture image view!");
     }
-
     return imageView;
 }
 

@@ -13,6 +13,13 @@ struct Material {
   vec3 emission;
 };
 
+struct Vertex{
+  vec3 pos;
+  vec3 normal;
+  vec3 color;
+  vec2 texCoord;
+};
+
 layout(location = 0) in vec3 interpolatedPosition;
 layout(location = 1) in vec4 clipPos;
 layout(location = 2) in mat4 PVMatrix;
@@ -51,7 +58,7 @@ layout(binding = 1, set = 0) uniform Camera {
 } camera;
 
 layout(binding = 2, set = 0) buffer IndexBuffer { uint data[]; } indexBuffer;
-layout(binding = 3, set = 0) buffer VertexBuffer { float data[]; } vertexBuffer;
+layout(binding = 3, set = 0) buffer VertexBuffer { Vertex data[]; } vertexBuffer;
 layout(binding = 4, set = 0, rgba32f) uniform image2D image;
 layout(binding = 6, set = 0, rgba32f) uniform image2D image_indirectLgt;
 layout(binding = 7, set = 0, rgba32f) uniform image2D image_indirectLgt_2;  //ind albedo
@@ -111,9 +118,13 @@ void main() {
 
   ivec3 indices = ivec3(indexBuffer.data[3 * gl_PrimitiveID + 0], indexBuffer.data[3 * gl_PrimitiveID + 1], indexBuffer.data[3 * gl_PrimitiveID + 2]);
 
-  vec3 vertexA = vec3(vertexBuffer.data[3 * indices.x + 0], vertexBuffer.data[3 * indices.x + 1], vertexBuffer.data[3 * indices.x + 2]);
-  vec3 vertexB = vec3(vertexBuffer.data[3 * indices.y + 0], vertexBuffer.data[3 * indices.y + 1], vertexBuffer.data[3 * indices.y + 2]);
-  vec3 vertexC = vec3(vertexBuffer.data[3 * indices.z + 0], vertexBuffer.data[3 * indices.z + 1], vertexBuffer.data[3 * indices.z + 2]);
+  vec3 vertexA =vertexBuffer.data[indices.x].pos;
+  vec3 vertexB=vertexBuffer.data[indices.y].pos;
+  vec3 vertexC=vertexBuffer.data[indices.z].pos;
+
+  //vec3 vertexA = vec3(vertexBuffer.data[3 * indices.x + 0], vertexBuffer.data[3 * indices.x + 1], vertexBuffer.data[3 * indices.x + 2]);
+  //vec3 vertexB = vec3(vertexBuffer.data[3 * indices.y + 0], vertexBuffer.data[3 * indices.y + 1], vertexBuffer.data[3 * indices.y + 2]);
+  //vec3 vertexC = vec3(vertexBuffer.data[3 * indices.z + 0], vertexBuffer.data[3 * indices.z + 1], vertexBuffer.data[3 * indices.z + 2]);
   
   vec3 geometricNormal = normalize(cross(vertexB - vertexA, vertexC - vertexA));
   outNormal=vec4((geometricNormal+1)/2,1.0);  //[0，1]正则化
@@ -299,9 +310,13 @@ void main() {
       ivec3 extensionIndices = ivec3(indexBuffer.data[3 * extensionPrimitiveIndex + 0], indexBuffer.data[3 * extensionPrimitiveIndex + 1], indexBuffer.data[3 * extensionPrimitiveIndex + 2]);
       vec3 extensionBarycentric = vec3(1.0 - extensionIntersectionBarycentric.x - extensionIntersectionBarycentric.y, extensionIntersectionBarycentric.x, extensionIntersectionBarycentric.y);
       
-      vec3 extensionVertexA = vec3(vertexBuffer.data[3 * extensionIndices.x + 0], vertexBuffer.data[3 * extensionIndices.x + 1], vertexBuffer.data[3 * extensionIndices.x + 2]);
-      vec3 extensionVertexB = vec3(vertexBuffer.data[3 * extensionIndices.y + 0], vertexBuffer.data[3 * extensionIndices.y + 1], vertexBuffer.data[3 * extensionIndices.y + 2]);
-      vec3 extensionVertexC = vec3(vertexBuffer.data[3 * extensionIndices.z + 0], vertexBuffer.data[3 * extensionIndices.z + 1], vertexBuffer.data[3 * extensionIndices.z + 2]);
+      vec3 extensionVertexA =vertexBuffer.data[extensionIndices.x].pos;
+      vec3 extensionVertexB=vertexBuffer.data[extensionIndices.y].pos;
+      vec3 extensionVertexC=vertexBuffer.data[extensionIndices.z].pos;
+
+      //vec3 extensionVertexA = vec3(vertexBuffer.data[3 * extensionIndices.x + 0], vertexBuffer.data[3 * extensionIndices.x + 1], vertexBuffer.data[3 * extensionIndices.x + 2]);
+      //vec3 extensionVertexB = vec3(vertexBuffer.data[3 * extensionIndices.y + 0], vertexBuffer.data[3 * extensionIndices.y + 1], vertexBuffer.data[3 * extensionIndices.y + 2]);
+      //vec3 extensionVertexC = vec3(vertexBuffer.data[3 * extensionIndices.z + 0], vertexBuffer.data[3 * extensionIndices.z + 1], vertexBuffer.data[3 * extensionIndices.z + 2]);
     
       vec3 extensionPosition = extensionVertexA * extensionBarycentric.x + extensionVertexB * extensionBarycentric.y + extensionVertexC * extensionBarycentric.z;
       vec3 extensionNormal = normalize(cross(extensionVertexB - extensionVertexA, extensionVertexC - extensionVertexA));

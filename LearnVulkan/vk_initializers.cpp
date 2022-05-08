@@ -536,6 +536,31 @@ VkDescriptorImageInfo* vkinit::get_textures_descriptor_ImageInfos(uint32_t textu
 	return texture_infos;
 }
 
+VkAccelerationStructureGeometryTrianglesDataKHR vkinit::AS_GeometryTriangles_data(VkDeviceOrHostAddressConstKHR vertexData, VkDeviceSize vertexStride, uint32_t maxVertex, VkDeviceOrHostAddressConstKHR indexData, VkDeviceOrHostAddressConstKHR transformData, VkIndexType indexType, VkFormat vertexFormat)
+{
+	VkAccelerationStructureGeometryTrianglesDataKHR AS_data = {};
+	AS_data.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
+	AS_data.pNext = NULL;
+	AS_data.vertexFormat = vertexFormat;
+	AS_data.vertexData = vertexData;
+	AS_data.vertexStride = vertexStride;
+	AS_data.maxVertex = maxVertex;
+	AS_data.indexType = indexType;
+	AS_data.indexData = indexData;
+	AS_data.transformData = transformData;
+	return AS_data;
+}
+
+VkAccelerationStructureBuildRangeInfoKHR vkinit::AS_BuildRangeInfoKHR(uint32_t primitiveCount, uint32_t primitiveOffset, uint32_t firstVertex, uint32_t transformOffset)
+{
+	VkAccelerationStructureBuildRangeInfoKHR info = {};
+	info.primitiveCount = primitiveCount;   //三角形面数
+	info.primitiveOffset = primitiveOffset;
+	info.firstVertex = firstVertex;
+	info.transformOffset = transformOffset;
+	return info;
+}
+
 VkVertexInputBindingDescription vkinit::vertexBinding_des(uint32_t binding, uint32_t stride, VkVertexInputRate inputRate)
 {
 	VkVertexInputBindingDescription des{};

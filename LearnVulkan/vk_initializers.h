@@ -70,6 +70,11 @@ namespace vkinit {
 	VkDescriptorImageInfo image_info(VkImageView imageView, VkSampler sampler= (VkSampler)VK_DESCRIPTOR_TYPE_SAMPLER,VkImageLayout imageLayout= VK_IMAGE_LAYOUT_GENERAL);
 	VkDescriptorImageInfo* get_textures_descriptor_ImageInfos(uint32_t texture_count, std::vector<Texture> tex);
 	//******************************************end********************************************************
+	// *****************************************AS*********************************************************
+	VkAccelerationStructureGeometryTrianglesDataKHR AS_GeometryTriangles_data(VkDeviceOrHostAddressConstKHR vertexData,VkDeviceSize vertexStride,uint32_t maxVertex,VkDeviceOrHostAddressConstKHR indexData,
+													VkDeviceOrHostAddressConstKHR transformData,VkIndexType indexType = VK_INDEX_TYPE_UINT32, VkFormat vertexFormat = VK_FORMAT_R32G32B32_SFLOAT);
+	VkAccelerationStructureBuildRangeInfoKHR AS_BuildRangeInfoKHR(uint32_t primitiveCount,uint32_t primitiveOffset=0,uint32_t firstVertex = 0,uint32_t transformOffset = 0);
+	// *****************************************end********************************************************
 	//******************************************Pipeline***************************************************
 	VkVertexInputBindingDescription vertexBinding_des(uint32_t binding,uint32_t stride,VkVertexInputRate inputRate);
 	VkVertexInputAttributeDescription vertexAttribute_des(uint32_t location,uint32_t binding,uint32_t offset,VkFormat format);

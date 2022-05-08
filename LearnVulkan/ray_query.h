@@ -229,7 +229,6 @@ private:
 	void createRayTracePipeline(VkRayTracingApplication* app);
 	void createShaderBindingTable(VkRayTracingApplication* app);
 	void createCommandBuffers(VkRayTracingApplication* app, Scene* scene);
-	void createCommandBuffers_2pass(VkRayTracingApplication* app, Scene* scene);
 	void createCommandBuffers_3pass(VkRayTracingApplication* app, Scene* scene);
 	void createSynchronizationObjects(VkRayTracingApplication* app);
 	void updateUniformBuffer(VkRayTracingApplication* app, Camera* camera, ShadingMode* shadingMode);
@@ -254,6 +253,7 @@ private:
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
 	std::vector<Material> materials;
+	std::vector<uint32_t> material_idx;
 	VkBuffer vertexBuffer;
 	VkDeviceMemory vertexBufferMemory;
 
